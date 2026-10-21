@@ -2,7 +2,7 @@ import TelegramBot from 'node-telegram-bot-api';
 import db from './db.js';
 
 const BOT_TOKEN = process.env.BOT_TOKEN;
-const WEB_APP_URL = process.env.WEB_APP_URL || 'https://couple-budget.vercel.app';
+const WEB_APP_URL = process.env.WEB_APP_URL || 'https://couple-budget-z17f.onrender.com';
 
 let bot;
 
