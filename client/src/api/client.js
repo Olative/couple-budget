@@ -28,6 +28,7 @@ export const api = {
   createBudget: (data) => request('/budgets', { method: 'POST', body: JSON.stringify(data) }),
   joinBudget: (inviteCode) => request('/budgets/join', { method: 'POST', body: JSON.stringify({ inviteCode }) }),
   getBudget: (id) => request(`/budgets/${id}`),
+  updateBudget: (id, data) => request(`/budgets/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   getSummary: (id, month) => request(`/budgets/${id}/summary${month ? `?month=${month}` : ''}`),
 
   getExpenses: (budgetId, params = {}) => {

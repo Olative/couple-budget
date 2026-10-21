@@ -74,6 +74,18 @@ router.get('/budgets/:id', (req, res) => {
   res.json({ ...budget, members, categories });
 });
 
+router.put('/budgets/:id', (req, res) => {
+  const { currency, name } = req.body;
+  const budget = db.prepare('SELECT * FROM budgets WHERE id = ?').get(req.params.id);
+  if (!budget) return res.status(404).json({ error: 'Not found' });
+
+  db.prepare('UPDATE budgets SET currency = COALESCE(?, currency), name = COALESCE(?, name) WHERE id = ?')
+    .run(currency || null, name || null, req.params.id);
+
+  const updated = db.prepare('SELECT * FROM budgets WHERE id = ?').get(req.params.id);
+  res.json(updated);
+});
+
 router.get('/budgets/:id/summary', (req, res) => {
   const { id } = req.params;
   const { month } = req.query;

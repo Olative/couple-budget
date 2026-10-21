@@ -1,12 +1,23 @@
 import { useState, useEffect } from 'react';
 import { api } from '../api/client';
 
-export default function Settings({ budget, user }) {
+const CURRENCIES = ['€', '$', '₽', '₺', 'RSD', '£', '¥'];
+
+export default function Settings({ budget, user, onBudgetUpdate }) {
   const [budgetData, setBudgetData] = useState(null);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     api.getBudget(budget.id).then(setBudgetData);
   }, [budget.id]);
+
+  const changeCurrency = async (c) => {
+    setSaving(true);
+    const updated = await api.updateBudget(budget.id, { currency: c });
+    budget.currency = updated.currency;
+    if (onBudgetUpdate) onBudgetUpdate(updated);
+    setSaving(false);
+  };
 
   const copyInviteCode = () => {
     const code = budget.invite_code;
@@ -14,7 +25,7 @@ export default function Settings({ budget, user }) {
       navigator.clipboard.writeText(code);
     }
     const tg = window.Telegram?.WebApp;
-    if (tg) {
+    if (tg?.showAlert) {
       tg.showAlert(`Код скопирован: ${code}`);
     } else {
       alert(`Код скопирован: ${code}`);
@@ -39,9 +50,27 @@ export default function Settings({ budget, user }) {
           <span className="stat-label">Название</span>
           <span>{budget.name}</span>
         </div>
-        <div className="stat-row">
-          <span className="stat-label">Валюта</span>
-          <span>{budget.currency}</span>
+        <div style={{ marginTop: 8 }}>
+          <div className="stat-label" style={{ marginBottom: 8 }}>Валюта</div>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            {CURRENCIES.map(c => (
+              <button
+                key={c}
+                disabled={saving}
+                style={{
+                  flex: 1, minWidth: 40, padding: '8px 0', border: '2px solid',
+                  borderColor: budget.currency === c ? 'var(--tg-theme-button-color)' : 'var(--tg-theme-secondary-bg-color)',
+                  borderRadius: 8,
+                  background: budget.currency === c ? 'var(--tg-theme-button-color)' : 'var(--tg-theme-secondary-bg-color)',
+                  color: budget.currency === c ? 'var(--tg-theme-button-text-color)' : 'var(--tg-theme-text-color)',
+                  fontSize: 15, fontWeight: 600, cursor: 'pointer',
+                }}
+                onClick={() => changeCurrency(c)}
+              >
+                {c}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 

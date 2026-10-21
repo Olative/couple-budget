@@ -4,6 +4,7 @@ import { api } from '../api/client';
 export default function Welcome({ user, onCreated, onJoined }) {
   const [mode, setMode] = useState(null); // 'create' | 'join'
   const [name, setName] = useState('');
+  const [currency, setCurrency] = useState('€');
   const [inviteCode, setInviteCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -12,7 +13,7 @@ export default function Welcome({ user, onCreated, onJoined }) {
     setLoading(true);
     setError('');
     try {
-      const budget = await api.createBudget({ name: name || 'Наш бюджет' });
+      const budget = await api.createBudget({ name: name || 'Наш бюджет', currency });
       onCreated(budget);
     } catch (e) {
       setError(e.message);
@@ -64,6 +65,27 @@ export default function Welcome({ user, onCreated, onJoined }) {
               value={name}
               onChange={e => setName(e.target.value)}
             />
+          </div>
+          <div className="input-group">
+            <label className="input-label">Валюта</label>
+            <div style={{ display: 'flex', gap: 8 }}>
+              {['€', '$', '₽', '₺', 'RSD', '£', '¥'].map(c => (
+                <button
+                  key={c}
+                  style={{
+                    flex: 1, padding: '10px 0', border: '2px solid',
+                    borderColor: currency === c ? 'var(--tg-theme-button-color)' : 'var(--tg-theme-secondary-bg-color)',
+                    borderRadius: 8,
+                    background: currency === c ? 'var(--tg-theme-button-color)' : 'var(--tg-theme-secondary-bg-color)',
+                    color: currency === c ? 'var(--tg-theme-button-text-color)' : 'var(--tg-theme-text-color)',
+                    fontSize: 16, fontWeight: 600, cursor: 'pointer',
+                  }}
+                  onClick={() => setCurrency(c)}
+                >
+                  {c}
+                </button>
+              ))}
+            </div>
           </div>
           {error && <div style={{ color: '#ef4444', fontSize: 14, marginBottom: 12 }}>{error}</div>}
           <div style={{ display: 'flex', gap: 8 }}>

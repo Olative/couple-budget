@@ -79,7 +79,7 @@ export default function App() {
       case 'expenses': return <Expenses budget={activeBudget} user={user} />;
       case 'plan': return <Plan budget={activeBudget} />;
       case 'savings': return <Savings budget={activeBudget} user={user} />;
-      case 'settings': return <Settings budget={activeBudget} user={user} />;
+      case 'settings': return <Settings budget={activeBudget} user={user} onBudgetUpdate={(b) => setActiveBudget(prev => ({ ...prev, ...b }))} />;
       default: return null;
     }
   };
