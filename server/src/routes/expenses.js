@@ -21,7 +21,6 @@ router.get('/budgets/:budgetId/expenses', (req, res) => {
     query += ' AND e.date LIKE ?';
     params.push(`${month}%`);
   }
-
   if (category_id) {
     query += ' AND e.category_id = ?';
     params.push(category_id);
@@ -43,12 +42,10 @@ router.post('/budgets/:budgetId/expenses', (req, res) => {
     return res.status(400).json({ error: 'category_id and positive amount required' });
   }
 
-  const result = db.prepare(`
-    INSERT INTO expenses (budget_id, category_id, user_id, amount, description, date)
-    VALUES (?, ?, ?, ?, ?, ?)
-    RETURNING *
-  `).get(budgetId, category_id, userId, amount, description || null, date || new Date().toISOString().slice(0, 10));
+  db.prepare('INSERT INTO expenses (budget_id, category_id, user_id, amount, description, date) VALUES (?, ?, ?, ?, ?, ?)')
+    .run(budgetId, category_id, userId, amount, description || null, date || new Date().toISOString().slice(0, 10));
 
+  const result = db.prepare('SELECT * FROM expenses WHERE rowid = last_insert_rowid()').get();
   res.json(result);
 });
 

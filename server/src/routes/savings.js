@@ -5,8 +5,7 @@ const router = Router();
 
 router.get('/budgets/:budgetId/savings', (req, res) => {
   const goals = db.prepare(`
-    SELECT sg.*,
-           COALESCE(SUM(sc.amount), 0) as current_amount
+    SELECT sg.*, COALESCE(SUM(sc.amount), 0) as current_amount
     FROM savings_goals sg
     LEFT JOIN savings_contributions sc ON sg.id = sc.goal_id
     WHERE sg.budget_id = ?
@@ -23,27 +22,22 @@ router.post('/budgets/:budgetId/savings', (req, res) => {
     return res.status(400).json({ error: 'name and target_amount required' });
   }
 
-  const result = db.prepare(`
-    INSERT INTO savings_goals (budget_id, name, target_amount, icon, deadline)
-    VALUES (?, ?, ?, ?, ?)
-    RETURNING *
-  `).get(req.params.budgetId, name, target_amount, icon || '🎯', deadline || null);
+  db.prepare('INSERT INTO savings_goals (budget_id, name, target_amount, icon, deadline) VALUES (?, ?, ?, ?, ?)')
+    .run(req.params.budgetId, name, target_amount, icon || '🎯', deadline || null);
 
+  const result = db.prepare('SELECT * FROM savings_goals WHERE rowid = last_insert_rowid()').get();
   res.json(result);
 });
 
 router.post('/savings/:goalId/contribute', (req, res) => {
   const { amount } = req.body;
   const userId = req.userId;
-
   if (!amount || amount <= 0) {
     return res.status(400).json({ error: 'Positive amount required' });
   }
 
-  db.prepare(`
-    INSERT INTO savings_contributions (goal_id, user_id, amount)
-    VALUES (?, ?, ?)
-  `).run(req.params.goalId, userId, amount);
+  db.prepare('INSERT INTO savings_contributions (goal_id, user_id, amount) VALUES (?, ?, ?)')
+    .run(req.params.goalId, userId, amount);
 
   const goal = db.prepare(`
     SELECT sg.*, COALESCE(SUM(sc.amount), 0) as current_amount
