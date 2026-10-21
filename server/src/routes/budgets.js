@@ -24,20 +24,24 @@ router.post('/budgets', (req, res) => {
   const id = uuidv4();
   const inviteCode = crypto.randomBytes(6).toString('hex');
 
-  const create = db.transaction(() => {
+  try {
     db.prepare('INSERT INTO budgets (id, name, currency, created_by, invite_code) VALUES (?, ?, ?, ?, ?)')
       .run(id, name || 'Наш бюджет', currency || '₽', userId, inviteCode);
+
     db.prepare('INSERT INTO budget_members (budget_id, user_id, role) VALUES (?, ?, ?)')
       .run(id, userId, 'owner');
+
     DEFAULT_CATEGORIES.forEach((cat, i) => {
       db.prepare('INSERT INTO categories (budget_id, name, icon, color, sort_order) VALUES (?, ?, ?, ?, ?)')
         .run(id, cat.name, cat.icon, cat.color, i);
     });
-  });
-  create();
 
-  const budget = db.prepare('SELECT * FROM budgets WHERE id = ?').get(id);
-  res.json(budget);
+    const budget = db.prepare('SELECT * FROM budgets WHERE id = ?').get(id);
+    res.json(budget);
+  } catch (e) {
+    console.error('Budget creation error:', e);
+    res.status(500).json({ error: 'Failed to create budget' });
+  }
 });
 
 router.post('/budgets/join', (req, res) => {

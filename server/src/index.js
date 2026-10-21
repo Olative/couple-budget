@@ -38,6 +38,11 @@ app.use('/api', authMiddleware, expenseRoutes);
 app.use('/api', authMiddleware, categoryRoutes);
 app.use('/api', authMiddleware, savingsRoutes);
 
+app.use((err, req, res, next) => {
+  console.error('Unhandled error:', err);
+  res.status(500).json({ error: 'Internal server error' });
+});
+
 app.use(express.static(join(__dirname, '..', 'public')));
 app.get('*', (req, res) => {
   res.sendFile(join(__dirname, '..', 'public', 'index.html'));
