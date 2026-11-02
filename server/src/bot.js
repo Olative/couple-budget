@@ -17,9 +17,11 @@ const isAdmin = (msg) => ADMIN_ID && String(msg.from.id) === String(ADMIN_ID);
 
 async function setupProfile() {
   await bot.setMyDescription({
-    description: 'Lolo & Pepe — бюджет для двоих 🐧\n\nЗаписывайте общие траты, ставьте лимиты на месяц, копите на общую мечту. А в начале каждого месяца пингвины пришлют итоги.',
+    description: 'Lolo & Pepe — бюджет для двоих 🐧\n\n' +
+      'Записывайте общие траты, ставьте лимиты на месяц и копите на общую мечту.\n' +
+      'А в начале каждого месяца пингвины пришлют итоги: сколько потратили и что ждёт дальше.',
   });
-  await bot.setMyShortDescription({ short_description: 'Бюджет для двоих: траты, лимиты, копилка и итоги месяца 🐧' });
+  await bot.setMyShortDescription({ short_description: 'Бюджет для двоих: общие траты, лимиты, копилка и итоги месяца 🐧' });
   await bot.setChatMenuButton({ menu_button: JSON.stringify({ type: 'web_app', text: 'Открыть', web_app: { url: WEB_APP_URL } }) });
   await bot.setMyCommands([
     { command: 'start', description: 'Открыть приложение' },
