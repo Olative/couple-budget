@@ -4,8 +4,36 @@ import { currentMonth, shiftMonth } from './insights.js';
 
 const BOT_TOKEN = process.env.BOT_TOKEN;
 const WEB_APP_URL = process.env.WEB_APP_URL || 'https://couple-budget-z17f.onrender.com';
+const ADMIN_ID = process.env.ADMIN_TELEGRAM_ID;
+
+const openButton = (text = 'Открыть Lolo & Pepe', url = WEB_APP_URL) => ({
+  reply_markup: { inline_keyboard: [[{ text, web_app: { url } }]] },
+});
 
 let bot;
+const pendingBroadcasts = new Map();
+
+const isAdmin = (msg) => ADMIN_ID && String(msg.from.id) === String(ADMIN_ID);
+
+async function setupProfile() {
+  await bot.setMyDescription({
+    description: 'Lolo & Pepe — бюджет для двоих 🐧\n\nЗаписывайте общие траты, ставьте лимиты на месяц, копите на общую мечту. А в начале каждого месяца пингвины пришлют итоги.',
+  });
+  await bot.setMyShortDescription({ short_description: 'Бюджет для двоих: траты, лимиты, копилка и итоги месяца 🐧' });
+  await bot.setChatMenuButton({ menu_button: JSON.stringify({ type: 'web_app', text: 'Открыть', web_app: { url: WEB_APP_URL } }) });
+  await bot.setMyCommands([
+    { command: 'start', description: 'Открыть приложение' },
+    { command: 'help', description: 'Помощь' },
+  ]);
+  if (ADMIN_ID) {
+    await bot.setMyCommands([
+      { command: 'start', description: 'Открыть приложение' },
+      { command: 'stats', description: 'Статистика' },
+      { command: 'broadcast', description: 'Рассылка всем пользователям' },
+      { command: 'help', description: 'Помощь' },
+    ], { scope: { type: 'chat', chat_id: Number(ADMIN_ID) } });
+  }
+}
 
 export function startBot() {
   if (!BOT_TOKEN) {
@@ -14,53 +42,108 @@ export function startBot() {
   }
 
   bot = new TelegramBot(BOT_TOKEN, { polling: true });
+  setupProfile().catch(e => console.error('Bot profile setup failed:', e.message));
 
-  bot.onText(/\/start(.*)/, (msg, match) => {
+  bot.onText(/^\/start(.*)/, async (msg, match) => {
     const chatId = msg.chat.id;
     const param = (match[1] || '').trim();
+    const photo = `${WEB_APP_URL}/bot/welcome.jpg`;
 
-    if (param) {
-      bot.sendMessage(chatId, `Вас пригласили в парный бюджет!\n\nНажмите кнопку ниже, чтобы присоединиться:`, {
-        reply_markup: {
-          inline_keyboard: [[
-            { text: '💰 Присоединиться', web_app: { url: `${WEB_APP_URL}?join=${param}` } }
-          ]]
-        }
-      });
-    } else {
-      bot.sendMessage(chatId,
-        `Привет, ${msg.from.first_name}! 👋\n\n` +
-        `Я помогу вам с партнёром вести общий бюджет:\n\n` +
-        `💸 Записывайте расходы по категориям\n` +
-        `📊 Смотрите, кто сколько потратил\n` +
-        `📋 Планируйте лимиты на месяц\n` +
-        `🎯 Копите на общие цели\n\n` +
-        `Нажмите кнопку ниже, чтобы начать!`,
-        {
-          reply_markup: {
-            inline_keyboard: [[
-              { text: '💰 Открыть бюджет', web_app: { url: WEB_APP_URL } }
-            ]]
-          }
-        }
-      );
+    const [caption, button] = param
+      ? [
+        'Вас пригласили в общий бюджет Lolo & Pepe 🐧\n\nНажмите кнопку ниже, чтобы присоединиться.',
+        openButton('Присоединиться', `${WEB_APP_URL}?join=${encodeURIComponent(param)}`),
+      ]
+      : [
+        `Привет, ${msg.from.first_name}! 🐧\n\n` +
+        'Lolo & Pepe — бюджет для двоих.\n\n' +
+        'Записывайте общие траты, ставьте лимиты на месяц и копите на общую мечту. ' +
+        'А в начале каждого месяца пингвины пришлют итоги: сколько потратили, на что и что ждёт дальше.',
+        openButton(),
+      ];
+
+    try {
+      await bot.sendPhoto(chatId, photo, { caption, ...button });
+    } catch {
+      await bot.sendMessage(chatId, caption, button);
     }
   });
 
-  bot.onText(/\/help/, (msg) => {
+  bot.onText(/^\/help/, (msg) => {
+    let text = 'Всё самое важное — в приложении: нажмите кнопку «Открыть» внизу или кнопку под этим сообщением.\n\n' +
+      '/start — открыть приложение\n/myid — узнать свой Telegram ID';
+    if (isAdmin(msg)) {
+      text += '\n\nДля администратора:\n/stats — статистика\n/broadcast текст — рассылка всем пользователям';
+    }
+    bot.sendMessage(msg.chat.id, text, openButton());
+  });
+
+  bot.onText(/^\/myid/, (msg) => {
+    bot.sendMessage(msg.chat.id, `Ваш Telegram ID: ${msg.from.id}`);
+  });
+
+  bot.onText(/^\/stats/, async (msg) => {
+    if (!isAdmin(msg)) return;
+    const month = currentMonth();
+    const one = async (sql, ...args) => Number((await db.prepare(sql).get(...args)).n);
+    const users = await one('SELECT COUNT(*) as n FROM users');
+    const budgets = await one('SELECT COUNT(*) as n FROM budgets');
+    const pairs = await one('SELECT COUNT(*) as n FROM (SELECT budget_id FROM budget_members GROUP BY budget_id HAVING COUNT(*) >= 2)');
+    const active = await one('SELECT COUNT(DISTINCT budget_id) as n FROM expenses WHERE date LIKE ?', `${month}%`);
+    const expenses = await one('SELECT COUNT(*) as n FROM expenses WHERE date LIKE ?', `${month}%`);
     bot.sendMessage(msg.chat.id,
-      `Команды бота:\n\n` +
-      `/start — открыть приложение\n` +
-      `/help — помощь\n\n` +
-      `Все действия — в мини-приложении 👇`,
-      {
-        reply_markup: {
-          inline_keyboard: [[
-            { text: '💰 Открыть бюджет', web_app: { url: WEB_APP_URL } }
-          ]]
-        }
+      `📊 Статистика\n\n` +
+      `Пользователей: ${users}\n` +
+      `Бюджетов: ${budgets}, из них пар: ${pairs}\n` +
+      `Активны в этом месяце: ${active}\n` +
+      `Трат в этом месяце: ${expenses}`);
+  });
+
+  bot.onText(/^\/broadcast(?:@\w+)?([\s\S]*)/, async (msg, match) => {
+    if (!isAdmin(msg)) return;
+    const text = (match[1] || '').trim();
+    if (!text) {
+      bot.sendMessage(msg.chat.id, 'Напишите текст сразу после команды, например:\n\n/broadcast Привет! Мы добавили итоги месяца 🐧');
+      return;
+    }
+    const { n } = await db.prepare('SELECT COUNT(*) as n FROM users').get();
+    pendingBroadcasts.set(msg.chat.id, text);
+    await bot.sendMessage(msg.chat.id, `Так сообщение увидят пользователи (${n}):\n\n———\n${text}\n———`, {
+      reply_markup: {
+        inline_keyboard: [[
+          { text: `Отправить всем (${n})`, callback_data: 'bc:send' },
+          { text: 'Отмена', callback_data: 'bc:cancel' },
+        ]],
+      },
+    });
+  });
+
+  bot.on('callback_query', async (q) => {
+    if (!q.data?.startsWith('bc:') || !isAdmin(q)) return;
+    const chatId = q.message.chat.id;
+    const text = pendingBroadcasts.get(chatId);
+    pendingBroadcasts.delete(chatId);
+    await bot.answerCallbackQuery(q.id);
+    await bot.editMessageReplyMarkup({ inline_keyboard: [] }, { chat_id: chatId, message_id: q.message.message_id });
+
+    if (q.data === 'bc:cancel' || !text) {
+      bot.sendMessage(chatId, text ? 'Рассылка отменена.' : 'Черновик рассылки не найден, отправьте /broadcast ещё раз.');
+      return;
+    }
+
+    const users = await db.prepare('SELECT telegram_id FROM users').all();
+    let sent = 0;
+    let failed = 0;
+    for (const u of users) {
+      try {
+        await bot.sendMessage(u.telegram_id, text, openButton());
+        sent++;
+      } catch {
+        failed++;
       }
-    );
+      await new Promise(r => setTimeout(r, 60));
+    }
+    bot.sendMessage(chatId, `Готово ✅\nДоставлено: ${sent}${failed ? `\nНе доставлено: ${failed} (пользователь не запускал бота или заблокировал его)` : ''}`);
   });
 
   bot.on('polling_error', (err) => {
@@ -93,9 +176,8 @@ async function sendMonthlyRecaps() {
     const label = MONTHS_GEN[Number(month.slice(5, 7)) - 1];
     for (const m of members) {
       try {
-        await bot.sendMessage(m.telegram_id, `🐧 Итоги ${label} готовы!\n\nСколько потратили, на что ушло больше всего и что ждёт в новом месяце.`, {
-          reply_markup: { inline_keyboard: [[{ text: 'Смотреть итоги', web_app: { url: `${WEB_APP_URL}?recap=${month}` } }]] },
-        });
+        await bot.sendMessage(m.telegram_id, `🐧 Итоги ${label} готовы!\n\nСколько потратили, на что ушло больше всего и что ждёт в новом месяце.`,
+          openButton('Смотреть итоги', `${WEB_APP_URL}?recap=${month}`));
       } catch (e) {
         console.error(`Recap message to ${m.telegram_id} failed:`, e.message);
       }
