@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { api } from '../api/client';
-
-const CURRENCIES = ['€', '$', '₽', '₺', 'RSD', '£', '¥'];
+import CurrencyPicker from '../components/CurrencyPicker';
 
 export default function Settings({ budget, user, onBudgetUpdate }) {
   const [budgetData, setBudgetData] = useState(null);
@@ -51,26 +50,7 @@ export default function Settings({ budget, user, onBudgetUpdate }) {
           <span>{budget.name}</span>
         </div>
         <div style={{ marginTop: 8 }}>
-          <div className="stat-label" style={{ marginBottom: 8 }}>Валюта</div>
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-            {CURRENCIES.map(c => (
-              <button
-                key={c}
-                disabled={saving}
-                style={{
-                  flex: 1, minWidth: 40, padding: '8px 0', border: '2px solid',
-                  borderColor: budget.currency === c ? 'var(--tg-theme-button-color)' : 'var(--tg-theme-secondary-bg-color)',
-                  borderRadius: 8,
-                  background: budget.currency === c ? 'var(--tg-theme-button-color)' : 'var(--tg-theme-secondary-bg-color)',
-                  color: budget.currency === c ? 'var(--tg-theme-button-text-color)' : 'var(--tg-theme-text-color)',
-                  fontSize: 15, fontWeight: 600, cursor: 'pointer',
-                }}
-                onClick={() => changeCurrency(c)}
-              >
-                {c}
-              </button>
-            ))}
-          </div>
+          <CurrencyPicker value={budget.currency} onChange={changeCurrency} label="Валюта" />
         </div>
       </div>
 

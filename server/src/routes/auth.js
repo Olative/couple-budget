@@ -22,7 +22,7 @@ function verifyTelegramHash(initData, botToken) {
   }
 }
 
-router.post('/auth', (req, res) => {
+router.post('/auth', async (req, res) => {
   const { initData } = req.body;
   if (!initData) return res.status(400).json({ error: 'initData is required' });
 
@@ -45,17 +45,17 @@ router.post('/auth', (req, res) => {
     return res.status(400).json({ error: 'Invalid user data' });
   }
 
-  const existing = db.prepare('SELECT * FROM users WHERE telegram_id = ?').get(userData.id);
+  const existing = await db.prepare('SELECT * FROM users WHERE telegram_id = ?').get(userData.id);
   if (existing) {
-    db.prepare('UPDATE users SET first_name = ?, last_name = ?, username = ? WHERE telegram_id = ?')
+    await db.prepare('UPDATE users SET first_name = ?, last_name = ?, username = ? WHERE telegram_id = ?')
       .run(userData.first_name, userData.last_name || null, userData.username || null, userData.id);
   } else {
-    db.prepare('INSERT INTO users (telegram_id, first_name, last_name, username) VALUES (?, ?, ?, ?)')
+    await db.prepare('INSERT INTO users (telegram_id, first_name, last_name, username) VALUES (?, ?, ?, ?)')
       .run(userData.id, userData.first_name, userData.last_name || null, userData.username || null);
   }
 
-  const user = db.prepare('SELECT * FROM users WHERE telegram_id = ?').get(userData.id);
-  const budgets = db.prepare(
+  const user = await db.prepare('SELECT * FROM users WHERE telegram_id = ?').get(userData.id);
+  const budgets = await db.prepare(
     'SELECT b.* FROM budgets b JOIN budget_members bm ON b.id = bm.budget_id WHERE bm.user_id = ?'
   ).all(user.id);
 

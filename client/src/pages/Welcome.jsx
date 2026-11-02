@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { api } from '../api/client';
+import CurrencyPicker from '../components/CurrencyPicker';
 
 export default function Welcome({ user, onCreated, onJoined }) {
   const [mode, setMode] = useState(null); // 'create' | 'join'
@@ -66,27 +67,7 @@ export default function Welcome({ user, onCreated, onJoined }) {
               onChange={e => setName(e.target.value)}
             />
           </div>
-          <div className="input-group">
-            <label className="input-label">Валюта</label>
-            <div style={{ display: 'flex', gap: 8 }}>
-              {['€', '$', '₽', '₺', 'RSD', '£', '¥'].map(c => (
-                <button
-                  key={c}
-                  style={{
-                    flex: 1, padding: '10px 0', border: '2px solid',
-                    borderColor: currency === c ? 'var(--tg-theme-button-color)' : 'var(--tg-theme-secondary-bg-color)',
-                    borderRadius: 8,
-                    background: currency === c ? 'var(--tg-theme-button-color)' : 'var(--tg-theme-secondary-bg-color)',
-                    color: currency === c ? 'var(--tg-theme-button-text-color)' : 'var(--tg-theme-text-color)',
-                    fontSize: 16, fontWeight: 600, cursor: 'pointer',
-                  }}
-                  onClick={() => setCurrency(c)}
-                >
-                  {c}
-                </button>
-              ))}
-            </div>
-          </div>
+          <CurrencyPicker value={currency} onChange={setCurrency} label="Валюта" />
           {error && <div style={{ color: '#ef4444', fontSize: 14, marginBottom: 12 }}>{error}</div>}
           <div style={{ display: 'flex', gap: 8 }}>
             <button className="btn btn-secondary" onClick={() => setMode(null)} style={{ flex: 1 }}>

@@ -18,25 +18,25 @@ const DEFAULT_CATEGORIES = [
   { name: 'Прочее', icon: '📦', color: '#78716c' },
 ];
 
-router.post('/budgets', (req, res) => {
+router.post('/budgets', async (req, res) => {
   const { name, currency } = req.body;
   const userId = req.userId;
   const id = uuidv4();
   const inviteCode = crypto.randomBytes(6).toString('hex');
 
   try {
-    db.prepare('INSERT INTO budgets (id, name, currency, created_by, invite_code) VALUES (?, ?, ?, ?, ?)')
+    await db.prepare('INSERT INTO budgets (id, name, currency, created_by, invite_code) VALUES (?, ?, ?, ?, ?)')
       .run(id, name || 'Наш бюджет', currency || '₽', userId, inviteCode);
 
-    db.prepare('INSERT INTO budget_members (budget_id, user_id, role) VALUES (?, ?, ?)')
+    await db.prepare('INSERT INTO budget_members (budget_id, user_id, role) VALUES (?, ?, ?)')
       .run(id, userId, 'owner');
 
-    DEFAULT_CATEGORIES.forEach((cat, i) => {
-      db.prepare('INSERT INTO categories (budget_id, name, icon, color, sort_order) VALUES (?, ?, ?, ?, ?)')
+    for (const [i, cat] of DEFAULT_CATEGORIES.entries()) {
+      await db.prepare('INSERT INTO categories (budget_id, name, icon, color, sort_order) VALUES (?, ?, ?, ?, ?)')
         .run(id, cat.name, cat.icon, cat.color, i);
-    });
+    }
 
-    const budget = db.prepare('SELECT * FROM budgets WHERE id = ?').get(id);
+    const budget = await db.prepare('SELECT * FROM budgets WHERE id = ?').get(id);
     res.json(budget);
   } catch (e) {
     console.error('Budget creation error:', e);
@@ -44,57 +44,57 @@ router.post('/budgets', (req, res) => {
   }
 });
 
-router.post('/budgets/join', (req, res) => {
+router.post('/budgets/join', async (req, res) => {
   const { inviteCode } = req.body;
   const userId = req.userId;
 
-  const budget = db.prepare('SELECT * FROM budgets WHERE invite_code = ?').get(inviteCode);
+  const budget = await db.prepare('SELECT * FROM budgets WHERE invite_code = ?').get(inviteCode);
   if (!budget) return res.status(404).json({ error: 'Budget not found' });
 
-  const existing = db.prepare('SELECT * FROM budget_members WHERE budget_id = ? AND user_id = ?').get(budget.id, userId);
+  const existing = await db.prepare('SELECT * FROM budget_members WHERE budget_id = ? AND user_id = ?').get(budget.id, userId);
   if (existing) return res.json(budget);
 
-  const members = db.prepare('SELECT COUNT(*) as count FROM budget_members WHERE budget_id = ?').get(budget.id);
+  const members = await db.prepare('SELECT COUNT(*) as count FROM budget_members WHERE budget_id = ?').get(budget.id);
   if (members.count >= 2) return res.status(400).json({ error: 'Budget already has 2 members' });
 
-  db.prepare('INSERT INTO budget_members (budget_id, user_id) VALUES (?, ?)').run(budget.id, userId);
+  await db.prepare('INSERT INTO budget_members (budget_id, user_id) VALUES (?, ?)').run(budget.id, userId);
   res.json(budget);
 });
 
-router.get('/budgets/:id', (req, res) => {
-  const budget = db.prepare('SELECT * FROM budgets WHERE id = ?').get(req.params.id);
+router.get('/budgets/:id', async (req, res) => {
+  const budget = await db.prepare('SELECT * FROM budgets WHERE id = ?').get(req.params.id);
   if (!budget) return res.status(404).json({ error: 'Not found' });
 
-  const members = db.prepare(
+  const members = await db.prepare(
     'SELECT u.*, bm.role FROM users u JOIN budget_members bm ON u.id = bm.user_id WHERE bm.budget_id = ?'
   ).all(budget.id);
 
-  const categories = db.prepare('SELECT * FROM categories WHERE budget_id = ? ORDER BY sort_order').all(budget.id);
+  const categories = await db.prepare('SELECT * FROM categories WHERE budget_id = ? ORDER BY sort_order').all(budget.id);
 
   res.json({ ...budget, members, categories });
 });
 
-router.put('/budgets/:id', (req, res) => {
+router.put('/budgets/:id', async (req, res) => {
   const { currency, name } = req.body;
-  const budget = db.prepare('SELECT * FROM budgets WHERE id = ?').get(req.params.id);
+  const budget = await db.prepare('SELECT * FROM budgets WHERE id = ?').get(req.params.id);
   if (!budget) return res.status(404).json({ error: 'Not found' });
 
-  db.prepare('UPDATE budgets SET currency = COALESCE(?, currency), name = COALESCE(?, name) WHERE id = ?')
+  await db.prepare('UPDATE budgets SET currency = COALESCE(?, currency), name = COALESCE(?, name) WHERE id = ?')
     .run(currency || null, name || null, req.params.id);
 
-  const updated = db.prepare('SELECT * FROM budgets WHERE id = ?').get(req.params.id);
+  const updated = await db.prepare('SELECT * FROM budgets WHERE id = ?').get(req.params.id);
   res.json(updated);
 });
 
-router.get('/budgets/:id/summary', (req, res) => {
+router.get('/budgets/:id/summary', async (req, res) => {
   const { id } = req.params;
   const { month } = req.query;
   const currentMonth = month || new Date().toISOString().slice(0, 7);
 
-  const totalRow = db.prepare('SELECT COALESCE(SUM(amount), 0) as total FROM expenses WHERE budget_id = ? AND date LIKE ?')
+  const totalRow = await db.prepare('SELECT COALESCE(SUM(amount), 0) as total FROM expenses WHERE budget_id = ? AND date LIKE ?')
     .get(id, `${currentMonth}%`);
 
-  const byCategory = db.prepare(`
+  const byCategory = await db.prepare(`
     SELECT c.id, c.name, c.icon, c.color, c.planned_amount,
            COALESCE(SUM(e.amount), 0) as spent
     FROM categories c
@@ -104,7 +104,7 @@ router.get('/budgets/:id/summary', (req, res) => {
     ORDER BY c.sort_order
   `).all(`${currentMonth}%`, id);
 
-  const byMember = db.prepare(`
+  const byMember = await db.prepare(`
     SELECT u.id, u.first_name, u.username, COALESCE(SUM(e.amount), 0) as spent
     FROM users u
     JOIN budget_members bm ON u.id = bm.user_id

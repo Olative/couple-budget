@@ -18,12 +18,12 @@ const PORT = process.env.PORT || 3001;
 app.use(cors());
 app.use(express.json());
 
-function authMiddleware(req, res, next) {
+async function authMiddleware(req, res, next) {
   const telegramId = req.headers['x-telegram-user-id'];
   if (!telegramId) {
     return res.status(401).json({ error: 'Not authenticated' });
   }
-  const user = db.prepare('SELECT * FROM users WHERE telegram_id = ?').get(Number(telegramId));
+  const user = await db.prepare('SELECT * FROM users WHERE telegram_id = ?').get(Number(telegramId));
   if (!user) {
     return res.status(401).json({ error: 'User not found' });
   }
