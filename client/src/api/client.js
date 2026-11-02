@@ -30,6 +30,8 @@ export const api = {
   getBudget: (id) => request(`/budgets/${id}`),
   updateBudget: (id, data) => request(`/budgets/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   getSummary: (id, month) => request(`/budgets/${id}/summary${month ? `?month=${month}` : ''}`),
+  getForecast: (id, month) => request(`/budgets/${id}/forecast${month ? `?month=${month}` : ''}`),
+  getRecap: (id, month) => request(`/budgets/${id}/recap${month ? `?month=${month}` : ''}`),
 
   getExpenses: (budgetId, params = {}) => {
     const qs = new URLSearchParams(params).toString();

@@ -1,204 +1,142 @@
 import { useState, useEffect, useCallback } from 'react';
+import { IconPlus, IconTrash } from '@tabler/icons-react';
 import { api } from '../api/client';
+import { GridLines, PenguinPair, Ring } from '../components/Art';
+import Sheet from '../components/Sheet';
+import { money, byMonth, confirmAction } from '../format';
 
-function formatMoney(amount, currency = '₽') {
-  return new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 }).format(amount) + ' ' + currency;
+function etaText(goal) {
+  const left = goal.target_amount - goal.current_amount;
+  if (left <= 0) return { text: 'Цель достигнута!', tone: 'good' };
+  if (!goal.eta_month) return { text: 'Пополняйте копилку, и мы покажем, когда накопите', tone: '' };
+  let text = `При вашем темпе накопите к ${byMonth(goal.eta_month)}`;
+  let tone = '';
+  if (goal.deadline) {
+    const deadlineMonth = goal.deadline.slice(0, 7);
+    if (goal.eta_month > deadlineMonth) { text += ' — позже срока'; tone = 'warn'; }
+    else { text += ' — успеваете'; tone = 'good'; }
+  }
+  return { text, tone };
 }
 
-export default function Savings({ budget, user }) {
-  const [goals, setGoals] = useState([]);
+export default function Savings({ budget }) {
+  const [goals, setGoals] = useState(null);
   const [showAdd, setShowAdd] = useState(false);
-  const [showContribute, setShowContribute] = useState(null);
+  const [contributeTo, setContributeTo] = useState(null);
   const [name, setName] = useState('');
   const [target, setTarget] = useState('');
-  const [icon, setIcon] = useState('🎯');
   const [deadline, setDeadline] = useState('');
   const [contributeAmount, setContributeAmount] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
 
-  const ICONS = ['🎯', '🏠', '✈️', '🚗', '💍', '📱', '🎓', '🏖️', '👶', '💎'];
-
-  const load = useCallback(() => {
-    api.getSavings(budget.id).then(setGoals);
-  }, [budget.id]);
-
+  const load = useCallback(() => { api.getSavings(budget.id).then(setGoals); }, [budget.id]);
   useEffect(() => { load(); }, [load]);
 
-  const handleAddGoal = async () => {
+  const addGoal = async () => {
     if (!name || !target) return;
-    setLoading(true);
-    await api.addSavingsGoal(budget.id, {
-      name,
-      target_amount: Number(target),
-      icon,
-      deadline: deadline || null,
-    });
-    setName('');
-    setTarget('');
-    setIcon('🎯');
-    setDeadline('');
+    setSaving(true);
+    await api.addSavingsGoal(budget.id, { name, target_amount: Number(target), deadline: deadline || null });
+    setName(''); setTarget(''); setDeadline('');
     setShowAdd(false);
-    setLoading(false);
+    setSaving(false);
     load();
   };
 
-  const handleContribute = async (goalId) => {
+  const contribute = async () => {
     if (!contributeAmount || Number(contributeAmount) <= 0) return;
-    setLoading(true);
-    await api.contributeSavings(goalId, Number(contributeAmount));
+    setSaving(true);
+    await api.contributeSavings(contributeTo.id, Number(contributeAmount));
     setContributeAmount('');
-    setShowContribute(null);
-    setLoading(false);
+    setContributeTo(null);
+    setSaving(false);
     load();
   };
 
-  const handleDelete = async (id) => {
-    if (!confirm('Удалить цель?')) return;
-    await api.deleteSavingsGoal(id);
+  const remove = async (goal) => {
+    if (!(await confirmAction(`Удалить цель «${goal.name}»?`))) return;
+    await api.deleteSavingsGoal(goal.id);
     load();
   };
+
+  const cur = budget.currency;
 
   return (
     <div className="page">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-        <h1 className="page-title" style={{ marginBottom: 0 }}>Накопления</h1>
-        <button className="btn" style={{ width: 'auto', padding: '10px 20px' }} onClick={() => setShowAdd(true)}>
-          + Цель
-        </button>
+      <div className="page-head">
+        <div className="h-title">Копилка</div>
+        <button className="icon-btn dark" onClick={() => setShowAdd(true)} aria-label="Новая цель"><IconPlus size={18} /></button>
       </div>
 
-      {goals.length === 0 ? (
-        <div className="empty-state">
-          <div className="empty-icon">🎯</div>
-          <div className="empty-text">Целей пока нет</div>
-          <button className="btn" style={{ maxWidth: 200, margin: '0 auto' }} onClick={() => setShowAdd(true)}>
-            Создать первую
-          </button>
+      {goals && goals.length === 0 && (
+        <div className="empty">
+          <PenguinPair height={70} />
+          <div className="empty-text">На что копим вместе?</div>
+          <button className="btn" style={{ maxWidth: 220 }} onClick={() => setShowAdd(true)}>Создать цель</button>
         </div>
-      ) : (
-        goals.map(goal => {
-          const percent = goal.target_amount > 0 ? (goal.current_amount / goal.target_amount) * 100 : 0;
-          return (
-            <div key={goal.id} className="savings-card">
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <div>
-                  <div className="savings-icon">{goal.icon}</div>
-                  <div className="savings-name">{goal.name}</div>
-                </div>
-                <button
-                  style={{ background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: 'var(--tg-theme-hint-color)' }}
-                  onClick={() => handleDelete(goal.id)}
-                >
-                  ✕
-                </button>
-              </div>
-              <div className="savings-amounts">
-                <span className="savings-current">{formatMoney(goal.current_amount, budget.currency)}</span>
-                <span>из {formatMoney(goal.target_amount, budget.currency)}</span>
-              </div>
-              <div className="progress-bar" style={{ marginTop: 8 }}>
-                <div
-                  className="progress-fill"
-                  style={{
-                    width: `${Math.min(100, percent)}%`,
-                    background: percent >= 100 ? '#22c55e' : 'var(--tg-theme-button-color)',
-                  }}
-                />
-              </div>
-              <div style={{ fontSize: 13, color: 'var(--tg-theme-hint-color)', marginTop: 4 }}>
-                {Math.round(percent)}%
-                {goal.deadline && ` · до ${new Date(goal.deadline).toLocaleDateString('ru-RU')}`}
-              </div>
-              <button
-                className="btn"
-                style={{ marginTop: 12 }}
-                onClick={() => {
-                  setShowContribute(goal.id);
-                  setContributeAmount('');
-                }}
-              >
-                Пополнить
-              </button>
-            </div>
-          );
-        })
       )}
+
+      {goals?.map(goal => {
+        const current = Number(goal.current_amount);
+        const targetAmount = Number(goal.target_amount);
+        const percent = targetAmount > 0 ? (current / targetAmount) * 100 : 0;
+        const eta = etaText({ ...goal, current_amount: current, target_amount: targetAmount });
+        return (
+          <div key={goal.id} className="stamp-wrap">
+            <div className="stamp" style={{ padding: '22px 18px 20px', textAlign: 'center' }}>
+              <GridLines color="#000" opacity={0.06} />
+              <div className="rel">
+                <div className="num" style={{ fontSize: 14, fontWeight: 400 }}>{goal.name}</div>
+                <div style={{ display: 'flex', justifyContent: 'center', margin: '14px 0 10px' }}>
+                  <Ring size={140} percent={percent}><PenguinPair height={64} /></Ring>
+                </div>
+                <div className="num" style={{ fontSize: 22 }}>{money(current, cur)}</div>
+                <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 4, fontWeight: 300 }}>
+                  из {money(targetAmount, cur)} · {Math.round(percent)}%
+                </div>
+                <div className={eta.tone} style={{ fontSize: 12, marginTop: 8, color: eta.tone ? undefined : 'var(--ink-2)' }}>{eta.text}</div>
+                <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
+                  <button className="btn" onClick={() => { setContributeTo(goal); setContributeAmount(''); }}>Пополнить</button>
+                  <button className="icon-btn" style={{ width: 50, height: 50, background: 'var(--surface-2)' }} onClick={() => remove(goal)} aria-label="Удалить цель">
+                    <IconTrash size={18} stroke={1.5} />
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })}
 
       {showAdd && (
-        <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setShowAdd(false)}>
-          <div className="modal">
-            <div className="modal-title">Новая цель</div>
-
-            <div className="input-group">
-              <label className="input-label">Иконка</label>
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                {ICONS.map(i => (
-                  <button
-                    key={i}
-                    style={{
-                      fontSize: 24, padding: 8, border: '2px solid',
-                      borderColor: icon === i ? 'var(--tg-theme-button-color)' : 'transparent',
-                      borderRadius: 8, background: icon === i ? 'var(--tg-theme-button-color)20' : 'var(--tg-theme-secondary-bg-color)',
-                      cursor: 'pointer',
-                    }}
-                    onClick={() => setIcon(i)}
-                  >
-                    {i}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="input-group">
-              <label className="input-label">Название</label>
-              <input className="input" placeholder="На что копим?" value={name} onChange={e => setName(e.target.value)} />
-            </div>
-
-            <div className="input-group">
-              <label className="input-label">Сумма цели</label>
-              <input className="input" type="number" inputMode="numeric" placeholder="0" value={target} onChange={e => setTarget(e.target.value)} />
-            </div>
-
-            <div className="input-group">
-              <label className="input-label">Дедлайн (необязательно)</label>
-              <input className="input" type="date" value={deadline} onChange={e => setDeadline(e.target.value)} />
-            </div>
-
-            <div className="modal-actions">
-              <button className="btn btn-secondary" onClick={() => setShowAdd(false)}>Отмена</button>
-              <button className="btn" onClick={handleAddGoal} disabled={loading || !name || !target}>
-                {loading ? 'Создаём...' : 'Создать'}
-              </button>
-            </div>
+        <Sheet title="Новая цель" onClose={() => setShowAdd(false)}>
+          <div className="input-group">
+            <label className="input-label">На что копим?</label>
+            <input className="input" placeholder="Поездка в Японию" value={name} onChange={e => setName(e.target.value)} />
           </div>
-        </div>
+          <div className="input-group">
+            <label className="input-label">Сколько нужно</label>
+            <input className="input" type="number" inputMode="numeric" placeholder={`150 000 ${cur}`} value={target} onChange={e => setTarget(e.target.value)} />
+          </div>
+          <div className="input-group">
+            <label className="input-label">К какому сроку (необязательно)</label>
+            <input className="input" type="date" value={deadline} onChange={e => setDeadline(e.target.value)} />
+          </div>
+          <div className="sheet-actions">
+            <button className="btn btn-secondary" onClick={() => setShowAdd(false)}>Отмена</button>
+            <button className="btn" onClick={addGoal} disabled={saving || !name || !target}>{saving ? 'Создаём…' : 'Создать'}</button>
+          </div>
+        </Sheet>
       )}
 
-      {showContribute && (
-        <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setShowContribute(null)}>
-          <div className="modal">
-            <div className="modal-title">Пополнение</div>
-            <div className="input-group">
-              <label className="input-label">Сумма</label>
-              <input
-                className="input"
-                type="number"
-                inputMode="decimal"
-                placeholder="0"
-                value={contributeAmount}
-                onChange={e => setContributeAmount(e.target.value)}
-                autoFocus
-                style={{ fontSize: 24, fontWeight: 700, textAlign: 'center' }}
-              />
-            </div>
-            <div className="modal-actions">
-              <button className="btn btn-secondary" onClick={() => setShowContribute(null)}>Отмена</button>
-              <button className="btn" onClick={() => handleContribute(showContribute)} disabled={loading || !contributeAmount}>
-                {loading ? 'Сохраняем...' : 'Пополнить'}
-              </button>
-            </div>
+      {contributeTo && (
+        <Sheet title={`Пополнить «${contributeTo.name}»`} onClose={() => setContributeTo(null)}>
+          <div className="card-pad">
+            <input className="amount-input" type="number" inputMode="decimal" placeholder={`0 ${cur}`} value={contributeAmount} onChange={e => setContributeAmount(e.target.value)} autoFocus />
           </div>
-        </div>
+          <div className="sheet-actions">
+            <button className="btn btn-secondary" onClick={() => setContributeTo(null)}>Отмена</button>
+            <button className="btn" onClick={contribute} disabled={saving || !contributeAmount}>{saving ? 'Сохраняем…' : 'Пополнить'}</button>
+          </div>
+        </Sheet>
       )}
     </div>
   );

@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import crypto from 'crypto';
 import db from '../db.js';
+import { buildForecast, buildRecap, currentMonth, shiftMonth } from '../insights.js';
 
 const router = Router();
 
@@ -116,6 +117,18 @@ router.get('/budgets/:id/summary', async (req, res) => {
   const totalPlanned = byCategory.reduce((sum, c) => sum + (c.planned_amount || 0), 0);
 
   res.json({ totalSpent: totalRow.total, totalPlanned, byCategory, byMember, month: currentMonth });
+});
+
+const MONTH_RE = /^\d{4}-\d{2}$/;
+
+router.get('/budgets/:id/forecast', async (req, res) => {
+  const month = MONTH_RE.test(req.query.month || '') ? req.query.month : currentMonth();
+  res.json(await buildForecast(req.params.id, month));
+});
+
+router.get('/budgets/:id/recap', async (req, res) => {
+  const month = MONTH_RE.test(req.query.month || '') ? req.query.month : shiftMonth(currentMonth(), -1);
+  res.json(await buildRecap(req.params.id, month));
 });
 
 export default router;

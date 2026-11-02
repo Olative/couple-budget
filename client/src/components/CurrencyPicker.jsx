@@ -109,16 +109,16 @@ export default function CurrencyPicker({ value, onChange, label }) {
           type="button"
           onClick={() => setOpen(true)}
           style={{
-            width: '100%', padding: '12px 16px', border: '2px solid var(--tg-theme-secondary-bg-color)',
-            borderRadius: 12, background: 'var(--tg-theme-secondary-bg-color)',
-            color: 'var(--tg-theme-text-color)', fontSize: 16, cursor: 'pointer',
+            width: '100%', padding: '12px 16px', border: '2px solid var(--surface)',
+            borderRadius: 14, background: 'var(--surface)',
+            color: 'var(--ink)', fontSize: 16, cursor: 'pointer',
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           }}
         >
-          <span style={{ fontWeight: 600 }}>
+          <span style={{ fontWeight: 400}}>
             {selected ? `${selected.symbol}  ${selected.name}` : value || 'Выберите валюту'}
           </span>
-          <span style={{ fontSize: 12, color: 'var(--tg-theme-hint-color)' }}>▼</span>
+          <span style={{ fontSize: 12, color: 'var(--muted)' }}>▼</span>
         </button>
       </div>
     );
@@ -127,17 +127,17 @@ export default function CurrencyPicker({ value, onChange, label }) {
   return (
     <div style={{
       position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1000,
-      background: 'var(--tg-theme-bg-color)', display: 'flex', flexDirection: 'column',
+      background: 'var(--bg)', display: 'flex', flexDirection: 'column',
     }}>
       <div style={{
-        padding: '12px 16px', borderBottom: '1px solid var(--tg-theme-secondary-bg-color)',
+        padding: '12px 16px', borderBottom: '1px solid var(--surface)',
         display: 'flex', alignItems: 'center', gap: 12,
       }}>
         <button
           onClick={() => { setOpen(false); setSearch(''); }}
           style={{
             background: 'none', border: 'none', fontSize: 24,
-            color: 'var(--tg-theme-text-color)', cursor: 'pointer', padding: 4,
+            color: 'var(--ink)', cursor: 'pointer', padding: 4,
           }}
         >
           ←
@@ -148,9 +148,9 @@ export default function CurrencyPicker({ value, onChange, label }) {
           value={search}
           onChange={e => setSearch(e.target.value)}
           style={{
-            flex: 1, padding: '10px 14px', border: '2px solid var(--tg-theme-secondary-bg-color)',
-            borderRadius: 10, background: 'var(--tg-theme-secondary-bg-color)',
-            color: 'var(--tg-theme-text-color)', fontSize: 16, outline: 'none',
+            flex: 1, padding: '10px 14px', border: '2px solid var(--surface)',
+            borderRadius: 10, background: 'var(--surface)',
+            color: 'var(--ink)', fontSize: 16, outline: 'none',
           }}
         />
       </div>
@@ -158,7 +158,7 @@ export default function CurrencyPicker({ value, onChange, label }) {
       {!filtered && (
         <div style={{
           padding: '8px 16px 4px', fontSize: 13, fontWeight: 600,
-          color: 'var(--tg-theme-hint-color)', textTransform: 'uppercase',
+          color: 'var(--muted)', textTransform: 'uppercase',
         }}>
           Популярные
         </div>
@@ -171,31 +171,31 @@ export default function CurrencyPicker({ value, onChange, label }) {
             onClick={() => handleSelect(c)}
             style={{
               width: '100%', padding: '14px 16px', border: 'none',
-              background: (selected?.code === c.code) ? 'var(--tg-theme-secondary-bg-color)' : 'transparent',
-              color: 'var(--tg-theme-text-color)', fontSize: 16, cursor: 'pointer',
+              background: (selected?.code === c.code) ? 'var(--surface)' : 'transparent',
+              color: 'var(--ink)', fontSize: 16, cursor: 'pointer',
               display: 'flex', alignItems: 'center', gap: 12, textAlign: 'left',
             }}
           >
             <span style={{
               width: 36, height: 36, borderRadius: '50%', display: 'flex',
               alignItems: 'center', justifyContent: 'center', fontSize: 18, fontWeight: 700,
-              background: 'var(--tg-theme-secondary-bg-color)',
+              background: 'var(--surface)',
             }}>
               {c.symbol}
             </span>
             <div>
-              <div style={{ fontWeight: 600 }}>{c.name}</div>
-              <div style={{ fontSize: 13, color: 'var(--tg-theme-hint-color)' }}>{c.code}</div>
+              <div style={{ fontWeight: 400}}>{c.name}</div>
+              <div style={{ fontSize: 13, color: 'var(--muted)' }}>{c.code}</div>
             </div>
             {selected?.code === c.code && (
-              <span style={{ marginLeft: 'auto', color: 'var(--tg-theme-button-color)', fontSize: 20 }}>✓</span>
+              <span style={{ marginLeft: 'auto', color: 'var(--ink)', fontSize: 20 }}>✓</span>
             )}
           </button>
         ))}
 
         {filtered && filtered.length === 0 && (
           <div style={{
-            padding: 32, textAlign: 'center', color: 'var(--tg-theme-hint-color)',
+            padding: 32, textAlign: 'center', color: 'var(--muted)',
           }}>
             Ничего не найдено
           </div>
@@ -205,7 +205,7 @@ export default function CurrencyPicker({ value, onChange, label }) {
           <>
             <div style={{
               padding: '16px 16px 4px', fontSize: 13, fontWeight: 600,
-              color: 'var(--tg-theme-hint-color)', textTransform: 'uppercase',
+              color: 'var(--muted)', textTransform: 'uppercase',
             }}>
               Все валюты
             </div>
@@ -215,24 +215,24 @@ export default function CurrencyPicker({ value, onChange, label }) {
                 onClick={() => handleSelect(c)}
                 style={{
                   width: '100%', padding: '14px 16px', border: 'none',
-                  background: (selected?.code === c.code) ? 'var(--tg-theme-secondary-bg-color)' : 'transparent',
-                  color: 'var(--tg-theme-text-color)', fontSize: 16, cursor: 'pointer',
+                  background: (selected?.code === c.code) ? 'var(--surface)' : 'transparent',
+                  color: 'var(--ink)', fontSize: 16, cursor: 'pointer',
                   display: 'flex', alignItems: 'center', gap: 12, textAlign: 'left',
                 }}
               >
                 <span style={{
                   width: 36, height: 36, borderRadius: '50%', display: 'flex',
                   alignItems: 'center', justifyContent: 'center', fontSize: 18, fontWeight: 700,
-                  background: 'var(--tg-theme-secondary-bg-color)',
+                  background: 'var(--surface)',
                 }}>
                   {c.symbol}
                 </span>
                 <div>
-                  <div style={{ fontWeight: 600 }}>{c.name}</div>
-                  <div style={{ fontSize: 13, color: 'var(--tg-theme-hint-color)' }}>{c.code}</div>
+                  <div style={{ fontWeight: 400}}>{c.name}</div>
+                  <div style={{ fontSize: 13, color: 'var(--muted)' }}>{c.code}</div>
                 </div>
                 {selected?.code === c.code && (
-                  <span style={{ marginLeft: 'auto', color: 'var(--tg-theme-button-color)', fontSize: 20 }}>✓</span>
+                  <span style={{ marginLeft: 'auto', color: 'var(--ink)', fontSize: 20 }}>✓</span>
                 )}
               </button>
             ))}

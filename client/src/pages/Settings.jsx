@@ -1,104 +1,75 @@
 import { useState, useEffect } from 'react';
+import { IconChevronLeft } from '@tabler/icons-react';
 import { api } from '../api/client';
 import CurrencyPicker from '../components/CurrencyPicker';
 
-export default function Settings({ budget, user, onBudgetUpdate }) {
+export default function Settings({ budget, user, onBack, onBudgetUpdate }) {
   const [budgetData, setBudgetData] = useState(null);
-  const [saving, setSaving] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     api.getBudget(budget.id).then(setBudgetData);
   }, [budget.id]);
 
   const changeCurrency = async (c) => {
-    setSaving(true);
     const updated = await api.updateBudget(budget.id, { currency: c });
-    budget.currency = updated.currency;
-    if (onBudgetUpdate) onBudgetUpdate(updated);
-    setSaving(false);
+    onBudgetUpdate(updated);
   };
 
-  const copyInviteCode = () => {
-    const code = budget.invite_code;
-    if (navigator.clipboard) {
-      navigator.clipboard.writeText(code);
-    }
-    const tg = window.Telegram?.WebApp;
-    if (tg?.showAlert) {
-      tg.showAlert(`Код скопирован: ${code}`);
-    } else {
-      alert(`Код скопирован: ${code}`);
+  const copyInviteCode = async () => {
+    try {
+      await navigator.clipboard.writeText(budget.invite_code);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      window.Telegram?.WebApp?.showAlert?.(`Код: ${budget.invite_code}`);
     }
   };
 
   const shareInvite = () => {
-    const tg = window.Telegram?.WebApp;
-    if (tg?.openTelegramLink) {
-      const text = `Присоединяйся к нашему парному бюджету! Код: ${budget.invite_code}`;
-      tg.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(text)}`);
-    }
+    const text = `Присоединяйся к нашему бюджету в Lolo & Pepe! Код: ${budget.invite_code}`;
+    window.Telegram?.WebApp?.openTelegramLink?.(`https://t.me/share/url?url=${encodeURIComponent(text)}`);
   };
 
   return (
     <div className="page">
-      <h1 className="page-title">Настройки</h1>
-
-      <div className="card">
-        <div className="card-title">Бюджет</div>
-        <div className="stat-row">
-          <span className="stat-label">Название</span>
-          <span>{budget.name}</span>
-        </div>
-        <div style={{ marginTop: 8 }}>
-          <CurrencyPicker value={budget.currency} onChange={changeCurrency} label="Валюта" />
-        </div>
+      <div className="page-head" style={{ justifyContent: 'flex-start' }}>
+        <button className="icon-btn" onClick={onBack} aria-label="Назад"><IconChevronLeft size={18} /></button>
+        <div className="h-title">Настройки</div>
       </div>
 
+      <div className="section-label">Бюджет</div>
       <div className="card">
-        <div className="card-title">Участники</div>
+        <div className="row">
+          <div className="row-main"><div className="row-name">Название</div></div>
+          <span style={{ fontSize: 14 }}>{budget.name}</span>
+        </div>
+      </div>
+      <CurrencyPicker value={budget.currency} onChange={changeCurrency} label="Валюта" />
+
+      <div className="section-label">Участники</div>
+      <div className="card">
         {budgetData?.members?.map(m => (
-          <div key={m.id} className="stat-row">
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <div className="member-avatar">
-                {m.first_name[0]}
-              </div>
-              <span>{m.first_name}{m.last_name ? ` ${m.last_name}` : ''}</span>
+          <div key={m.id} className="row">
+            <span className="row-ic" style={{ fontSize: 14 }}>{m.first_name[0]}</span>
+            <div className="row-main">
+              <div className="row-name">{m.first_name}{m.last_name ? ` ${m.last_name}` : ''}{m.id === user.id ? ' (вы)' : ''}</div>
             </div>
-            <span className="stat-label">{m.role === 'owner' ? 'создатель' : 'участник'}</span>
+            <span className="row-sub">{m.role === 'owner' ? 'создатель' : 'участник'}</span>
           </div>
         ))}
-
-        {budgetData?.members?.length < 2 && (
-          <div style={{ marginTop: 12 }}>
-            <div style={{ fontSize: 13, color: 'var(--tg-theme-hint-color)', marginBottom: 8 }}>
-              Пригласите партнёра по коду:
-            </div>
-            <div className="invite-code">{budget.invite_code}</div>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button className="btn btn-secondary" onClick={copyInviteCode} style={{ flex: 1 }}>
-                Скопировать
-              </button>
-              <button className="btn" onClick={shareInvite} style={{ flex: 1 }}>
-                Отправить
-              </button>
-            </div>
-          </div>
-        )}
       </div>
 
-      <div className="card">
-        <div className="card-title">О вас</div>
-        <div className="stat-row">
-          <span className="stat-label">Имя</span>
-          <span>{user.first_name}</span>
+      {budgetData?.members?.length < 2 && (
+        <div className="card-pad">
+          <div style={{ fontSize: 13, color: 'var(--muted)' }}>Пригласите партнёра по коду:</div>
+          <div className="invite-code">{budget.invite_code}</div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button className="btn btn-secondary" style={{ background: 'var(--surface-2)' }} onClick={copyInviteCode}>{copied ? 'Скопировано' : 'Скопировать'}</button>
+            <button className="btn" onClick={shareInvite}>Отправить</button>
+          </div>
         </div>
-        {user.username && (
-          <div className="stat-row">
-            <span className="stat-label">Username</span>
-            <span>@{user.username}</span>
-          </div>
-        )}
-      </div>
+      )}
     </div>
   );
 }

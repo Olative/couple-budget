@@ -1,0 +1,40 @@
+export const MONTHS = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
+export const MONTHS_GEN = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
+export const MONTHS_PREP = ['январе', 'феврале', 'марте', 'апреле', 'мае', 'июне', 'июле', 'августе', 'сентябре', 'октябре', 'ноябре', 'декабре'];
+export const MONTHS_DAT = ['январю', 'февралю', 'марту', 'апрелю', 'маю', 'июню', 'июлю', 'августу', 'сентябрю', 'октябрю', 'ноябрю', 'декабрю'];
+
+export function byMonth(month) {
+  const label = MONTHS_DAT[monthIndex(month)];
+  return month.slice(0, 4) === thisMonth().slice(0, 4) ? label : `${label} ${month.slice(0, 4)}`;
+}
+
+export function money(amount, currency = '₽') {
+  return new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 }).format(Math.round(amount || 0)) + ' ' + currency;
+}
+
+export function num(amount) {
+  return new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 }).format(Math.round(amount || 0));
+}
+
+export function monthIndex(month) {
+  return Number(month.slice(5, 7)) - 1;
+}
+
+export function shiftMonth(month, delta) {
+  const [y, m] = month.split('-').map(Number);
+  const d = new Date(y, m - 1 + delta, 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+
+export function thisMonth() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+
+export function confirmAction(text) {
+  const tg = window.Telegram?.WebApp;
+  if (tg?.showConfirm && tg.platform !== 'unknown') {
+    return new Promise(resolve => tg.showConfirm(text, resolve));
+  }
+  return Promise.resolve(window.confirm(text));
+}

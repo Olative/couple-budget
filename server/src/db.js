@@ -65,6 +65,11 @@ await client.batch([
     amount REAL NOT NULL,
     created_at TEXT DEFAULT (datetime('now'))
   )`,
+  `CREATE TABLE IF NOT EXISTS recap_sent (
+    budget_id TEXT NOT NULL,
+    month TEXT NOT NULL,
+    PRIMARY KEY (budget_id, month)
+  )`,
 ]);
 
 console.log('Database tables initialized');

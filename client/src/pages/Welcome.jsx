@@ -1,107 +1,88 @@
 import { useState } from 'react';
+import { IconHeart } from '@tabler/icons-react';
 import { api } from '../api/client';
 import CurrencyPicker from '../components/CurrencyPicker';
+import Sheet from '../components/Sheet';
+import { ArcTitle, GridLines, PenguinPair } from '../components/Art';
 
-export default function Welcome({ user, onCreated, onJoined }) {
-  const [mode, setMode] = useState(null); // 'create' | 'join'
+export default function Welcome({ initialCode, onReady }) {
+  const [mode, setMode] = useState(initialCode ? 'join' : null);
   const [name, setName] = useState('');
   const [currency, setCurrency] = useState('€');
-  const [inviteCode, setInviteCode] = useState('');
+  const [inviteCode, setInviteCode] = useState(initialCode || '');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const handleCreate = async () => {
+  const run = async (fn) => {
     setLoading(true);
     setError('');
     try {
-      const budget = await api.createBudget({ name: name || 'Наш бюджет', currency });
-      onCreated(budget);
+      onReady(await fn());
     } catch (e) {
       setError(e.message);
+      setLoading(false);
     }
-    setLoading(false);
-  };
-
-  const handleJoin = async () => {
-    if (!inviteCode.trim()) return;
-    setLoading(true);
-    setError('');
-    try {
-      const budget = await api.joinBudget(inviteCode.trim());
-      onJoined(budget);
-    } catch (e) {
-      setError(e.message);
-    }
-    setLoading(false);
   };
 
   return (
-    <div className="page" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-      <div style={{ textAlign: 'center', marginBottom: 32 }}>
-        <div style={{ fontSize: 64, marginBottom: 16 }}>💑💰</div>
-        <h1 style={{ fontSize: 28, fontWeight: 700, marginBottom: 8 }}>Парный бюджет</h1>
-        <p style={{ color: 'var(--tg-theme-hint-color)', fontSize: 15 }}>
-          Ведите финансы вместе: расходы, планы, накопления
-        </p>
+    <div className="page" style={{ minHeight: '100vh', paddingTop: 44, paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 24px)' }}>
+      <div className="ticket">
+        <span className="notch" style={{ left: -11, top: '24%' }} />
+        <span className="notch" style={{ right: -11, top: '24%' }} />
+        <span className="notch" style={{ left: -11, top: '70%' }} />
+        <span className="notch" style={{ right: -11, top: '70%' }} />
+        <div className="badge"><IconHeart size={20} stroke={1.6} /></div>
+        <div className="ticket-in" style={{ height: 'min(108vw, 420px)' }}>
+          <GridLines color="#fff" opacity={0.35} />
+          <ArcTitle title="Lolo & Pepe" subtitle="бюджет для двоих" />
+          <div style={{ position: 'absolute', left: 0, right: 0, bottom: '9%' }}>
+            <PenguinPair height={150} />
+          </div>
+        </div>
       </div>
 
-      {!mode && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <button className="btn" onClick={() => setMode('create')}>
-            Создать бюджет
-          </button>
-          <button className="btn btn-secondary" onClick={() => setMode('join')}>
-            Присоединиться по коду
-          </button>
-        </div>
-      )}
+      <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: 6, paddingTop: 24 }}>
+        <button className="btn" onClick={() => setMode('create')}>Создать бюджет</button>
+        <button className="btn btn-ghost" onClick={() => setMode('join')}>У меня есть код</button>
+      </div>
 
       {mode === 'create' && (
-        <div>
+        <Sheet title="Новый бюджет" onClose={() => setMode(null)}>
           <div className="input-group">
-            <label className="input-label">Название бюджета</label>
-            <input
-              className="input"
-              placeholder="Наш бюджет"
-              value={name}
-              onChange={e => setName(e.target.value)}
-            />
+            <label className="input-label">Название</label>
+            <input className="input" placeholder="Наш бюджет" value={name} onChange={e => setName(e.target.value)} />
           </div>
           <CurrencyPicker value={currency} onChange={setCurrency} label="Валюта" />
-          {error && <div style={{ color: '#ef4444', fontSize: 14, marginBottom: 12 }}>{error}</div>}
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button className="btn btn-secondary" onClick={() => setMode(null)} style={{ flex: 1 }}>
-              Назад
-            </button>
-            <button className="btn" onClick={handleCreate} disabled={loading} style={{ flex: 2 }}>
-              {loading ? 'Создаём...' : 'Создать'}
+          {error && <div className="warn" style={{ fontSize: 13, margin: '0 4px' }}>{error}</div>}
+          <div className="sheet-actions">
+            <button className="btn btn-secondary" onClick={() => setMode(null)}>Назад</button>
+            <button className="btn" disabled={loading} onClick={() => run(() => api.createBudget({ name: name || 'Наш бюджет', currency }))}>
+              {loading ? 'Создаём…' : 'Создать'}
             </button>
           </div>
-        </div>
+        </Sheet>
       )}
 
       {mode === 'join' && (
-        <div>
+        <Sheet title="Присоединиться" onClose={() => setMode(null)}>
           <div className="input-group">
-            <label className="input-label">Код приглашения</label>
+            <label className="input-label">Код приглашения от партнёра</label>
             <input
               className="input"
               placeholder="abc123def456"
               value={inviteCode}
               onChange={e => setInviteCode(e.target.value)}
-              style={{ textAlign: 'center', letterSpacing: 2, fontFamily: 'monospace' }}
+              style={{ textAlign: 'center', letterSpacing: 2 }}
             />
           </div>
-          {error && <div style={{ color: '#ef4444', fontSize: 14, marginBottom: 12 }}>{error}</div>}
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button className="btn btn-secondary" onClick={() => setMode(null)} style={{ flex: 1 }}>
-              Назад
-            </button>
-            <button className="btn" onClick={handleJoin} disabled={loading || !inviteCode.trim()} style={{ flex: 2 }}>
-              {loading ? 'Подключаемся...' : 'Присоединиться'}
+          {error && <div className="warn" style={{ fontSize: 13, margin: '0 4px' }}>{error}</div>}
+          <div className="sheet-actions">
+            <button className="btn btn-secondary" onClick={() => setMode(null)}>Назад</button>
+            <button className="btn" disabled={loading || !inviteCode.trim()} onClick={() => run(() => api.joinBudget(inviteCode.trim()))}>
+              {loading ? 'Подключаемся…' : 'Присоединиться'}
             </button>
           </div>
-        </div>
+        </Sheet>
       )}
     </div>
   );
