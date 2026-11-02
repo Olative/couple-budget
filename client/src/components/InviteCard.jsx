@@ -39,7 +39,7 @@ export default function InviteCard({ budget }) {
             <div style={{ width: 30, height: 40, marginLeft: -6, borderRadius: '50% 50% 40% 40%', border: '1.5px dashed #c4c4c4' }} />
           </div>
           <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 15 }}>Пригласите партнёра</div>
+            <div style={{ fontSize: 15 }}>Позовите второго пингвина</div>
             <div className="row-sub" style={{ fontSize: 12, marginTop: 2 }}>Отправьте ссылку — и бюджет станет общим</div>
           </div>
         </div>

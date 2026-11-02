@@ -51,7 +51,7 @@ router.post('/budgets/join', async (req, res) => {
   const userId = req.userId;
 
   const budget = await db.prepare('SELECT * FROM budgets WHERE invite_code = ?').get(inviteCode);
-  if (!budget) return res.status(404).json({ error: 'Приглашение не найдено. Попросите партнёра прислать новую ссылку' });
+  if (!budget) return res.status(404).json({ error: 'Приглашение не найдено. Попросите прислать новую ссылку' });
 
   const existing = await db.prepare('SELECT * FROM budget_members WHERE budget_id = ? AND user_id = ?').get(budget.id, userId);
   if (existing) return res.json(budget);

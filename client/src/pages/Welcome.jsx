@@ -43,7 +43,7 @@ export default function Welcome({ onReady }) {
       <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: 10, paddingTop: 24 }}>
         <button className="btn" onClick={() => setCreating(true)}>Создать бюджет</button>
         <div className="row-sub" style={{ textAlign: 'center', fontSize: 12, padding: '0 24px' }}>
-          Партнёр уже создал бюджет? Попросите прислать ссылку-приглашение и откройте её
+          Вас уже позвали в бюджет? Откройте ссылку-приглашение
         </div>
       </div>
 
