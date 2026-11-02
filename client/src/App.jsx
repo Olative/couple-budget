@@ -9,7 +9,21 @@ import Settings from './pages/Settings';
 import Welcome from './pages/Welcome';
 import AddExpenseSheet from './components/AddExpenseSheet';
 import Recap from './components/Recap';
-import { Penguin } from './components/Art';
+
+const SPLASH_MIN_MS = 1800;
+
+// The splash lives in index.html so it shows before the bundle loads; keep it long enough to see the dance.
+function hideSplash() {
+  const splash = document.getElementById('splash');
+  if (!splash) return;
+  setTimeout(() => {
+    splash.classList.add('hide');
+    const tg = window.Telegram?.WebApp;
+    tg?.setHeaderColor?.('#ececec');
+    tg?.setBackgroundColor?.('#ececec');
+    setTimeout(() => splash.remove(), 400);
+  }, Math.max(0, SPLASH_MIN_MS - performance.now()));
+}
 
 const TABS = [
   { id: 'dashboard', label: 'Обзор', Icon: IconLayoutGrid },
@@ -38,8 +52,8 @@ export default function App() {
     if (tg) {
       tg.ready();
       tg.expand();
-      tg.setHeaderColor?.('#ececec');
-      tg.setBackgroundColor?.('#ececec');
+      tg.setHeaderColor?.('#ffffff');
+      tg.setBackgroundColor?.('#ffffff');
     }
 
     const initData = tg?.initData || 'user=' + encodeURIComponent(JSON.stringify({
@@ -63,13 +77,13 @@ export default function App() {
     }).catch(() => setLoading(false));
   }, []);
 
+  useEffect(() => {
+    if (!loading) hideSplash();
+  }, [loading]);
+
   const handleBudgetReady = useCallback((budget) => setActiveBudget(budget), []);
 
-  if (loading) {
-    return (
-      <div className="loading"><div><Penguin height={64} /></div></div>
-    );
-  }
+  if (loading) return null;
 
   if (!activeBudget) {
     return <Welcome onReady={handleBudgetReady} />;
