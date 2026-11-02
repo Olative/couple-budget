@@ -65,6 +65,10 @@ await client.batch([
     amount REAL NOT NULL,
     created_at TEXT DEFAULT (datetime('now'))
   )`,
+  `CREATE TABLE IF NOT EXISTS handled_updates (
+    key TEXT PRIMARY KEY,
+    created_at TEXT DEFAULT (datetime('now'))
+  )`,
   `CREATE TABLE IF NOT EXISTS recap_sent (
     budget_id TEXT NOT NULL,
     month TEXT NOT NULL,
@@ -78,7 +82,7 @@ const db = {
   prepare(sql) {
     return {
       async run(...params) {
-        await client.execute({ sql, args: params });
+        return client.execute({ sql, args: params });
       },
       async get(...params) {
         const result = await client.execute({ sql, args: params });

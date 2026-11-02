@@ -20,6 +20,14 @@ export function inviteLink(code) {
 
 const isAdmin = (msg) => ADMIN_ID && String(msg.from.id) === String(ADMIN_ID);
 
+// During a Render deploy the old and new instance briefly poll together, and an update
+// the old one handled but never acknowledged is redelivered to the new one.
+async function firstTime(key) {
+  const res = await db.prepare('INSERT OR IGNORE INTO handled_updates (key) VALUES (?)').run(key);
+  return res.rowsAffected > 0;
+}
+const msgKey = (msg) => `m:${msg.chat.id}:${msg.message_id}`;
+
 async function setupProfile() {
   await bot.setMyDescription({
     description: 'Считайте деньги вдвоём — без таблиц и споров 🐧\n\n' +
@@ -52,6 +60,7 @@ export function startBot() {
   setupProfile().catch(e => console.error('Bot profile setup failed:', e.message));
 
   bot.onText(/^\/start(.*)/, async (msg, match) => {
+    if (!(await firstTime(msgKey(msg)))) return;
     const chatId = msg.chat.id;
     const param = (match[1] || '').trim();
     const photo = `${WEB_APP_URL}/bot/welcome.jpg`;
@@ -82,12 +91,18 @@ export function startBot() {
 
     try {
       await bot.sendPhoto(chatId, photo, { caption, ...button });
-    } catch {
+    } catch (e) {
+      // Only fall back to text when Telegram rejected the photo; a network error may mean it was delivered.
+      if (e.code !== 'ETELEGRAM') {
+        console.error('Welcome photo send failed:', e.message);
+        return;
+      }
       await bot.sendMessage(chatId, caption, button);
     }
   });
 
-  bot.onText(/^\/help/, (msg) => {
+  bot.onText(/^\/help/, async (msg) => {
+    if (!(await firstTime(msgKey(msg)))) return;
     let text = 'Всё самое важное — в приложении: нажмите кнопку «Открыть» внизу или кнопку под этим сообщением.\n\n' +
       '/start — открыть приложение\n/myid — узнать свой Telegram ID';
     if (isAdmin(msg)) {
@@ -96,12 +111,13 @@ export function startBot() {
     bot.sendMessage(msg.chat.id, text, openButton());
   });
 
-  bot.onText(/^\/myid/, (msg) => {
+  bot.onText(/^\/myid/, async (msg) => {
+    if (!(await firstTime(msgKey(msg)))) return;
     bot.sendMessage(msg.chat.id, `Ваш Telegram ID: ${msg.from.id}`);
   });
 
   bot.onText(/^\/stats/, async (msg) => {
-    if (!isAdmin(msg)) return;
+    if (!isAdmin(msg) || !(await firstTime(msgKey(msg)))) return;
     const month = currentMonth();
     const one = async (sql, ...args) => Number((await db.prepare(sql).get(...args)).n);
     const users = await one('SELECT COUNT(*) as n FROM users');
@@ -118,7 +134,7 @@ export function startBot() {
   });
 
   bot.onText(/^\/broadcast(?:@\w+)?([\s\S]*)/, async (msg, match) => {
-    if (!isAdmin(msg)) return;
+    if (!isAdmin(msg) || !(await firstTime(msgKey(msg)))) return;
     const text = (match[1] || '').trim();
     if (!text) {
       bot.sendMessage(msg.chat.id, 'Напишите текст сразу после команды, например:\n\n/broadcast Привет! Мы добавили итоги месяца 🐧');
@@ -139,6 +155,10 @@ export function startBot() {
   bot.on('callback_query', async (q) => {
     if (!q.data?.startsWith('bc:') || !isAdmin(q)) return;
     const chatId = q.message.chat.id;
+    if (!(await firstTime(`bc:${chatId}:${q.message.message_id}`))) {
+      await bot.answerCallbackQuery(q.id).catch(() => {});
+      return;
+    }
     const text = pendingBroadcasts.get(chatId);
     pendingBroadcasts.delete(chatId);
     await bot.answerCallbackQuery(q.id);
