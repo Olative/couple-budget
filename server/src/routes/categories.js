@@ -17,16 +17,17 @@ router.put('/categories/:id', async (req, res) => {
 });
 
 router.post('/budgets/:budgetId/categories', async (req, res) => {
-  const { name, icon, color } = req.body;
-  if (!name) return res.status(400).json({ error: 'name required' });
+  const { icon, color, planned_amount } = req.body;
+  const name = (req.body.name || '').trim().slice(0, 40);
+  if (!name) return res.status(400).json({ error: 'Введите название категории' });
 
   const maxOrder = await db.prepare('SELECT COALESCE(MAX(sort_order), -1) as m FROM categories WHERE budget_id = ?')
     .get(req.params.budgetId);
 
-  await db.prepare('INSERT INTO categories (budget_id, name, icon, color, sort_order) VALUES (?, ?, ?, ?, ?)')
-    .run(req.params.budgetId, name, icon || '📦', color || '#6366f1', (maxOrder?.m ?? -1) + 1);
-
-  const result = await db.prepare('SELECT * FROM categories WHERE rowid = last_insert_rowid()').get();
+  // RETURNING instead of last_insert_rowid(): over Turso's HTTP API each statement may run on its own connection.
+  const result = await db.prepare(
+    'INSERT INTO categories (budget_id, name, icon, color, planned_amount, sort_order) VALUES (?, ?, ?, ?, ?, ?) RETURNING *'
+  ).get(req.params.budgetId, name, icon || '📦', color || '#6366f1', Number(planned_amount) || 0, (maxOrder?.m ?? -1) + 1);
   res.json(result);
 });
 

@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
-import { IconCheck } from '@tabler/icons-react';
+import { IconCheck, IconPlus } from '@tabler/icons-react';
 import { api } from '../api/client';
 import { GridLines } from '../components/Art';
+import CategorySheet from '../components/CategorySheet';
 import { money, confirmAction } from '../format';
 
 const roundUp = (v) => Math.ceil(v / 100) * 100;
@@ -12,6 +13,7 @@ export default function Plan({ budget, refreshKey }) {
   const [editingId, setEditingId] = useState(null);
   const [editAmount, setEditAmount] = useState('');
   const [filling, setFilling] = useState(false);
+  const [showNew, setShowNew] = useState(false);
 
   const load = useCallback(() => {
     api.getBudget(budget.id).then(b => setCategories(b.categories));
@@ -108,6 +110,14 @@ export default function Plan({ budget, refreshKey }) {
           );
         })}
       </div>
+
+      <button className="btn btn-secondary" onClick={() => setShowNew(true)}>
+        <IconPlus size={18} stroke={1.6} /> Новая категория
+      </button>
+
+      {showNew && (
+        <CategorySheet budget={budget} onClose={() => setShowNew(false)} onCreated={() => { setShowNew(false); load(); }} />
+      )}
     </div>
   );
 }

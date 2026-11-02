@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
+import { IconPlus } from '@tabler/icons-react';
 import { api } from '../api/client';
 import Sheet from './Sheet';
+import CategorySheet from './CategorySheet';
 
 function today() {
   const d = new Date();
@@ -15,6 +17,7 @@ export default function AddExpenseSheet({ budget, onClose, onSaved }) {
   const [date, setDate] = useState(today);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [showNewCat, setShowNewCat] = useState(false);
 
   useEffect(() => {
     api.getBudget(budget.id).then(b => {
@@ -57,7 +60,19 @@ export default function AddExpenseSheet({ budget, onClose, onSaved }) {
             <span>{c.name}</span>
           </button>
         ))}
+        <button className="cat-btn" style={{ background: 'transparent', border: '1.5px dashed #c8c8c8' }} onClick={() => setShowNewCat(true)}>
+          <span className="e"><IconPlus size={20} stroke={1.6} /></span>
+          <span>Своя</span>
+        </button>
       </div>
+
+      {showNewCat && (
+        <CategorySheet
+          budget={budget}
+          onClose={() => setShowNewCat(false)}
+          onCreated={(cat) => { setCategories(cs => [...cs, cat]); setCategoryId(cat.id); setShowNewCat(false); }}
+        />
+      )}
 
       <div className="input-group">
         <input className="input" placeholder="Комментарий" value={description} onChange={e => setDescription(e.target.value)} />

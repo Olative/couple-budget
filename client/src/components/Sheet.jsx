@@ -1,11 +1,14 @@
+import { createPortal } from 'react-dom';
+
 export default function Sheet({ title, onClose, children }) {
-  return (
+  return createPortal(
     <div className="sheet-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
       <div className="sheet">
         <div className="sheet-grip" />
         {title && <div className="sheet-title">{title}</div>}
         {children}
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
