@@ -4,7 +4,8 @@ import db from '../db.js';
 const router = Router();
 
 router.put('/categories/:id', async (req, res) => {
-  const { name, icon, color, planned_amount } = req.body;
+  const { icon, color, planned_amount } = req.body;
+  const name = req.body.name ? String(req.body.name).trim().slice(0, 40) : null;
   const cat = await db.prepare('SELECT * FROM categories WHERE id = ?').get(req.params.id);
   if (!cat) return res.status(404).json({ error: 'Not found' });
 
@@ -32,11 +33,20 @@ router.post('/budgets/:budgetId/categories', async (req, res) => {
 });
 
 router.delete('/categories/:id', async (req, res) => {
-  const expenses = await db.prepare('SELECT COUNT(*) as c FROM expenses WHERE category_id = ?').get(req.params.id);
-  if (expenses.c > 0) {
-    return res.status(400).json({ error: 'Cannot delete category with expenses' });
+  const cat = await db.prepare('SELECT * FROM categories WHERE id = ?').get(req.params.id);
+  if (!cat) return res.status(404).json({ error: 'Not found' });
+
+  const { c } = await db.prepare('SELECT COUNT(*) as c FROM expenses WHERE category_id = ?').get(cat.id);
+  if (c > 0) {
+    const moveTo = req.query.move_to
+      ? await db.prepare('SELECT id FROM categories WHERE id = ? AND budget_id = ? AND id != ?').get(req.query.move_to, cat.budget_id, cat.id)
+      : null;
+    if (!moveTo) {
+      return res.status(409).json({ error: 'В категории есть траты', expenses: Number(c) });
+    }
+    await db.prepare('UPDATE expenses SET category_id = ? WHERE category_id = ?').run(moveTo.id, cat.id);
   }
-  await db.prepare('DELETE FROM categories WHERE id = ?').run(req.params.id);
+  await db.prepare('DELETE FROM categories WHERE id = ?').run(cat.id);
   res.json({ ok: true });
 });
 

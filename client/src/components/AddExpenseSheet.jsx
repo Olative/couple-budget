@@ -70,7 +70,7 @@ export default function AddExpenseSheet({ budget, onClose, onSaved }) {
         <CategorySheet
           budget={budget}
           onClose={() => setShowNewCat(false)}
-          onCreated={(cat) => { setCategories(cs => [...cs, cat]); setCategoryId(cat.id); setShowNewCat(false); }}
+          onSaved={(cat) => { setCategories(cs => [...cs, cat]); setCategoryId(cat.id); setShowNewCat(false); }}
         />
       )}
 

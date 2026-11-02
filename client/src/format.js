@@ -31,6 +31,14 @@ export function thisMonth() {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
 }
 
+export function plural(n, one, few, many) {
+  const m10 = n % 10;
+  const m100 = n % 100;
+  if (m10 === 1 && m100 !== 11) return one;
+  if (m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14)) return few;
+  return many;
+}
+
 export function confirmAction(text) {
   const tg = window.Telegram?.WebApp;
   if (tg?.showConfirm && tg.platform !== 'unknown') {

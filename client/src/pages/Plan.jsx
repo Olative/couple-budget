@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { IconCheck, IconPlus } from '@tabler/icons-react';
+import { IconPlus, IconChevronRight } from '@tabler/icons-react';
 import { api } from '../api/client';
 import { GridLines } from '../components/Art';
 import CategorySheet from '../components/CategorySheet';
@@ -10,10 +10,8 @@ const roundUp = (v) => Math.ceil(v / 100) * 100;
 export default function Plan({ budget, refreshKey }) {
   const [categories, setCategories] = useState([]);
   const [typical, setTypical] = useState(null);
-  const [editingId, setEditingId] = useState(null);
-  const [editAmount, setEditAmount] = useState('');
   const [filling, setFilling] = useState(false);
-  const [showNew, setShowNew] = useState(false);
+  const [sheet, setSheet] = useState(null);
 
   const load = useCallback(() => {
     api.getBudget(budget.id).then(b => setCategories(b.categories));
@@ -21,13 +19,6 @@ export default function Plan({ budget, refreshKey }) {
   }, [budget.id]);
 
   useEffect(() => { load(); }, [load, refreshKey]);
-
-  const save = async (catId) => {
-    await api.updateCategory(catId, { planned_amount: Number(editAmount) || 0 });
-    setEditingId(null);
-    setEditAmount('');
-    load();
-  };
 
   const fillFromTypical = async () => {
     if (!(await confirmAction('Поставить лимиты по вашим средним тратам? Текущие лимиты заменятся.'))) return;
@@ -40,6 +31,7 @@ export default function Plan({ budget, refreshKey }) {
     load();
   };
 
+  const closeSheet = () => { setSheet(null); load(); };
   const totalPlanned = categories.reduce((s, c) => s + (c.planned_amount || 0), 0);
   const hasHistory = typical && typical.months > 0;
   const cur = budget.currency;
@@ -69,54 +61,40 @@ export default function Plan({ budget, refreshKey }) {
         </button>
       )}
 
-      <div className="section-label">Нажмите на категорию, чтобы задать лимит</div>
+      <div className="section-label">Нажмите на категорию, чтобы задать лимит, переименовать или удалить её</div>
       <div className="card">
         {categories.map(cat => {
           const avg = typical?.byCategory?.[cat.id];
-          const editing = editingId === cat.id;
           return (
-            <div
-              key={cat.id}
-              className="row"
-              style={{ cursor: 'pointer' }}
-              onClick={() => { if (!editing) { setEditingId(cat.id); setEditAmount(String(cat.planned_amount || '')); } }}
-            >
+            <div key={cat.id} className="row" style={{ cursor: 'pointer' }} onClick={() => setSheet(cat)}>
               <span className="row-ic">{cat.icon}</span>
               <div className="row-main">
                 <div className="row-name">{cat.name}</div>
                 {avg > 0 && <div className="row-sub">обычно ~{money(avg, cur)}</div>}
               </div>
-              {editing ? (
-                <div style={{ display: 'flex', gap: 6 }} onClick={e => e.stopPropagation()}>
-                  <input
-                    className="input"
-                    type="number"
-                    inputMode="numeric"
-                    placeholder="0"
-                    value={editAmount}
-                    onChange={e => setEditAmount(e.target.value)}
-                    onKeyDown={e => e.key === 'Enter' && save(cat.id)}
-                    autoFocus
-                    style={{ width: 110, padding: '9px 12px', background: 'var(--surface-2)' }}
-                  />
-                  <button className="icon-btn dark" onClick={() => save(cat.id)} aria-label="Сохранить"><IconCheck size={16} /></button>
-                </div>
-              ) : (
-                <span className={`row-amt ${cat.planned_amount > 0 ? '' : 'muted'}`}>
-                  {cat.planned_amount > 0 ? money(cat.planned_amount, cur) : '—'}
-                </span>
-              )}
+              <span className={`row-amt ${cat.planned_amount > 0 ? '' : 'muted'}`}>
+                {cat.planned_amount > 0 ? money(cat.planned_amount, cur) : '—'}
+              </span>
+              <IconChevronRight size={16} color="#c4c4c4" />
             </div>
           );
         })}
       </div>
 
-      <button className="btn btn-secondary" onClick={() => setShowNew(true)}>
+      <button className="btn btn-secondary" onClick={() => setSheet('new')}>
         <IconPlus size={18} stroke={1.6} /> Новая категория
       </button>
 
-      {showNew && (
-        <CategorySheet budget={budget} onClose={() => setShowNew(false)} onCreated={() => { setShowNew(false); load(); }} />
+      {sheet && (
+        <CategorySheet
+          key={sheet === 'new' ? 'new' : sheet.id}
+          budget={budget}
+          category={sheet === 'new' ? null : sheet}
+          categories={categories}
+          onClose={() => setSheet(null)}
+          onSaved={closeSheet}
+          onDeleted={closeSheet}
+        />
       )}
     </div>
   );

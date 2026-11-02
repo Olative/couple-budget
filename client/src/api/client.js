@@ -17,7 +17,7 @@ async function request(path, options = {}) {
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: 'Request failed' }));
-    throw new Error(err.error || 'Request failed');
+    throw Object.assign(new Error(err.error || 'Request failed'), { status: res.status, data: err });
   }
   return res.json();
 }
@@ -42,6 +42,7 @@ export const api = {
 
   updateCategory: (id, data) => request(`/categories/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   addCategory: (budgetId, data) => request(`/budgets/${budgetId}/categories`, { method: 'POST', body: JSON.stringify(data) }),
+  deleteCategory: (id, moveTo) => request(`/categories/${id}${moveTo ? `?move_to=${moveTo}` : ''}`, { method: 'DELETE' }),
 
   getSavings: (budgetId) => request(`/budgets/${budgetId}/savings`),
   addSavingsGoal: (budgetId, data) => request(`/budgets/${budgetId}/savings`, { method: 'POST', body: JSON.stringify(data) }),
