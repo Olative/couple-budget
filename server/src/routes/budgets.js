@@ -3,6 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import crypto from 'crypto';
 import db from '../db.js';
 import { buildForecast, buildRecap, currentMonth, shiftMonth } from '../insights.js';
+import { inviteLink } from '../bot.js';
 
 const router = Router();
 
@@ -50,13 +51,13 @@ router.post('/budgets/join', async (req, res) => {
   const userId = req.userId;
 
   const budget = await db.prepare('SELECT * FROM budgets WHERE invite_code = ?').get(inviteCode);
-  if (!budget) return res.status(404).json({ error: 'Budget not found' });
+  if (!budget) return res.status(404).json({ error: 'Приглашение не найдено. Попросите партнёра прислать новую ссылку' });
 
   const existing = await db.prepare('SELECT * FROM budget_members WHERE budget_id = ? AND user_id = ?').get(budget.id, userId);
   if (existing) return res.json(budget);
 
   const members = await db.prepare('SELECT COUNT(*) as count FROM budget_members WHERE budget_id = ?').get(budget.id);
-  if (members.count >= 2) return res.status(400).json({ error: 'Budget already has 2 members' });
+  if (members.count >= 2) return res.status(400).json({ error: 'В этом бюджете уже двое участников' });
 
   await db.prepare('INSERT INTO budget_members (budget_id, user_id) VALUES (?, ?)').run(budget.id, userId);
   res.json(budget);
@@ -72,7 +73,7 @@ router.get('/budgets/:id', async (req, res) => {
 
   const categories = await db.prepare('SELECT * FROM categories WHERE budget_id = ? ORDER BY sort_order').all(budget.id);
 
-  res.json({ ...budget, members, categories });
+  res.json({ ...budget, members, categories, invite_link: inviteLink(budget.invite_code) });
 });
 
 router.put('/budgets/:id', async (req, res) => {

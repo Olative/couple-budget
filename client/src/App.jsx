@@ -46,10 +46,19 @@ export default function App() {
       id: 1, first_name: 'Тест', username: 'test'
     }));
 
-    api.auth(initData).then(({ user, budgets }) => {
+    api.auth(initData).then(async ({ user, budgets }) => {
       setUser(user);
       setTelegramUserId(user.telegram_id);
-      if (budgets.length > 0) setActiveBudget(budgets[0]);
+      let active = budgets[0] || null;
+      if (initialJoin) {
+        try {
+          active = await api.joinBudget(initialJoin);
+        } catch (e) {
+          if (tg?.showAlert && tg.platform !== 'unknown') tg.showAlert(e.message);
+          else window.alert(e.message);
+        }
+      }
+      setActiveBudget(active);
       setLoading(false);
     }).catch(() => setLoading(false));
   }, []);
@@ -63,7 +72,7 @@ export default function App() {
   }
 
   if (!activeBudget) {
-    return <Welcome initialCode={initialJoin} onReady={handleBudgetReady} />;
+    return <Welcome onReady={handleBudgetReady} />;
   }
 
   const refresh = () => setRefreshKey(k => k + 1);

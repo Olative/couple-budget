@@ -11,7 +11,12 @@ const openButton = (text = 'Открыть Lolo & Pepe', url = WEB_APP_URL) => (
 });
 
 let bot;
+let botUsername = process.env.BOT_USERNAME || null;
 const pendingBroadcasts = new Map();
+
+export function inviteLink(code) {
+  return botUsername ? `https://t.me/${botUsername}?start=${code}` : null;
+}
 
 const isAdmin = (msg) => ADMIN_ID && String(msg.from.id) === String(ADMIN_ID);
 
@@ -44,6 +49,7 @@ export function startBot() {
   }
 
   bot = new TelegramBot(BOT_TOKEN, { polling: true });
+  bot.getMe().then(me => { botUsername = me.username; }).catch(e => console.error('getMe failed:', e.message));
   setupProfile().catch(e => console.error('Bot profile setup failed:', e.message));
 
   bot.onText(/^\/start(.*)/, async (msg, match) => {
@@ -51,9 +57,18 @@ export function startBot() {
     const param = (match[1] || '').trim();
     const photo = `${WEB_APP_URL}/bot/welcome.jpg`;
 
+    let inviter = null;
+    if (param) {
+      const row = await db.prepare(
+        'SELECT u.first_name FROM budgets b JOIN users u ON u.id = b.created_by WHERE b.invite_code = ?'
+      ).get(param);
+      inviter = row?.first_name;
+    }
+
     const [caption, button] = param
       ? [
-        'Вас пригласили в общий бюджет Lolo & Pepe 🐧\n\nНажмите кнопку ниже, чтобы присоединиться.',
+        `${inviter ? `${inviter} приглашает вас` : 'Вас пригласили'} в общий бюджет Lolo & Pepe 🐧\n\n` +
+        'Нажмите кнопку ниже — и вы сразу окажетесь в нём. Траты, лимиты и копилка станут общими.',
         openButton('Присоединиться', `${WEB_APP_URL}?join=${encodeURIComponent(param)}`),
       ]
       : [

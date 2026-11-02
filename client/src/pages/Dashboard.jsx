@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { IconChevronLeft, IconChevronRight, IconSettings, IconArrowRight } from '@tabler/icons-react';
 import { api } from '../api/client';
 import { GridLines, Penguin, PenguinPair } from '../components/Art';
+import InviteCard from '../components/InviteCard';
 import { money, MONTHS, MONTHS_GEN, shiftMonth, thisMonth } from '../format';
 
 function monthLabel(month) {
@@ -65,6 +66,8 @@ export default function Dashboard({ budget, refreshKey, onAdd, onOpenRecap, onOp
   return (
     <div className="page">
       {header}
+
+      {members.length < 2 && <InviteCard budget={budget} />}
 
       {forecast.recapMonth && month === thisMonth() && (
         <button

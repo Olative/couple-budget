@@ -56,7 +56,7 @@ router.post('/auth', async (req, res) => {
 
   const user = await db.prepare('SELECT * FROM users WHERE telegram_id = ?').get(userData.id);
   const budgets = await db.prepare(
-    'SELECT b.* FROM budgets b JOIN budget_members bm ON b.id = bm.budget_id WHERE bm.user_id = ?'
+    'SELECT b.* FROM budgets b JOIN budget_members bm ON b.id = bm.budget_id WHERE bm.user_id = ? ORDER BY bm.joined_at DESC'
   ).all(user.id);
 
   res.json({ user, budgets });

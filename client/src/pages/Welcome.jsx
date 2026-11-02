@@ -5,19 +5,18 @@ import CurrencyPicker from '../components/CurrencyPicker';
 import Sheet from '../components/Sheet';
 import { ArcTitle, GridLines, PenguinPair } from '../components/Art';
 
-export default function Welcome({ initialCode, onReady }) {
-  const [mode, setMode] = useState(initialCode ? 'join' : null);
+export default function Welcome({ onReady }) {
+  const [creating, setCreating] = useState(false);
   const [name, setName] = useState('');
   const [currency, setCurrency] = useState('€');
-  const [inviteCode, setInviteCode] = useState(initialCode || '');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const run = async (fn) => {
+  const create = async () => {
     setLoading(true);
     setError('');
     try {
-      onReady(await fn());
+      onReady(await api.createBudget({ name: name || 'Наш бюджет', currency }));
     } catch (e) {
       setError(e.message);
       setLoading(false);
@@ -41,13 +40,15 @@ export default function Welcome({ initialCode, onReady }) {
         </div>
       </div>
 
-      <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: 6, paddingTop: 24 }}>
-        <button className="btn" onClick={() => setMode('create')}>Создать бюджет</button>
-        <button className="btn btn-ghost" onClick={() => setMode('join')}>У меня есть код</button>
+      <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: 10, paddingTop: 24 }}>
+        <button className="btn" onClick={() => setCreating(true)}>Создать бюджет</button>
+        <div className="row-sub" style={{ textAlign: 'center', fontSize: 12, padding: '0 24px' }}>
+          Партнёр уже создал бюджет? Попросите прислать ссылку-приглашение и откройте её
+        </div>
       </div>
 
-      {mode === 'create' && (
-        <Sheet title="Новый бюджет" onClose={() => setMode(null)}>
+      {creating && (
+        <Sheet title="Новый бюджет" onClose={() => setCreating(false)}>
           <div className="input-group">
             <label className="input-label">Название</label>
             <input className="input" placeholder="Наш бюджет" value={name} onChange={e => setName(e.target.value)} />
@@ -55,32 +56,8 @@ export default function Welcome({ initialCode, onReady }) {
           <CurrencyPicker value={currency} onChange={setCurrency} label="Валюта" />
           {error && <div className="warn" style={{ fontSize: 13, margin: '0 4px' }}>{error}</div>}
           <div className="sheet-actions">
-            <button className="btn btn-secondary" onClick={() => setMode(null)}>Назад</button>
-            <button className="btn" disabled={loading} onClick={() => run(() => api.createBudget({ name: name || 'Наш бюджет', currency }))}>
-              {loading ? 'Создаём…' : 'Создать'}
-            </button>
-          </div>
-        </Sheet>
-      )}
-
-      {mode === 'join' && (
-        <Sheet title="Присоединиться" onClose={() => setMode(null)}>
-          <div className="input-group">
-            <label className="input-label">Код приглашения от партнёра</label>
-            <input
-              className="input"
-              placeholder="abc123def456"
-              value={inviteCode}
-              onChange={e => setInviteCode(e.target.value)}
-              style={{ textAlign: 'center', letterSpacing: 2 }}
-            />
-          </div>
-          {error && <div className="warn" style={{ fontSize: 13, margin: '0 4px' }}>{error}</div>}
-          <div className="sheet-actions">
-            <button className="btn btn-secondary" onClick={() => setMode(null)}>Назад</button>
-            <button className="btn" disabled={loading || !inviteCode.trim()} onClick={() => run(() => api.joinBudget(inviteCode.trim()))}>
-              {loading ? 'Подключаемся…' : 'Присоединиться'}
-            </button>
+            <button className="btn btn-secondary" onClick={() => setCreating(false)}>Назад</button>
+            <button className="btn" disabled={loading} onClick={create}>{loading ? 'Создаём…' : 'Создать'}</button>
           </div>
         </Sheet>
       )}
