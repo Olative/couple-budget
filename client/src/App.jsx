@@ -10,19 +10,40 @@ import Welcome from './pages/Welcome';
 import AddExpenseSheet from './components/AddExpenseSheet';
 import Recap from './components/Recap';
 
-const SPLASH_MIN_MS = 1800;
+// The splash lives in index.html so it shows before the bundle loads.
+// It stays until the dance has played through once; the timer covers a video that never starts.
+const SPLASH_FALLBACK_MS = 6000;
 
-// The splash lives in index.html so it shows before the bundle loads; keep it long enough to see the dance.
+function whenDanceFinished() {
+  const video = document.querySelector('#splash video');
+  return new Promise(resolve => {
+    const timer = setTimeout(resolve, Math.max(0, SPLASH_FALLBACK_MS - performance.now()));
+    if (!video) return;
+    let last = video.currentTime;
+    const onTime = () => {
+      if (video.currentTime < last) {
+        video.removeEventListener('timeupdate', onTime);
+        clearTimeout(timer);
+        resolve();
+      }
+      last = video.currentTime;
+    };
+    video.addEventListener('timeupdate', onTime);
+  });
+}
+
+const danceFinished = whenDanceFinished();
+
 function hideSplash() {
   const splash = document.getElementById('splash');
   if (!splash) return;
-  setTimeout(() => {
+  danceFinished.then(() => {
     splash.classList.add('hide');
     const tg = window.Telegram?.WebApp;
     tg?.setHeaderColor?.('#ececec');
     tg?.setBackgroundColor?.('#ececec');
     setTimeout(() => splash.remove(), 400);
-  }, Math.max(0, SPLASH_MIN_MS - performance.now()));
+  });
 }
 
 const TABS = [
