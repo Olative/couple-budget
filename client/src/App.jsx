@@ -27,7 +27,6 @@ export default function App() {
     if (tg) {
       tg.ready();
       tg.expand();
-      tg.enableClosingConfirmation();
     }
 
     const initData = tg?.initData || 'user=' + encodeURIComponent(JSON.stringify({
