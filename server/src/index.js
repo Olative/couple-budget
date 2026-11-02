@@ -3,7 +3,7 @@ import express from 'express';
 import cors from 'cors';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
-import db from './db.js';
+import db, { dbKind } from './db.js';
 import authRoutes from './routes/auth.js';
 import budgetRoutes from './routes/budgets.js';
 import expenseRoutes from './routes/expenses.js';
@@ -32,6 +32,7 @@ async function authMiddleware(req, res, next) {
   next();
 }
 
+app.get('/api/health', (req, res) => res.json({ ok: true, db: dbKind }));
 app.use('/api', authRoutes);
 app.use('/api', authMiddleware, budgetRoutes);
 app.use('/api', authMiddleware, expenseRoutes);

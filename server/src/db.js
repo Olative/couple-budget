@@ -1,9 +1,17 @@
 import { createClient } from '@libsql/client';
 
+// Render's disk is wiped on every deploy, so a local file there silently loses all data.
+if (process.env.RENDER && !process.env.TURSO_DATABASE_URL) {
+  throw new Error('TURSO_DATABASE_URL is not set on Render — refusing to start with a throwaway local database');
+}
+
+export const dbKind = process.env.TURSO_DATABASE_URL?.startsWith('libsql://') ? 'turso' : 'local-file';
+
 const client = createClient({
   url: process.env.TURSO_DATABASE_URL || 'file:local.db',
   authToken: process.env.TURSO_AUTH_TOKEN,
 });
+console.log(`Database: ${dbKind}`);
 
 await client.batch([
   `CREATE TABLE IF NOT EXISTS users (
