@@ -5,11 +5,18 @@ if (process.env.RENDER && !process.env.TURSO_DATABASE_URL) {
   throw new Error('TURSO_DATABASE_URL is not set on Render — refusing to start with a throwaway local database');
 }
 
+for (const key of ['TURSO_DATABASE_URL', 'TURSO_AUTH_TOKEN']) {
+  const value = process.env[key];
+  if (value && !/^[\x21-\x7e]+$/.test(value.trim())) {
+    throw new Error(`${key} contains spaces or non-ASCII characters (e.g. "•" copied from a masked field) — paste the real value again`);
+  }
+}
+
 export const dbKind = process.env.TURSO_DATABASE_URL?.startsWith('libsql://') ? 'turso' : 'local-file';
 
 const client = createClient({
-  url: process.env.TURSO_DATABASE_URL || 'file:local.db',
-  authToken: process.env.TURSO_AUTH_TOKEN,
+  url: process.env.TURSO_DATABASE_URL?.trim() || 'file:local.db',
+  authToken: process.env.TURSO_AUTH_TOKEN?.trim(),
 });
 console.log(`Database: ${dbKind}`);
 
