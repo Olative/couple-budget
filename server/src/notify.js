@@ -96,3 +96,34 @@ export async function sendEveningReminders() {
     }
   }
 }
+
+// From the 20th, nudge once a month about goals whose monthly plan isn't met yet.
+export async function sendSavingsReminders() {
+  const now = new Date();
+  if (now.getUTCDate() < 20 || now.getUTCHours() < 9) return;
+  const month = currentMonth();
+  const goals = await db.prepare(`
+    SELECT sg.id, sg.budget_id, sg.name, sg.monthly_plan, b.currency,
+           COALESCE(SUM(CASE WHEN sc.created_at LIKE ? THEN sc.amount END), 0) as month_saved,
+           COALESCE(SUM(sc.amount), 0) as total_saved, sg.target_amount
+    FROM savings_goals sg JOIN budgets b ON b.id = sg.budget_id
+    LEFT JOIN savings_contributions sc ON sc.goal_id = sg.id
+    WHERE sg.monthly_plan > 0
+    GROUP BY sg.id
+  `).all(`${month}%`);
+  for (const g of goals) {
+    const saved = Number(g.month_saved);
+    if (saved >= Number(g.monthly_plan) || Number(g.total_saved) >= Number(g.target_amount)) continue;
+    const res = await db.prepare('INSERT OR IGNORE INTO savings_alerts (goal_id, month) VALUES (?, ?)').run(g.id, month);
+    if (!res.rowsAffected) continue;
+    const text = saved > 0
+      ? `🐧 Копилка «${g.name}»: в этом месяце отложено ${fmt(saved, g.currency)} из ${fmt(g.monthly_plan, g.currency)}. Осталось ${fmt(g.monthly_plan - saved, g.currency)}`
+      : `🐧 Копилка «${g.name}»: в этом месяце ещё ничего не отложено, а план — ${fmt(g.monthly_plan, g.currency)}`;
+    const people = await db.prepare(`
+      SELECT u.telegram_id FROM users u JOIN budget_members bm ON bm.user_id = u.id
+      LEFT JOIN notify_prefs p ON p.user_id = u.id
+      WHERE bm.budget_id = ? AND COALESCE(p.savings, 1) = 1
+    `).all(g.budget_id);
+    for (const p of people) deliver(p.telegram_id, text);
+  }
+}

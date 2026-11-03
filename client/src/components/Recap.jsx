@@ -11,13 +11,10 @@ const WHITE = { bg: '#fafafa', fg: '#111', mut: '#9a9a9a', back: '#d6d6d6', cls:
 const SAGE = { bg: 'var(--sage)', fg: '#fff', mut: 'rgba(255,255,255,.65)', back: '#6f7f6d' };
 const SAND = { bg: 'var(--sand)', fg: '#2b2418', mut: 'rgba(43,36,24,.55)', back: '#b7a88f' };
 
-// The sprites are drawn on white; multiply lets the blue card show through.
-const COVER_ANIM = { mixBlendMode: 'multiply', borderRadius: 24 };
-
 function buildCards(r, cur) {
   const mi = monthIndex(r.month);
   if (!r.hasData) {
-    return [{ ...BLUE, body: <SpriteAnim name="idle" width={170} style={COVER_ANIM} />, title: `Итоги ${MONTHS_GEN[mi]}`, sub: `В ${MONTHS_PREP[mi]} трат не было. Пингвины отдыхали` }];
+    return [{ ...BLUE, body: <SpriteAnim name="idle" width={170} fixedInk />, title: `Итоги ${MONTHS_GEN[mi]}`, sub: `В ${MONTHS_PREP[mi]} трат не было. Пингвины отдыхали` }];
   }
 
   // Within plan — they bump bellies; over plan — they just shuffle.
@@ -25,7 +22,7 @@ function buildCards(r, cur) {
   const cards = [{
     ...BLUE,
     grid: true,
-    body: <SpriteAnim name={onPlan ? 'bump' : 'idle'} width={180} style={COVER_ANIM} />,
+    body: <SpriteAnim name={onPlan ? 'bump' : 'idle'} width={180} fixedInk />,
     title: `Итоги ${MONTHS_GEN[mi]}`,
     sub: 'Листайте, чтобы узнать, как прошёл месяц',
   }];
@@ -178,7 +175,7 @@ function buildCards(r, cur) {
           {n.warnings.map((w, i) => (
             <div key={`w${i}`} style={{ display: 'flex', gap: 8, alignItems: 'flex-start', paddingTop: 10, color: '#ffb4a8', textAlign: 'left' }}>
               <IconAlertCircle size={15} style={{ flexShrink: 0, marginTop: 1 }} />
-              <span>{w.name}: обычно ~{num(w.avg)} при лимите {num(w.planned)}</span>
+              <span>{w.name}: в среднем {num(w.avg)} при лимите {num(w.planned)}</span>
             </div>
           ))}
         </div>

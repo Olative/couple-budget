@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
-import { IconChevronLeft, IconChevronRight, IconSettings, IconArrowRight, IconPlus, IconLock } from '@tabler/icons-react';
+import { IconChevronLeft, IconChevronRight, IconChevronDown, IconSettings, IconArrowRight, IconPlus, IconLock, IconPigMoney } from '@tabler/icons-react';
 import { api } from '../api/client';
 import { GridLines, Penguin, PenguinPair } from '../components/Art';
 import InviteCard from '../components/InviteCard';
 import SpriteAnim from '../components/SpriteAnim';
 import Celebration from '../components/Celebration';
-import { money, MONTHS, MONTHS_GEN, shiftMonth, thisMonth, confirmAction } from '../format';
+import { money, MONTHS, MONTHS_GEN, MONTHS_PREP, shiftMonth, thisMonth, confirmAction } from '../format';
 
 function monthLabel(month) {
   const name = MONTHS[Number(month.slice(5, 7)) - 1].toLowerCase();
@@ -29,7 +29,7 @@ function ForecastLine({ forecast, currency }) {
   );
 }
 
-export default function Dashboard({ budget, user, refreshKey, onAdd, onOpenRecap, onOpenSettings }) {
+export default function Dashboard({ budget, user, refreshKey, onAdd, onOpenRecap, onOpenSettings, onOpenSavings, onOpenBudgets, multiBudget }) {
   const [month, setMonth] = useState(thisMonth);
   const [summary, setSummary] = useState(null);
   const [forecast, setForecast] = useState(null);
@@ -37,6 +37,9 @@ export default function Dashboard({ budget, user, refreshKey, onAdd, onOpenRecap
   const [personal, setPersonal] = useState(null);
   const [reload, setReload] = useState(0);
   const [celebrate, setCelebrate] = useState(null);
+  const [goals, setGoals] = useState([]);
+
+  useEffect(() => { api.getSavings(budget.id).then(setGoals); }, [budget.id, refreshKey]);
 
   useEffect(() => {
     Promise.all([
@@ -61,7 +64,10 @@ export default function Dashboard({ budget, user, refreshKey, onAdd, onOpenRecap
   const cur = budget.currency;
   const header = (
     <div className="page-head">
-      <div className="h-title">Lolo &amp; Pepe</div>
+      <button className="h-title title-btn" onClick={onOpenBudgets} aria-label="Бюджеты">
+        <span>{multiBudget ? budget.name : 'Lolo & Pepe'}</span>
+        <IconChevronDown size={14} stroke={1.6} />
+      </button>
       <div className="head-actions">
         <div className="chip">
           <button onClick={() => setMonth(m => shiftMonth(m, -1))} aria-label="Предыдущий месяц"><IconChevronLeft size={16} /></button>
@@ -189,6 +195,27 @@ export default function Dashboard({ budget, user, refreshKey, onAdd, onOpenRecap
           )}
         </div>
       )}
+
+      {(() => {
+        const planned = goals.filter(g => Number(g.monthly_plan) > 0 && Number(g.current_amount) < Number(g.target_amount));
+        if (month !== thisMonth() || !planned.length) return null;
+        const plan = planned.reduce((s, g) => s + Number(g.monthly_plan), 0);
+        const saved = planned.reduce((s, g) => s + Math.min(Number(g.month_saved), Number(g.monthly_plan)), 0);
+        return (
+          <button className="card-pad" onClick={onOpenSavings} style={{ border: 'none', textAlign: 'left', cursor: 'pointer', font: 'inherit', color: 'inherit' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
+              <span style={{ fontSize: 14, display: 'flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap' }}><IconPigMoney size={16} stroke={1.6} /> В копилку</span>
+              <span className="num" style={{ fontSize: 13, whiteSpace: 'nowrap' }}>{money(saved, cur)}<span className="muted"> из {money(plan, cur)}</span></span>
+            </div>
+            <div className="progress">
+              <div className="progress-fill" style={{ width: `${Math.min(100, (saved / plan) * 100)}%`, background: saved >= plan ? 'var(--ok)' : 'var(--ink)' }} />
+            </div>
+            <div className="row-sub" style={{ marginTop: 8 }}>
+              {saved >= plan ? `План на ${MONTHS[Number(month.slice(5, 7)) - 1].toLowerCase()} выполнен` : `В ${MONTHS_PREP[Number(month.slice(5, 7)) - 1]} осталось отложить ${money(plan - saved, cur)}`}
+            </div>
+          </button>
+        );
+      })()}
 
       {(() => {
         const me = personal?.members.find(m => m.id === user.id);

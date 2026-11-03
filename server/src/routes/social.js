@@ -77,7 +77,7 @@ router.get('/me/notify', async (req, res) => {
 
 router.put('/me/notify', async (req, res) => {
   await getPrefs(req.userId);
-  const fields = { partner_activity: 'bool', limits: 'bool', reminder: 'bool', tz_offset: 'int' };
+  const fields = { partner_activity: 'bool', limits: 'bool', reminder: 'bool', savings: 'bool', tz_offset: 'int' };
   for (const [key, type] of Object.entries(fields)) {
     if (!(key in req.body)) continue;
     let value = type === 'bool' ? (req.body[key] ? 1 : 0) : Math.round(Number(req.body[key]));
@@ -85,6 +85,19 @@ router.put('/me/notify', async (req, res) => {
     await db.prepare(`UPDATE notify_prefs SET ${key} = ? WHERE user_id = ?`).run(value, req.userId);
   }
   res.json(await getPrefs(req.userId));
+});
+
+// The budget the app opens with and the bot records quick adds into.
+router.put('/me/active-budget', async (req, res) => {
+  const member = await db.prepare('SELECT 1 FROM budget_members WHERE budget_id = ? AND user_id = ?').get(req.body.budget_id, req.userId);
+  if (!member) return res.status(404).json({ error: 'Бюджет не найден' });
+  await db.prepare('UPDATE users SET active_budget_id = ? WHERE id = ?').run(req.body.budget_id, req.userId);
+  res.json({ ok: true });
+});
+
+router.put('/me/tutorial', async (req, res) => {
+  await db.prepare('UPDATE users SET tutorial_done = ? WHERE id = ?').run(req.body.done ? 1 : 0, req.userId);
+  res.json({ ok: true });
 });
 
 export default router;

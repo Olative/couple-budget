@@ -55,9 +55,11 @@ router.post('/auth', async (req, res) => {
   }
 
   const user = await db.prepare('SELECT * FROM users WHERE telegram_id = ?').get(userData.id);
-  const budgets = await db.prepare(
-    'SELECT b.* FROM budgets b JOIN budget_members bm ON b.id = bm.budget_id WHERE bm.user_id = ? ORDER BY bm.joined_at DESC'
-  ).all(user.id);
+  // The budget picked last comes first, then the newest ones.
+  const budgets = await db.prepare(`
+    SELECT b.* FROM budgets b JOIN budget_members bm ON b.id = bm.budget_id WHERE bm.user_id = ?
+    ORDER BY b.id = ? DESC, bm.joined_at DESC
+  `).all(user.id, user.active_budget_id || '');
 
   res.json({ user, budgets });
 });

@@ -121,6 +121,11 @@ await client.batch([
     tz_offset INTEGER NOT NULL DEFAULT 0,
     last_reminder TEXT
   )`,
+  `CREATE TABLE IF NOT EXISTS savings_alerts (
+    goal_id INTEGER NOT NULL,
+    month TEXT NOT NULL,
+    PRIMARY KEY (goal_id, month)
+  )`,
   `CREATE TABLE IF NOT EXISTS limit_alerts (
     category_id INTEGER NOT NULL,
     month TEXT NOT NULL,
@@ -174,6 +179,10 @@ for (const sql of [
   'ALTER TABLE incomes ADD COLUMN recurring_id INTEGER',
   'ALTER TABLE budget_members ADD COLUMN share REAL',
   'ALTER TABLE budget_members ADD COLUMN personal_limit REAL NOT NULL DEFAULT 0',
+  'ALTER TABLE users ADD COLUMN active_budget_id TEXT',
+  'ALTER TABLE users ADD COLUMN tutorial_done INTEGER NOT NULL DEFAULT 0',
+  'ALTER TABLE savings_goals ADD COLUMN monthly_plan REAL NOT NULL DEFAULT 0',
+  'ALTER TABLE notify_prefs ADD COLUMN savings INTEGER NOT NULL DEFAULT 1',
 ]) {
   await client.execute(sql).catch(() => {});
 }

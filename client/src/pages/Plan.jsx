@@ -7,18 +7,23 @@ import { money, confirmAction, incomeSource } from '../format';
 
 const roundUp = (v) => Math.ceil(v / 100) * 100;
 
+// Last loaded plan per budget, so reopening the tab shows it at once while fresh data loads.
+const cache = {};
+
 export default function Plan({ budget, refreshKey }) {
-  const [categories, setCategories] = useState([]);
-  const [typical, setTypical] = useState(null);
+  const cached = cache[budget.id] || {};
+  const [categories, setCategories] = useState(cached.categories || null);
+  const [typical, setTypical] = useState(cached.typical || null);
   const [filling, setFilling] = useState(false);
   const [sheet, setSheet] = useState(null);
 
-  const [recurring, setRecurring] = useState([]);
+  const [recurring, setRecurring] = useState(cached.recurring || []);
 
   const load = useCallback(() => {
-    api.getBudget(budget.id).then(b => setCategories(b.categories));
-    api.getForecast(budget.id).then(f => setTypical(f.typical));
-    api.getRecurring(budget.id).then(setRecurring);
+    const c = (cache[budget.id] ||= {});
+    api.getBudget(budget.id).then(b => { c.categories = b.categories; setCategories(b.categories); });
+    api.getForecast(budget.id).then(f => { c.typical = f.typical; setTypical(f.typical); });
+    api.getRecurring(budget.id).then(r => { c.recurring = r; setRecurring(r); });
   }, [budget.id]);
 
   const stopRecurring = async (r) => {
@@ -41,6 +46,7 @@ export default function Plan({ budget, refreshKey }) {
   };
 
   const closeSheet = () => { setSheet(null); load(); };
+  if (!categories) return <div className="page"><div className="page-head"><div className="h-title">План на месяц</div></div></div>;
   const totalPlanned = categories.reduce((s, c) => s + (c.planned_amount || 0), 0);
   const hasHistory = typical && typical.months > 0;
   const cur = budget.currency;
@@ -57,7 +63,7 @@ export default function Plan({ budget, refreshKey }) {
             <div className="num" style={{ fontSize: 28, margin: '10px 0 4px' }}>{money(totalPlanned, cur)}</div>
             {hasHistory && (
               <div style={{ fontSize: 12, color: 'var(--muted)', fontWeight: 300 }}>
-                обычно вы тратите ~{money(typical.total, cur)} в месяц
+                обычно вы тратите около {money(typical.total, cur)} в месяц
               </div>
             )}
           </div>
@@ -79,12 +85,12 @@ export default function Plan({ budget, refreshKey }) {
               <span className="row-ic">{cat.icon}</span>
               <div className="row-main">
                 <div className="row-name">{cat.name}</div>
-                {avg > 0 && <div className="row-sub">обычно ~{money(avg, cur)}</div>}
+                {avg > 0 && <div className="row-sub">в среднем {money(avg, cur)}</div>}
               </div>
               <span className={`row-amt ${cat.planned_amount > 0 ? '' : 'muted'}`}>
                 {cat.planned_amount > 0 ? money(cat.planned_amount, cur) : '—'}
               </span>
-              <IconChevronRight size={16} color="#c4c4c4" />
+              <IconChevronRight size={16} color="var(--muted)" />
             </div>
           );
         })}

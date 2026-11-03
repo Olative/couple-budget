@@ -38,6 +38,7 @@ router.post('/budgets', async (req, res) => {
         .run(id, cat.name, cat.icon, cat.color, i);
     }
 
+    await db.prepare('UPDATE users SET active_budget_id = ? WHERE id = ?').run(id, userId);
     const budget = await db.prepare('SELECT * FROM budgets WHERE id = ?').get(id);
     res.json(budget);
   } catch (e) {
@@ -60,7 +61,20 @@ router.post('/budgets/join', async (req, res) => {
   if (members.count >= 2) return res.status(400).json({ error: 'В этом бюджете уже двое участников' });
 
   await db.prepare('INSERT INTO budget_members (budget_id, user_id) VALUES (?, ?)').run(budget.id, userId);
+  await db.prepare('UPDATE users SET active_budget_id = ? WHERE id = ?').run(budget.id, userId);
   res.json(budget);
+});
+
+// Every budget of the user with who is in it, for the switcher.
+router.get('/me/budgets', async (req, res) => {
+  const budgets = await db.prepare(`
+    SELECT b.*, (
+      SELECT GROUP_CONCAT(u.first_name, ' и ') FROM budget_members m JOIN users u ON u.id = m.user_id WHERE m.budget_id = b.id
+    ) as people
+    FROM budgets b JOIN budget_members bm ON b.id = bm.budget_id WHERE bm.user_id = ?
+    ORDER BY bm.joined_at
+  `).all(req.userId);
+  res.json(budgets);
 });
 
 router.get('/budgets/:id', async (req, res) => {

@@ -9,11 +9,14 @@ import Settings from './pages/Settings';
 import Welcome from './pages/Welcome';
 import AddExpenseSheet from './components/AddExpenseSheet';
 import Recap from './components/Recap';
+import BudgetSheet from './components/BudgetSheet';
+import Tutorial from './components/Tutorial';
+import { paintTelegram } from './theme';
 
 // The splash lives in index.html so it shows before the bundle loads.
-// It stays until the short belly-bump loop has played twice; the timer covers a video that never starts.
-const SPLASH_LOOPS = 2;
-const SPLASH_FALLBACK_MS = 3000;
+// It stays until the short belly-bump loop has played once; the timer covers a video that never starts.
+const SPLASH_LOOPS = 1;
+const SPLASH_FALLBACK_MS = 1800;
 
 function whenDanceFinished() {
   return new Promise(resolve => {
@@ -35,9 +38,7 @@ function hideSplash() {
   if (!splash) return;
   danceFinished.then(() => {
     splash.classList.add('hide');
-    const tg = window.Telegram?.WebApp;
-    tg?.setHeaderColor?.('#ececec');
-    tg?.setBackgroundColor?.('#ececec');
+    paintTelegram();
     setTimeout(() => splash.remove(), 400);
   });
 }
@@ -63,6 +64,9 @@ export default function App() {
   const [showAdd, setShowAdd] = useState(false);
   const [recapMonth, setRecapMonth] = useState(initialRecap);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [budgetCount, setBudgetCount] = useState(0);
+  const [showBudgets, setShowBudgets] = useState(false);
+  const [showTutorial, setShowTutorial] = useState(false);
 
   useEffect(() => {
     const tg = window.Telegram?.WebApp;
@@ -81,10 +85,13 @@ export default function App() {
       setUser(user);
       setTelegramUserId(user.telegram_id);
       api.setNotify({ tz_offset: -new Date().getTimezoneOffset() }).catch(() => {});
+      setBudgetCount(budgets.length);
+      if (!user.tutorial_done) setShowTutorial(true);
       let active = budgets[0] || null;
       if (initialJoin) {
         try {
           active = await api.joinBudget(initialJoin);
+          if (!budgets.some(b => b.id === active.id)) setBudgetCount(n => n + 1);
         } catch (e) {
           if (tg?.showAlert && tg.platform !== 'unknown') tg.showAlert(e.message);
           else window.alert(e.message);
@@ -99,7 +106,18 @@ export default function App() {
     if (!loading) hideSplash();
   }, [loading]);
 
-  const handleBudgetReady = useCallback((budget) => setActiveBudget(budget), []);
+  const handleBudgetReady = useCallback((budget) => { setActiveBudget(budget); setBudgetCount(n => n || 1); }, []);
+
+  const switchBudget = (budget, created) => {
+    if (created) setBudgetCount(n => n + 1);
+    setActiveBudget(budget);
+    setActiveTab('dashboard');
+  };
+
+  const finishTutorial = () => {
+    setShowTutorial(false);
+    api.setTutorialDone(true).catch(() => {});
+  };
 
   if (loading) return null;
 
@@ -112,17 +130,17 @@ export default function App() {
 
   const renderPage = () => {
     switch (activeTab) {
-      case 'dashboard': return <Dashboard {...pageProps} onOpenRecap={setRecapMonth} onOpenSettings={() => setActiveTab('settings')} />;
+      case 'dashboard': return <Dashboard {...pageProps} onOpenRecap={setRecapMonth} onOpenSettings={() => setActiveTab('settings')} onOpenSavings={() => setActiveTab('savings')} onOpenBudgets={() => setShowBudgets(true)} multiBudget={budgetCount > 1} />;
       case 'expenses': return <Expenses {...pageProps} />;
       case 'plan': return <Plan {...pageProps} />;
       case 'savings': return <Savings {...pageProps} />;
-      case 'settings': return <Settings {...pageProps} onBack={() => setActiveTab('dashboard')} onBudgetUpdate={(b) => setActiveBudget(prev => ({ ...prev, ...b }))} />;
+      case 'settings': return <Settings {...pageProps} onBack={() => setActiveTab('dashboard')} onBudgetUpdate={(b) => setActiveBudget(prev => ({ ...prev, ...b }))} onOpenBudgets={() => setShowBudgets(true)} onShowTutorial={() => setShowTutorial(true)} />;
       default: return null;
     }
   };
 
   return (
-    <div className="app">
+    <div className="app" key={activeBudget.id}>
       {renderPage()}
 
       <nav className="tabs">
@@ -146,6 +164,10 @@ export default function App() {
           onSaved={() => { setShowAdd(false); refresh(); }}
         />
       )}
+
+      {showBudgets && <BudgetSheet current={activeBudget} onPick={switchBudget} onClose={() => setShowBudgets(false)} />}
+
+      {showTutorial && <Tutorial joined={!!initialJoin} onDone={finishTutorial} />}
 
       {recapMonth && <Recap budget={activeBudget} month={recapMonth} onClose={() => setRecapMonth(null)} />}
     </div>

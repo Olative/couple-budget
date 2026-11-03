@@ -1,5 +1,6 @@
 :root {
   --bg: #ececec;
+  --page: var(--bg);
   --surface: #ffffff;
   --surface-2: #f3f3f3;
   --ink: #111111;
@@ -13,12 +14,45 @@
   --sand: #d9cbb4;
   --danger: #e05a4f;
   --ok: #3f9b6e;
+  --on-ink: #ffffff;
+  --scallop: #111111;
+  --scallop-in: #1b1b1b;
+  --switch-off: #d9d9d9;
+  --grip: #cfcfcf;
+  --stage: #ffffff;
+  --shadow: rgba(0, 0, 0, 0.08);
 
   --font-display: 'Unbounded', 'Outfit', system-ui, sans-serif;
   --font-body: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 
   color-scheme: light;
 }
+
+/* Dark theme: data-theme is set from Telegram's theme or the user's choice in settings. */
+:root[data-theme="dark"] {
+  --bg: #0e0e0e;
+  --page: #0e0e0e;
+  --surface: #1b1b1b;
+  --surface-2: #262626;
+  --ink: #f1f1f1;
+  --ink-2: #c6c6c6;
+  --muted: #8a8a8a;
+  --line: #2a2a2a;
+  --danger: #ff7b6e;
+  --ok: #5cc48f;
+  --on-ink: #111111;
+  --scallop: #262626;
+  --scallop-in: #171717;
+  --switch-off: #3a3a3a;
+  --grip: #444444;
+  --stage: #0e0e0e;
+  --shadow: rgba(0, 0, 0, 0.5);
+  color-scheme: dark;
+}
+:root[data-theme="dark"] .sprite { filter: invert(1); }
+
+/* Postage-stamp cards stay paper-white in both themes. */
+.stamp { --ink: #111111; --ink-2: #444444; --muted: #9a9a9a; --surface-2: #efefef; --on-ink: #ffffff; --line: #e6e6e6; color: var(--ink); }
 
 * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
@@ -55,7 +89,7 @@ button { font-family: inherit; color: inherit; }
   width: 36px; height: 36px; border-radius: 50%; border: none; background: var(--surface);
   display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0;
 }
-.icon-btn.dark { background: var(--ink); color: #fff; }
+.icon-btn.dark { background: var(--ink); color: var(--on-ink); }
 
 /* Cards */
 .card { background: var(--surface); border-radius: 18px; padding: 4px 16px; }
@@ -63,17 +97,19 @@ button { font-family: inherit; color: inherit; }
 .section-label { font-size: 12px; color: var(--muted); margin: 8px 4px 0; }
 
 .scallop {
-  background: var(--ink); color: #fff; padding: 14px;
+  background: var(--scallop); color: #fff; padding: 14px;
   -webkit-mask: linear-gradient(#000 0 0) 10px 10px / calc(100% - 20px) calc(100% - 20px) no-repeat, radial-gradient(circle 10px, #000 97%, #0000) 0 0 / 20px 20px round;
   mask: linear-gradient(#000 0 0) 10px 10px / calc(100% - 20px) calc(100% - 20px) no-repeat, radial-gradient(circle 10px, #000 97%, #0000) 0 0 / 20px 20px round;
 }
-.scallop-in { background: #1b1b1b; border-radius: 10px; position: relative; overflow: hidden; padding: 20px 16px 18px; text-align: center; }
+.scallop-in { background: var(--scallop-in); border-radius: 10px; position: relative; overflow: hidden; padding: 20px 16px 18px; text-align: center; }
 
 .stamp-wrap { filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.07)); }
 .stamp {
-  background: #fafafa; padding: 16px; position: relative; overflow: hidden;
-  -webkit-mask: linear-gradient(#000 0 0) 6px 6px / calc(100% - 12px) calc(100% - 12px) no-repeat, radial-gradient(circle 4px at 6px 6px, #0000 96%, #000) -6px -6px / 12px 12px;
-  mask: linear-gradient(#000 0 0) 6px 6px / calc(100% - 12px) calc(100% - 12px) no-repeat, radial-gradient(circle 4px at 6px 6px, #0000 96%, #000) -6px -6px / 12px 12px;
+  /* Perforation painted in the page colour instead of a mask: iOS sometimes let the page show through a masked stamp. */
+  padding: 16px; position: relative; overflow: hidden;
+  background:
+    linear-gradient(#fafafa, #fafafa) 6px 6px / calc(100% - 12px) calc(100% - 12px) no-repeat,
+    radial-gradient(circle 4px at 6px 6px, var(--page) 96%, #fafafa) -6px -6px / 12px 12px;
 }
 
 .ticket { position: relative; background: var(--surface); border-radius: 20px; padding: 12px; filter: drop-shadow(0 10px 18px rgba(0, 0, 0, 0.07)); }
@@ -114,14 +150,14 @@ button { font-family: inherit; color: inherit; }
   border: none; background: var(--surface); color: var(--ink-2); border-radius: 100px;
   padding: 7px 14px; font-size: 12px; cursor: pointer;
 }
-.pill.on { background: var(--ink); color: #fff; }
+.pill.on { background: var(--ink); color: var(--on-ink); }
 
 .segmented { display: flex; background: var(--surface); border-radius: 100px; padding: 3px; }
 .segmented button {
   flex: 1; border: none; background: none; border-radius: 100px; padding: 9px; font-size: 14px; cursor: pointer; color: var(--ink-2);
 }
-.segmented button.on { background: var(--ink); color: #fff; }
-.segmented button.on.income { background: var(--ok); }
+.segmented button.on { background: var(--ink); color: var(--on-ink); }
+.segmented button.on.income { background: var(--ok); color: #fff; }
 
 .switch-row {
   display: flex; align-items: center; justify-content: space-between; gap: 12px;
@@ -129,11 +165,11 @@ button { font-family: inherit; color: inherit; }
 }
 .switch {
   appearance: none; -webkit-appearance: none; flex-shrink: 0; width: 44px; height: 26px; border-radius: 13px;
-  background: #d9d9d9; position: relative; cursor: pointer; transition: background .2s;
+  background: var(--switch-off); position: relative; cursor: pointer; transition: background .2s;
 }
 .switch::after {
   content: ''; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%;
-  background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.2); transition: transform .2s;
+  background: var(--on-ink); box-shadow: 0 1px 3px rgba(0,0,0,.2); transition: transform .2s;
 }
 .switch:checked { background: var(--ink); }
 .switch:checked::after { transform: translateX(18px); }
@@ -151,7 +187,7 @@ button { font-family: inherit; color: inherit; }
   max-width: 80%; align-self: flex-start; background: var(--surface); border-radius: 16px 16px 16px 4px;
   padding: 8px 12px; font-size: 14px; line-height: 1.35; overflow-wrap: anywhere;
 }
-.bubble.me { align-self: flex-end; background: var(--ink); color: #fff; border-radius: 16px 16px 4px 16px; cursor: pointer; }
+.bubble.me { align-self: flex-end; background: var(--ink); color: var(--on-ink); border-radius: 16px 16px 4px 16px; cursor: pointer; }
 .bubble-name { font-size: 11px; color: var(--muted); margin-bottom: 2px; }
 .comment-input { display: flex; gap: 8px; align-items: center; }
 
@@ -174,12 +210,12 @@ button { font-family: inherit; color: inherit; }
 .receipt-actions .btn { flex: 1; padding: 12px; font-size: 14px; }
 
 .celebration {
-  position: fixed; inset: 0; z-index: 500; background: #fff; display: flex; flex-direction: column;
+  position: fixed; inset: 0; z-index: 500; background: var(--stage); display: flex; flex-direction: column;
   align-items: center; justify-content: center; gap: 10px; text-align: center; cursor: pointer;
   padding: 24px 24px calc(env(safe-area-inset-bottom, 0px) + 24px); animation: fadeIn .25s ease;
 }
 .celebration-label {
-  font-family: var(--font-display); font-size: 11px; letter-spacing: .2em; text-transform: uppercase; color: #5f5f5f; margin-top: 8px;
+  font-family: var(--font-display); font-size: 11px; letter-spacing: .2em; text-transform: uppercase; color: var(--muted); margin-top: 8px;
 }
 .celebration-title { font-family: var(--font-display); font-weight: 300; font-size: 22px; }
 .celebration-sub { font-size: 14px; color: var(--muted); max-width: 300px; }
@@ -188,7 +224,7 @@ button { font-family: inherit; color: inherit; }
 .btn {
   display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%;
   padding: 15px; border: none; border-radius: 100px; font-size: 15px; font-weight: 400;
-  cursor: pointer; background: var(--ink); color: #fff; transition: opacity 0.2s;
+  cursor: pointer; background: var(--ink); color: var(--on-ink); transition: opacity 0.2s;
 }
 .btn:active { opacity: 0.75; }
 .btn:disabled { opacity: 0.4; }
@@ -203,14 +239,14 @@ button { font-family: inherit; color: inherit; }
   width: calc(100% - 32px); max-width: 488px;
   background: var(--surface); border-radius: 28px; padding: 7px;
   display: flex; justify-content: space-around;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 8px 24px var(--shadow);
 }
 .tab {
   width: 44px; height: 44px; border-radius: 50%; border: none; background: none;
-  color: #a0a0a0; display: flex; align-items: center; justify-content: center; cursor: pointer;
+  color: var(--muted); display: flex; align-items: center; justify-content: center; cursor: pointer;
   transition: background 0.2s, color 0.2s;
 }
-.tab.active { background: var(--ink); color: #fff; }
+.tab.active { background: var(--ink); color: var(--on-ink); }
 .tab.add { background: var(--blue); color: #fff; }
 
 /* Bottom sheet */
@@ -223,7 +259,7 @@ button { font-family: inherit; color: inherit; }
   padding: 10px 16px calc(20px + env(safe-area-inset-bottom, 0px));
   max-height: 88vh; overflow-y: auto; animation: slideUp 0.3s ease;
 }
-.sheet-grip { width: 36px; height: 4px; border-radius: 2px; background: #cfcfcf; margin: 0 auto 14px; }
+.sheet-grip { width: 36px; height: 4px; border-radius: 2px; background: var(--grip); margin: 0 auto 14px; }
 .sheet-title { font-family: var(--font-display); font-weight: 300; font-size: 16px; margin-bottom: 16px; }
 .sheet-actions { display: flex; gap: 8px; margin-top: 16px; }
 .sheet-actions .btn { flex: 1; }
@@ -239,7 +275,7 @@ button { font-family: inherit; color: inherit; }
   display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 10px; color: var(--ink-2);
 }
 .cat-btn .e { font-size: 20px; }
-.cat-btn.on { background: var(--ink); color: #fff; }
+.cat-btn.on { background: var(--ink); color: var(--on-ink); }
 .cat-btn span:last-child { max-width: 100%; line-height: 1.2; text-align: center; hyphens: auto; -webkit-hyphens: auto; overflow-wrap: break-word; padding: 0 2px; }
 
 .input-group { margin-bottom: 10px; }
@@ -292,9 +328,23 @@ button { font-family: inherit; color: inherit; }
 .recap-arrow.prev { left: 0; }
 .recap-arrow.next { right: 0; }
 .dots { display: flex; gap: 6px; justify-content: center; margin-top: 14px; }
-.dots span { width: 6px; height: 6px; border-radius: 3px; background: #c9c9c9; transition: all 0.25s; }
+.dots span { width: 6px; height: 6px; border-radius: 3px; background: var(--grip); transition: all 0.25s; }
 .dots span.on { width: 18px; background: var(--ink); }
 
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
 @keyframes bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+
+.envelope { margin-top: 14px; padding: 10px 12px; background: var(--surface-2); border-radius: 12px; text-align: left; }
+.row-btn { width: 100%; border: none; background: none; text-align: left; font: inherit; color: inherit; cursor: pointer; }
+.title-btn { border: none; background: none; color: inherit; cursor: pointer; display: flex; align-items: center; gap: 6px; padding: 0; min-width: 0; }
+.title-btn span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.tutorial {
+  position: fixed; inset: 0; z-index: 450; background: var(--bg); display: flex; flex-direction: column; align-items: center;
+  padding: calc(env(safe-area-inset-top, 0px) + 12px) 24px calc(env(safe-area-inset-bottom, 0px) + 24px); gap: 16px;
+  animation: fadeIn .25s ease;
+}
+.tutorial-skip { align-self: flex-end; border: none; background: none; color: var(--muted); font-size: 14px; min-height: 32px; cursor: pointer; }
+.tutorial-body { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; text-align: center; animation: fadeIn .3s ease; }
+.tutorial-text { font-size: 15px; line-height: 1.45; color: var(--ink-2); max-width: 320px; font-weight: 300; }

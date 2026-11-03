@@ -1,7 +1,7 @@
 import TelegramBot from 'node-telegram-bot-api';
 import db from './db.js';
 import { currentMonth, shiftMonth } from './insights.js';
-import { sendEveningReminders, onExpenseAdded } from './notify.js';
+import { sendEveningReminders, sendSavingsReminders, onExpenseAdded } from './notify.js';
 import { parseMessage } from './quickadd.js';
 import { buildExport } from './routes/files.js';
 import { readFileSync } from 'fs';
@@ -254,6 +254,7 @@ export function startBot() {
   sendMonthlyRecaps().catch(e => console.error('Recap send error:', e));
   setInterval(() => sendMonthlyRecaps().catch(e => console.error('Recap send error:', e)), 60 * 60 * 1000);
   setInterval(() => sendEveningReminders().catch(e => console.error('Reminder error:', e)), 10 * 60 * 1000);
+  setInterval(() => sendSavingsReminders().catch(e => console.error('Savings reminder error:', e)), 60 * 60 * 1000);
 }
 
 const money = (n, cur) => `${new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 2 }).format(n)} ${cur}`;
@@ -264,8 +265,8 @@ async function quickAddContext(telegramId) {
   if (!user) return { user: null };
   const budget = await db.prepare(`
     SELECT b.* FROM budgets b JOIN budget_members bm ON bm.budget_id = b.id
-    WHERE bm.user_id = ? ORDER BY bm.joined_at DESC LIMIT 1
-  `).get(user.id);
+    WHERE bm.user_id = ? ORDER BY b.id = ? DESC, bm.joined_at DESC LIMIT 1
+  `).get(user.id, user.active_budget_id || '');
   return { user, budget };
 }
 

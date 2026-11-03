@@ -2,14 +2,15 @@ import { useEffect, useRef } from 'react';
 
 // Sprite sheets of the penguin dances: frames tiled left-to-right, top-to-bottom.
 // Drawn on a canvas by a timer so they play everywhere, including iOS Low Power Mode.
+// Backgrounds are transparent; in the dark theme the ink turns white unless fixedInk (e.g. on a blue card).
 export const ANIMS = {
-  bump: { src: '/loading-sprite.png', frames: 28, cols: 7, size: 640, fps: 24 },
+  bump: { src: '/anim/bump.png', frames: 28, cols: 7, size: 640, fps: 24 },
   highfive: { src: '/anim/highfive.png', frames: 25, cols: 7, size: 560, fps: 24 },
   idle: { src: '/anim/idle.png', frames: 30, cols: 6, size: 480, fps: 12 },
   celebrate: { src: '/anim/celebrate.png', frames: 30, cols: 6, size: 520, fps: 12 },
 };
 
-export default function SpriteAnim({ name, width = 160, loops = Infinity, onDone, style }) {
+export default function SpriteAnim({ name, width = 160, loops = Infinity, onDone, fixedInk = false }) {
   const canvas = useRef(null);
   const done = useRef(onDone);
   done.current = onDone;
@@ -44,5 +45,5 @@ export default function SpriteAnim({ name, width = 160, loops = Infinity, onDone
     return () => { stopped = true; clearTimeout(timer); };
   }, [name, loops, a]);
 
-  return <canvas ref={canvas} width={a.size} height={a.size} style={{ width, height: width, display: 'block', ...style }} aria-hidden="true" />;
+  return <canvas ref={canvas} width={a.size} height={a.size} className={fixedInk ? undefined : 'sprite'} style={{ width, height: width, display: 'block' }} aria-hidden="true" />;
 }

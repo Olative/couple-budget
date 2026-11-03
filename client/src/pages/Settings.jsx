@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react';
-import { IconChevronLeft, IconFileSpreadsheet } from '@tabler/icons-react';
+import { IconChevronLeft, IconChevronRight, IconFileSpreadsheet, IconHelpCircle } from '@tabler/icons-react';
 import { api } from '../api/client';
 import CurrencyPicker from '../components/CurrencyPicker';
 import InviteCard from '../components/InviteCard';
+import { getThemePref, setThemePref } from '../theme';
 
-export default function Settings({ budget, user, onBack, onBudgetUpdate }) {
+export default function Settings({ budget, user, onBack, onBudgetUpdate, onOpenBudgets, onShowTutorial }) {
   const [budgetData, setBudgetData] = useState(null);
   const [prefs, setPrefs] = useState(null);
+  const [theme, setTheme] = useState(getThemePref);
 
   useEffect(() => {
     api.getBudget(budget.id).then(setBudgetData);
@@ -73,6 +75,10 @@ export default function Settings({ budget, user, onBack, onBudgetUpdate }) {
           <div className="row-main"><div className="row-name">Название</div></div>
           <span style={{ fontSize: 14 }}>{budget.name}</span>
         </div>
+        <button className="row row-btn" onClick={onOpenBudgets}>
+          <div className="row-main"><div className="row-name">Другие бюджеты</div><div className="row-sub">например, на поездку или с кем-то ещё</div></div>
+          <IconChevronRight size={16} color="var(--muted)" />
+        </button>
       </div>
       <CurrencyPicker value={budget.currency} onChange={changeCurrency} label="Валюта" />
 
@@ -133,6 +139,7 @@ export default function Settings({ budget, user, onBack, onBudgetUpdate }) {
             ['partner_activity', 'Траты, реакции и комментарии второго'],
             ['limits', 'Лимит категории почти или полностью потрачен'],
             ['reminder', 'Напомнить в 20:00, если за день ничего не записано'],
+            ['savings', 'Напомнить после 20-го, если план копилки не выполнен'],
           ].map(([key, label]) => (
             <label key={key} className="switch-row">
               <span>{label}</span>
@@ -141,6 +148,17 @@ export default function Settings({ budget, user, onBack, onBudgetUpdate }) {
           ))}
         </div>
       )}
+
+      <div className="section-label">Оформление</div>
+      <div className="segmented">
+        {[['auto', 'Как в Telegram'], ['light', 'Светлая'], ['dark', 'Тёмная']].map(([key, label]) => (
+          <button key={key} className={theme === key ? 'on' : ''} onClick={() => { setTheme(key); setThemePref(key); }}>{label}</button>
+        ))}
+      </div>
+
+      <button className="btn btn-secondary" style={{ marginTop: 8 }} onClick={onShowTutorial}>
+        <IconHelpCircle size={18} stroke={1.6} /> Как пользоваться
+      </button>
     </div>
   );
 }

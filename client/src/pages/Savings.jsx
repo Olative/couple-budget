@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { IconPlus, IconTrash } from '@tabler/icons-react';
+import { IconPlus, IconTrash, IconPencil } from '@tabler/icons-react';
 import { api } from '../api/client';
 import { GridLines, PenguinPair, Ring } from '../components/Art';
 import Sheet from '../components/Sheet';
@@ -28,6 +28,8 @@ export default function Savings({ budget }) {
   const [name, setName] = useState('');
   const [target, setTarget] = useState('');
   const [deadline, setDeadline] = useState('');
+  const [plan, setPlan] = useState('');
+  const [editing, setEditing] = useState(null);
   const [contributeAmount, setContributeAmount] = useState('');
   const [saving, setSaving] = useState(false);
   const [reached, setReached] = useState(null);
@@ -35,11 +37,21 @@ export default function Savings({ budget }) {
   const load = useCallback(() => { api.getSavings(budget.id).then(setGoals); }, [budget.id]);
   useEffect(() => { load(); }, [load]);
 
-  const addGoal = async () => {
+  const openForm = (goal) => {
+    setEditing(goal || null);
+    setName(goal?.name || '');
+    setTarget(goal ? String(goal.target_amount) : '');
+    setDeadline(goal?.deadline || '');
+    setPlan(goal?.monthly_plan ? String(goal.monthly_plan) : '');
+    setShowAdd(true);
+  };
+
+  const saveGoal = async () => {
     if (!name || !target) return;
     setSaving(true);
-    await api.addSavingsGoal(budget.id, { name, target_amount: Number(target), deadline: deadline || null });
-    setName(''); setTarget(''); setDeadline('');
+    const data = { name, target_amount: Number(target), deadline: deadline || null, monthly_plan: Number(plan) || 0 };
+    if (editing) await api.updateSavingsGoal(editing.id, data);
+    else await api.addSavingsGoal(budget.id, data);
     setShowAdd(false);
     setSaving(false);
     load();
@@ -71,14 +83,14 @@ export default function Savings({ budget }) {
     <div className="page">
       <div className="page-head">
         <div className="h-title">Копилка</div>
-        <button className="icon-btn dark" onClick={() => setShowAdd(true)} aria-label="Новая цель"><IconPlus size={18} /></button>
+        <button className="icon-btn dark" onClick={() => openForm(null)} aria-label="Новая цель"><IconPlus size={18} /></button>
       </div>
 
       {goals && goals.length === 0 && (
         <div className="empty">
           <SpriteAnim name="idle" width={120} />
           <div className="empty-text">На что копим вместе?</div>
-          <button className="btn" style={{ maxWidth: 220 }} onClick={() => setShowAdd(true)}>Создать цель</button>
+          <button className="btn" style={{ maxWidth: 220 }} onClick={() => openForm(null)}>Создать цель</button>
         </div>
       )}
 
@@ -87,6 +99,8 @@ export default function Savings({ budget }) {
         const targetAmount = Number(goal.target_amount);
         const percent = targetAmount > 0 ? (current / targetAmount) * 100 : 0;
         const eta = etaText({ ...goal, current_amount: current, target_amount: targetAmount });
+        const monthPlan = Number(goal.monthly_plan);
+        const monthSaved = Number(goal.month_saved);
         return (
           <div key={goal.id} className="stamp-wrap">
             <div className="stamp" style={{ padding: '22px 18px 20px', textAlign: 'center' }}>
@@ -101,8 +115,22 @@ export default function Savings({ budget }) {
                   из {money(targetAmount, cur)} · {Math.round(percent)}%
                 </div>
                 <div className={eta.tone} style={{ fontSize: 12, marginTop: 8, color: eta.tone ? undefined : 'var(--ink-2)' }}>{eta.text}</div>
+                {monthPlan > 0 && current < targetAmount && (
+                  <div className="envelope">
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
+                      <span>В этом месяце</span>
+                      <span className="num" style={{ fontSize: 12 }}>{money(monthSaved, cur)} <span className="muted">из {money(monthPlan, cur)}</span></span>
+                    </div>
+                    <div className="progress">
+                      <div className="progress-fill" style={{ width: `${Math.min(100, (monthSaved / monthPlan) * 100)}%`, background: monthSaved >= monthPlan ? 'var(--ok)' : 'var(--ink)' }} />
+                    </div>
+                  </div>
+                )}
                 <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
                   <button className="btn" onClick={() => { setContributeTo(goal); setContributeAmount(''); }}>Пополнить</button>
+                  <button className="icon-btn" style={{ width: 50, height: 50, background: 'var(--surface-2)' }} onClick={() => openForm(goal)} aria-label="Изменить цель">
+                    <IconPencil size={18} stroke={1.5} />
+                  </button>
                   <button className="icon-btn" style={{ width: 50, height: 50, background: 'var(--surface-2)' }} onClick={() => remove(goal)} aria-label="Удалить цель">
                     <IconTrash size={18} stroke={1.5} />
                   </button>
@@ -114,7 +142,7 @@ export default function Savings({ budget }) {
       })}
 
       {showAdd && (
-        <Sheet title="Новая цель" onClose={() => setShowAdd(false)}>
+        <Sheet title={editing ? 'Цель' : 'Новая цель'} onClose={() => setShowAdd(false)}>
           <div className="input-group">
             <label className="input-label">На что копим?</label>
             <input className="input" placeholder="Поездка в Японию" value={name} onChange={e => setName(e.target.value)} />
@@ -127,9 +155,14 @@ export default function Savings({ budget }) {
             <label className="input-label">К какому сроку (необязательно)</label>
             <input className="input" type="date" value={deadline} onChange={e => setDeadline(e.target.value)} />
           </div>
+          <div className="input-group">
+            <label className="input-label">Откладывать каждый месяц (необязательно)</label>
+            <input className="input" type="number" inputMode="numeric" placeholder={`10 000 ${cur}`} value={plan} onChange={e => setPlan(e.target.value)} />
+            <div className="row-sub" style={{ margin: '6px 4px 0' }}>Покажем, сколько отложено в этом месяце, а бот напомнит после 20-го, если план не выполнен</div>
+          </div>
           <div className="sheet-actions">
             <button className="btn btn-secondary" onClick={() => setShowAdd(false)}>Отмена</button>
-            <button className="btn" onClick={addGoal} disabled={saving || !name || !target}>{saving ? 'Создаём…' : 'Создать'}</button>
+            <button className="btn" onClick={saveGoal} disabled={saving || !name || !target}>{saving ? 'Сохраняем…' : editing ? 'Сохранить' : 'Создать'}</button>
           </div>
         </Sheet>
       )}

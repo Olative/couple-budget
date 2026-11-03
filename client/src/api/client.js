@@ -63,6 +63,9 @@ export const api = {
   deleteComment: (id) => request(`/comments/${id}`, { method: 'DELETE' }),
   getNotify: () => request('/me/notify'),
   setNotify: (data) => request('/me/notify', { method: 'PUT', body: JSON.stringify(data) }),
+  getMyBudgets: () => request('/me/budgets'),
+  setActiveBudget: (budgetId) => request('/me/active-budget', { method: 'PUT', body: JSON.stringify({ budget_id: budgetId }) }),
+  setTutorialDone: (done) => request('/me/tutorial', { method: 'PUT', body: JSON.stringify({ done }) }),
 
   getBalance: (budgetId) => request(`/budgets/${budgetId}/balance`),
   settle: (budgetId) => request(`/budgets/${budgetId}/settle`, { method: 'POST' }),
@@ -83,5 +86,6 @@ export const api = {
   getSavings: (budgetId) => request(`/budgets/${budgetId}/savings`),
   addSavingsGoal: (budgetId, data) => request(`/budgets/${budgetId}/savings`, { method: 'POST', body: JSON.stringify(data) }),
   contributeSavings: (goalId, amount) => request(`/savings/${goalId}/contribute`, { method: 'POST', body: JSON.stringify({ amount }) }),
+  updateSavingsGoal: (id, data) => request(`/savings/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   deleteSavingsGoal: (id) => request(`/savings/${id}`, { method: 'DELETE' }),
 };

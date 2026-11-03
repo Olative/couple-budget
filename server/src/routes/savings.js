@@ -1,19 +1,20 @@
 import { Router } from 'express';
 import db from '../db.js';
-import { goalEta } from '../insights.js';
+import { goalEta, currentMonth } from '../insights.js';
 
 const router = Router();
 
 router.get('/budgets/:budgetId/savings', async (req, res) => {
   const goals = await db.prepare(`
-    SELECT sg.id, sg.budget_id, sg.name, sg.target_amount, sg.icon, sg.deadline, sg.created_at,
-           COALESCE(SUM(sc.amount), 0) as current_amount
+    SELECT sg.id, sg.budget_id, sg.name, sg.target_amount, sg.icon, sg.deadline, sg.created_at, sg.monthly_plan,
+           COALESCE(SUM(sc.amount), 0) as current_amount,
+           COALESCE(SUM(CASE WHEN sc.created_at LIKE ? THEN sc.amount END), 0) as month_saved
     FROM savings_goals sg
     LEFT JOIN savings_contributions sc ON sg.id = sc.goal_id
     WHERE sg.budget_id = ?
     GROUP BY sg.id
     ORDER BY sg.created_at DESC
-  `).all(req.params.budgetId);
+  `).all(`${currentMonth()}%`, req.params.budgetId);
 
   const withEta = [];
   for (const g of goals) {
@@ -24,14 +25,23 @@ router.get('/budgets/:budgetId/savings', async (req, res) => {
 });
 
 router.post('/budgets/:budgetId/savings', async (req, res) => {
-  const { name, target_amount, icon, deadline } = req.body;
+  const { name, target_amount, icon, deadline, monthly_plan } = req.body;
   if (!name || !target_amount) {
     return res.status(400).json({ error: 'name and target_amount required' });
   }
 
-  const result = await db.prepare('INSERT INTO savings_goals (budget_id, name, target_amount, icon, deadline) VALUES (?, ?, ?, ?, ?) RETURNING *')
-    .get(req.params.budgetId, name, target_amount, icon || '🎯', deadline || null);
+  const result = await db.prepare('INSERT INTO savings_goals (budget_id, name, target_amount, icon, deadline, monthly_plan) VALUES (?, ?, ?, ?, ?, ?) RETURNING *')
+    .get(req.params.budgetId, name, target_amount, icon || '🎯', deadline || null, Math.max(0, Number(monthly_plan) || 0));
   res.json(result);
+});
+
+router.put('/savings/:id', async (req, res) => {
+  const { name, target_amount, deadline, monthly_plan } = req.body;
+  await db.prepare(`
+    UPDATE savings_goals SET name = COALESCE(?, name), target_amount = COALESCE(?, target_amount),
+      deadline = ?, monthly_plan = ? WHERE id = ?
+  `).run(name || null, Number(target_amount) || null, deadline || null, Math.max(0, Number(monthly_plan) || 0), req.params.id);
+  res.json(await db.prepare('SELECT * FROM savings_goals WHERE id = ?').get(req.params.id));
 });
 
 router.post('/savings/:goalId/contribute', async (req, res) => {
