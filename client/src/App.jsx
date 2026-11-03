@@ -9,7 +9,7 @@ import Settings from './pages/Settings';
 import Welcome from './pages/Welcome';
 import AddExpenseSheet from './components/AddExpenseSheet';
 import Recap from './components/Recap';
-import BudgetSheet from './components/BudgetSheet';
+import BudgetSheet, { prefetchBudgets } from './components/BudgetSheet';
 import Tutorial from './components/Tutorial';
 import Tour from './components/Tour';
 import { paintTelegram } from './theme';
@@ -99,6 +99,7 @@ export default function App() {
       }
       setActiveBudget(active);
       setLoading(false);
+      prefetchBudgets();
     }).catch(() => setLoading(false));
   }, []);
 

@@ -4,15 +4,19 @@ import { api } from '../api/client';
 import Sheet from './Sheet';
 import CurrencyPicker from './CurrencyPicker';
 
+// The list is fetched when the app starts, so the sheet opens already filled.
+let cached = null;
+export const prefetchBudgets = () => api.getMyBudgets().then(b => { cached = b; return b; }).catch(() => {});
+
 // Switch between budgets (home, a trip, with mom) or start a new one.
 export default function BudgetSheet({ current, onPick, onClose }) {
-  const [budgets, setBudgets] = useState(null);
+  const [budgets, setBudgets] = useState(cached || [current]);
   const [creating, setCreating] = useState(false);
   const [name, setName] = useState('');
   const [currency, setCurrency] = useState(current.currency);
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => { api.getMyBudgets().then(setBudgets); }, []);
+  useEffect(() => { prefetchBudgets().then(b => b && setBudgets(b)); }, []);
 
   const pick = async (b) => {
     if (b.id !== current.id) {
@@ -25,6 +29,7 @@ export default function BudgetSheet({ current, onPick, onClose }) {
   const create = async () => {
     setSaving(true);
     const b = await api.createBudget({ name: name || 'Новый бюджет', currency });
+    cached = null;
     onPick(b);
     onClose();
   };
