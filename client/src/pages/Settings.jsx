@@ -3,13 +3,25 @@ import { IconChevronLeft, IconChevronRight, IconFileSpreadsheet, IconHelpCircle 
 import { api } from '../api/client';
 import CurrencyPicker from '../components/CurrencyPicker';
 import InviteCard from '../components/InviteCard';
+import Sheet from '../components/Sheet';
 import { getThemePref, setThemePref } from '../theme';
 
-export default function Settings({ budget, user, onBack, onBudgetUpdate, onOpenBudgets, onShowTutorial }) {
+export default function Settings({ budget, user, onBack, onBudgetUpdate, onOpenBudgets, onShowTutorial, onBudgetReset }) {
   const [budgetData, setBudgetData] = useState(null);
   const [prefs, setPrefs] = useState(null);
   const [theme, setTheme] = useState(getThemePref);
   const [name, setName] = useState(budget.name);
+  const [resetOpen, setResetOpen] = useState(false);
+  const [removePartner, setRemovePartner] = useState(false);
+  const [resetting, setResetting] = useState(false);
+
+  const reset = async () => {
+    setResetting(true);
+    await api.resetBudget(budget.id, removePartner);
+    setResetting(false);
+    setResetOpen(false);
+    onBudgetReset();
+  };
 
   const saveName = async () => {
     const next = name.trim();
@@ -174,6 +186,34 @@ export default function Settings({ budget, user, onBack, onBudgetUpdate, onOpenB
       <button className="btn btn-secondary" style={{ marginTop: 8 }} onClick={onShowTutorial}>
         <IconHelpCircle size={18} stroke={1.6} /> Как пользоваться
       </button>
+
+      <button className="btn btn-danger" onClick={() => { setRemovePartner(false); setResetOpen(true); }}>Очистить бюджет</button>
+
+      {resetOpen && (
+        <Sheet title="Очистить бюджет?" onClose={() => setResetOpen(false)}>
+          <div className="card-pad" style={{ fontSize: 14, lineHeight: 1.45, fontWeight: 300 }}>
+            Удалятся все траты и доходы, цели копилки, регулярные платежи, личные траты и лимиты. Останутся название, валюта и категории.
+            <div className="warn" style={{ marginTop: 8 }}>Вернуть удалённое не получится.</div>
+          </div>
+          {partner && (
+            <label className="switch-row" style={{ marginTop: 8 }}>
+              <span>
+                Убрать {partner.first_name} из бюджета
+                <span className="row-sub" style={{ display: 'block', marginTop: 2 }}>
+                  {removePartner ? 'Старая ссылка-приглашение перестанет работать' : `${partner.first_name} останется в бюджете`}
+                </span>
+              </span>
+              <input type="checkbox" className="switch" checked={removePartner} onChange={e => setRemovePartner(e.target.checked)} />
+            </label>
+          )}
+          <div className="sheet-actions">
+            <button className="btn btn-secondary" onClick={() => setResetOpen(false)}>Отмена</button>
+            <button className="btn" style={{ background: 'var(--danger)', color: '#fff' }} disabled={resetting} onClick={reset}>
+              {resetting ? 'Очищаем…' : 'Очистить'}
+            </button>
+          </div>
+        </Sheet>
+      )}
     </div>
   );
 }

@@ -64,6 +64,7 @@ export const api = {
   getNotify: () => request('/me/notify'),
   setNotify: (data) => request('/me/notify', { method: 'PUT', body: JSON.stringify(data) }),
   getMyBudgets: () => request('/me/budgets'),
+  resetBudget: (budgetId, removePartner) => request(`/budgets/${budgetId}/reset`, { method: 'POST', body: JSON.stringify({ remove_partner: removePartner }) }),
   setActiveBudget: (budgetId) => request('/me/active-budget', { method: 'PUT', body: JSON.stringify({ budget_id: budgetId }) }),
   setTutorialDone: (done) => request('/me/tutorial', { method: 'PUT', body: JSON.stringify({ done }) }),
 

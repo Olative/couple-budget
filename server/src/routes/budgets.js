@@ -4,6 +4,7 @@ import crypto from 'crypto';
 import db from '../db.js';
 import { buildForecast, buildRecap, currentMonth, shiftMonth, materializeRecurring } from '../insights.js';
 import { inviteLink } from '../bot.js';
+import { notifyPartners } from '../notify.js';
 
 const router = Router();
 
@@ -99,6 +100,46 @@ router.put('/budgets/:id', async (req, res) => {
 
   const updated = await db.prepare('SELECT * FROM budgets WHERE id = ?').get(req.params.id);
   res.json(updated);
+});
+
+// Start the budget over: drop every record, keep the budget and its categories, optionally the second member.
+router.post('/budgets/:id/reset', async (req, res) => {
+  const { id } = req.params;
+  const member = await db.prepare('SELECT 1 FROM budget_members WHERE budget_id = ? AND user_id = ?').get(id, req.userId);
+  if (!member) return res.status(403).json({ error: 'Нет доступа' });
+  const removePartner = !!req.body.remove_partner;
+  const budget = await db.prepare('SELECT name FROM budgets WHERE id = ?').get(id);
+
+  await notifyPartners(id, req.userId, removePartner
+    ? `🐧 ${req.user.first_name}: бюджет «${budget.name}» очищен и начат заново. Вы больше не участник этого бюджета.`
+    : `🐧 ${req.user.first_name}: бюджет «${budget.name}» очищен — траты, доходы и копилка начинаются с нуля.`);
+
+  const expenseIds = `SELECT id FROM expenses WHERE budget_id = ?`;
+  const goalIds = `SELECT id FROM savings_goals WHERE budget_id = ?`;
+  const statements = [
+    { sql: `DELETE FROM reactions WHERE expense_id IN (${expenseIds})`, args: [id] },
+    { sql: `DELETE FROM comments WHERE expense_id IN (${expenseIds})`, args: [id] },
+    { sql: `DELETE FROM receipts WHERE expense_id IN (${expenseIds})`, args: [id] },
+    { sql: 'DELETE FROM expenses WHERE budget_id = ?', args: [id] },
+    { sql: 'DELETE FROM incomes WHERE budget_id = ?', args: [id] },
+    { sql: `DELETE FROM savings_contributions WHERE goal_id IN (${goalIds})`, args: [id] },
+    { sql: `DELETE FROM savings_alerts WHERE goal_id IN (${goalIds})`, args: [id] },
+    { sql: 'DELETE FROM savings_goals WHERE budget_id = ?', args: [id] },
+    { sql: 'DELETE FROM recurring WHERE budget_id = ?', args: [id] },
+    { sql: 'DELETE FROM settlements WHERE budget_id = ?', args: [id] },
+    { sql: 'DELETE FROM personal_expenses WHERE budget_id = ?', args: [id] },
+    { sql: 'DELETE FROM recap_sent WHERE budget_id = ?', args: [id] },
+    { sql: 'DELETE FROM limit_alerts WHERE category_id IN (SELECT id FROM categories WHERE budget_id = ?)', args: [id] },
+    { sql: 'UPDATE categories SET planned_amount = 0 WHERE budget_id = ?', args: [id] },
+    { sql: 'UPDATE budget_members SET share = NULL, personal_limit = 0 WHERE budget_id = ?', args: [id] },
+  ];
+  if (removePartner) {
+    statements.push({ sql: 'DELETE FROM budget_members WHERE budget_id = ? AND user_id != ?', args: [id, req.userId] });
+    // A fresh invite code so the old link no longer lets the removed member back in.
+    statements.push({ sql: 'UPDATE budgets SET invite_code = ? WHERE id = ?', args: [crypto.randomBytes(6).toString('hex'), id] });
+  }
+  await db.batch(statements);
+  res.json({ ok: true });
 });
 
 router.get('/budgets/:id/summary', async (req, res) => {
