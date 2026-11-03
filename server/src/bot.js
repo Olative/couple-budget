@@ -1,7 +1,8 @@
 import TelegramBot from 'node-telegram-bot-api';
 import db from './db.js';
 import { currentMonth, shiftMonth } from './insights.js';
-import { sendEveningReminders } from './notify.js';
+import { sendEveningReminders, onExpenseAdded } from './notify.js';
+import { parseMessage } from './quickadd.js';
 
 const BOT_TOKEN = process.env.BOT_TOKEN;
 const WEB_APP_URL = process.env.WEB_APP_URL || 'https://couple-budget-z17f.onrender.com';
@@ -110,6 +111,7 @@ export function startBot() {
   bot.onText(/^\/help/, async (msg) => {
     if (!(await firstTime(msgKey(msg)))) return;
     let text = 'Всё самое важное — в приложении: нажмите кнопку «Открыть» внизу или кнопку под этим сообщением.\n\n' +
+      'А траты можно записывать прямо здесь — просто напишите:\n«кофе 250», «такси 300 вчера», «+5000 подработка»\n\n' +
       '/start — открыть приложение\n/myid — узнать свой Telegram ID';
     if (isAdmin(msg)) {
       text += '\n\nДля администратора:\n/stats — статистика\n/broadcast текст — рассылка всем пользователям';
@@ -190,6 +192,18 @@ export function startBot() {
     bot.sendMessage(chatId, `Готово ✅\nДоставлено: ${sent}${failed ? `\nНе доставлено: ${failed} (пользователь не запускал бота или заблокировал его)` : ''}`);
   });
 
+  bot.on('message', async (msg) => {
+    if (!msg.text || msg.text.startsWith('/') || msg.chat.type !== 'private') return;
+    if (!(await firstTime(msgKey(msg)))) return;
+    handleQuickAdd(msg).catch(e => console.error('Quick add failed:', e));
+  });
+
+  bot.on('callback_query', async (q) => {
+    if (!q.data?.startsWith('qa:')) return;
+    if (!(await firstTime(`cb:${q.id}`))) return;
+    handleQuickAddCallback(q).catch(e => console.error('Quick add callback failed:', e));
+  });
+
   bot.on('polling_error', (err) => {
     console.error('Bot polling error:', err.message);
   });
@@ -199,6 +213,101 @@ export function startBot() {
   sendMonthlyRecaps().catch(e => console.error('Recap send error:', e));
   setInterval(() => sendMonthlyRecaps().catch(e => console.error('Recap send error:', e)), 60 * 60 * 1000);
   setInterval(() => sendEveningReminders().catch(e => console.error('Reminder error:', e)), 10 * 60 * 1000);
+}
+
+const money = (n, cur) => `${new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 2 }).format(n)} ${cur}`;
+const SOURCE_NAMES = { salary: '💼 Зарплата', side: '💻 Подработка', gift: '🎁 Подарок', refund: '↩️ Возврат, кешбэк', other: '💰 Другое' };
+
+async function quickAddContext(telegramId) {
+  const user = await db.prepare('SELECT * FROM users WHERE telegram_id = ?').get(telegramId);
+  if (!user) return { user: null };
+  const budget = await db.prepare(`
+    SELECT b.* FROM budgets b JOIN budget_members bm ON bm.budget_id = b.id
+    WHERE bm.user_id = ? ORDER BY bm.joined_at DESC LIMIT 1
+  `).get(user.id);
+  return { user, budget };
+}
+
+function quickAddReply(kind, rec, budget, categoryLabel) {
+  const title = rec.description ? `${rec.description} — ` : '';
+  const text = `✅ Записано: ${title}${kind === 'income' ? '+' : ''}${money(Number(rec.amount), budget.currency)}\n` +
+    `${kind === 'income' ? 'Доход' : 'Категория'}: ${categoryLabel}` +
+    (rec.date !== new Date().toISOString().slice(0, 10) ? `\nДата: ${Number(rec.date.slice(8, 10))}.${rec.date.slice(5, 7)}` : '');
+  const t = kind === 'income' ? 'i' : 'e';
+  const row = [{ text: 'Отменить', callback_data: `qa:undo:${t}:${rec.id}` }];
+  if (kind === 'expense') row.unshift({ text: 'Другая категория', callback_data: `qa:cats:${rec.id}` });
+  return { text, extra: { reply_markup: { inline_keyboard: [row] } } };
+}
+
+async function handleQuickAdd(msg) {
+  const { user, budget } = await quickAddContext(msg.from.id);
+  if (!user || !budget) {
+    await bot.sendMessage(msg.chat.id, 'Сначала откройте приложение и создайте бюджет — тогда траты можно будет записывать прямо здесь.', openButton());
+    return;
+  }
+  const prefs = await db.prepare('SELECT tz_offset FROM notify_prefs WHERE user_id = ?').get(user.id);
+  const categories = await db.prepare('SELECT * FROM categories WHERE budget_id = ? ORDER BY sort_order').all(budget.id);
+  const parsed = parseMessage(msg.text, categories, Number(prefs?.tz_offset || 0));
+  if (!parsed) {
+    await bot.sendMessage(msg.chat.id, 'Чтобы записать трату, напишите сумму и на что, например:\n«кофе 250», «такси 300 вчера»\n\nДоход — с плюсом: «+5000 подработка»');
+    return;
+  }
+
+  if (parsed.kind === 'income') {
+    const rec = await db.prepare('INSERT INTO incomes (budget_id, user_id, amount, source, description, date) VALUES (?, ?, ?, ?, ?, ?) RETURNING *')
+      .get(budget.id, user.id, parsed.amount, parsed.source, parsed.description, parsed.date);
+    const r = quickAddReply('income', rec, budget, SOURCE_NAMES[parsed.source]);
+    await bot.sendMessage(msg.chat.id, r.text, r.extra);
+    return;
+  }
+
+  const rec = await db.prepare('INSERT INTO expenses (budget_id, category_id, user_id, amount, description, date) VALUES (?, ?, ?, ?, ?, ?) RETURNING *')
+    .get(budget.id, parsed.category.id, user.id, parsed.amount, parsed.description, parsed.date);
+  const r = quickAddReply('expense', rec, budget, `${parsed.category.icon} ${parsed.category.name}`);
+  await bot.sendMessage(msg.chat.id, r.text, r.extra);
+  await onExpenseAdded(rec, user);
+}
+
+async function handleQuickAddCallback(q) {
+  const [, action, a, b] = q.data.split(':');
+  const chat = { chat_id: q.message.chat.id, message_id: q.message.message_id };
+  const { user, budget } = await quickAddContext(q.from.id);
+  await bot.answerCallbackQuery(q.id).catch(() => {});
+  if (!user || !budget) return;
+
+  if (action === 'undo') {
+    const table = a === 'i' ? 'incomes' : 'expenses';
+    const rec = await db.prepare(`SELECT * FROM ${table} WHERE id = ? AND user_id = ?`).get(b, user.id);
+    if (!rec) return;
+    if (table === 'expenses') {
+      await db.prepare('DELETE FROM reactions WHERE expense_id = ?').run(rec.id);
+      await db.prepare('DELETE FROM comments WHERE expense_id = ?').run(rec.id);
+    }
+    await db.prepare(`DELETE FROM ${table} WHERE id = ?`).run(rec.id);
+    await bot.editMessageText(`❌ Отменено: ${rec.description ? `${rec.description} — ` : ''}${money(Number(rec.amount), budget.currency)}`, chat);
+    return;
+  }
+
+  const rec = await db.prepare('SELECT * FROM expenses WHERE id = ? AND user_id = ?').get(a, user.id);
+  if (!rec) return;
+  const categories = await db.prepare('SELECT * FROM categories WHERE budget_id = ? ORDER BY sort_order').all(rec.budget_id);
+
+  if (action === 'cats') {
+    const rows = [];
+    for (let i = 0; i < categories.length; i += 2) {
+      rows.push(categories.slice(i, i + 2).map(c => ({ text: `${c.icon} ${c.name}`, callback_data: `qa:cat:${rec.id}:${c.id}` })));
+    }
+    await bot.editMessageReplyMarkup({ inline_keyboard: rows }, chat);
+    return;
+  }
+
+  if (action === 'cat') {
+    const cat = categories.find(c => String(c.id) === b);
+    if (!cat) return;
+    await db.prepare('UPDATE expenses SET category_id = ? WHERE id = ?').run(cat.id, rec.id);
+    const r = quickAddReply('expense', rec, budget, `${cat.icon} ${cat.name}`);
+    await bot.editMessageText(r.text, { ...chat, ...r.extra });
+  }
 }
 
 const MONTHS_GEN = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
