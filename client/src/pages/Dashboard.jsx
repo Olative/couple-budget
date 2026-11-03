@@ -3,7 +3,6 @@ import { IconChevronLeft, IconChevronRight, IconChevronDown, IconSettings, IconA
 import { api } from '../api/client';
 import { GridLines, Penguin, PenguinPair } from '../components/Art';
 import InviteCard from '../components/InviteCard';
-import SpriteAnim from '../components/SpriteAnim';
 import Celebration from '../components/Celebration';
 import { money, MONTHS, MONTHS_GEN, MONTHS_PREP, shiftMonth, thisMonth, confirmAction } from '../format';
 
@@ -269,7 +268,7 @@ export default function Dashboard({ budget, user, refreshKey, onAdd, onOpenRecap
         </div>
       ) : (
         <div className="empty">
-          <SpriteAnim name="idle" width={120} />
+          <PenguinPair height={70} />
           <div className="empty-text">В этом месяце трат пока нет</div>
           <button className="btn" style={{ maxWidth: 220 }} onClick={onAdd}>Добавить расход</button>
         </div>

@@ -16,12 +16,10 @@ router.get('/budgets/:budgetId/savings', async (req, res) => {
     ORDER BY sg.created_at DESC
   `).all(`${currentMonth()}%`, req.params.budgetId);
 
-  const withEta = [];
-  for (const g of goals) {
+  res.json(await Promise.all(goals.map(async g => {
     const { monthlyRate, etaMonth } = await goalEta(g.id, Number(g.current_amount), Number(g.target_amount));
-    withEta.push({ ...g, monthly_rate: monthlyRate, eta_month: etaMonth });
-  }
-  res.json(withEta);
+    return { ...g, monthly_rate: monthlyRate, eta_month: etaMonth };
+  })));
 });
 
 router.post('/budgets/:budgetId/savings', async (req, res) => {

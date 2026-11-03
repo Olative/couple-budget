@@ -70,18 +70,20 @@ router.put('/budgets/:id/shares', async (req, res) => {
 
 router.get('/budgets/:id/personal', async (req, res) => {
   const month = /^\d{4}-\d{2}$/.test(req.query.month || '') ? req.query.month : currentMonth();
-  const items = await db.prepare(`
-    SELECT p.*, c.name as category_name, c.icon as category_icon
-    FROM personal_expenses p LEFT JOIN categories c ON c.id = p.category_id
-    WHERE p.budget_id = ? AND p.user_id = ?
-    ORDER BY p.date DESC, p.created_at DESC LIMIT 100
-  `).all(req.params.id, req.userId);
-  const totals = await db.prepare(`
-    SELECT u.id, u.first_name, bm.personal_limit,
-      (SELECT COALESCE(SUM(p.amount), 0) FROM personal_expenses p WHERE p.budget_id = bm.budget_id AND p.user_id = u.id AND p.date LIKE ?) as spent
-    FROM budget_members bm JOIN users u ON u.id = bm.user_id
-    WHERE bm.budget_id = ? ORDER BY bm.joined_at
-  `).all(`${month}%`, req.params.id);
+  const [items, totals] = await Promise.all([
+    db.prepare(`
+      SELECT p.*, c.name as category_name, c.icon as category_icon
+      FROM personal_expenses p LEFT JOIN categories c ON c.id = p.category_id
+      WHERE p.budget_id = ? AND p.user_id = ?
+      ORDER BY p.date DESC, p.created_at DESC LIMIT 100
+    `).all(req.params.id, req.userId),
+    db.prepare(`
+      SELECT u.id, u.first_name, bm.personal_limit,
+        (SELECT COALESCE(SUM(p.amount), 0) FROM personal_expenses p WHERE p.budget_id = bm.budget_id AND p.user_id = u.id AND p.date LIKE ?) as spent
+      FROM budget_members bm JOIN users u ON u.id = bm.user_id
+      WHERE bm.budget_id = ? ORDER BY bm.joined_at
+    `).all(`${month}%`, req.params.id),
+  ]);
   res.json({
     items,
     members: totals.map(t => ({ id: t.id, first_name: t.first_name, limit: Number(t.personal_limit), spent: Number(t.spent) })),

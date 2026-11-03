@@ -18,7 +18,14 @@ const pad2 = (n) => String(n).padStart(2, '0');
 
 // Creates the expense/income entries recurring rules owe up to today. Each month is claimed with a
 // conditional UPDATE first, so two requests running at once can't create the same entry twice.
-export async function materializeRecurring(budgetId) {
+// Recurring entries only appear once a day, so a budget is checked at most every few minutes.
+const lastMaterialized = new Map();
+const MATERIALIZE_EVERY_MS = 5 * 60 * 1000;
+
+export async function materializeRecurring(budgetId, { force = false } = {}) {
+  const last = lastMaterialized.get(budgetId);
+  if (!force && last && Date.now() - last < MATERIALIZE_EVERY_MS) return;
+  lastMaterialized.set(budgetId, Date.now());
   const rules = await db.prepare('SELECT * FROM recurring WHERE budget_id = ?').all(budgetId);
   const now = currentMonth();
   const today = new Date().getUTCDate();
@@ -88,21 +95,22 @@ export async function buildForecast(budgetId, month) {
   const isCurrent = month === now;
   const day = isCurrent ? new Date().getUTCDate() : month < now ? dim : 0;
 
-  const cats = await db.prepare(`
-    SELECT c.id, c.planned_amount, COALESCE(SUM(e.amount), 0) as spent,
-      COALESCE(SUM(CASE WHEN e.recurring_id IS NOT NULL THEN e.amount END), 0) as fixed
-    FROM categories c
-    LEFT JOIN expenses e ON c.id = e.category_id AND e.date LIKE ?
-    WHERE c.budget_id = ?
-    GROUP BY c.id
-  `).all(`${month}%`, budgetId);
-
   // Recurring expenses still due later this month are known in advance, not projected from pace.
-  const pendingRows = isCurrent ? await db.prepare(`
-    SELECT category_id, SUM(amount) as s FROM recurring
-    WHERE budget_id = ? AND kind = 'expense' AND start_month <= ? AND (last_month IS NULL OR last_month < ?)
-    GROUP BY category_id
-  `).all(budgetId, month, month) : [];
+  const [cats, pendingRows] = await Promise.all([
+    db.prepare(`
+      SELECT c.id, c.planned_amount, COALESCE(SUM(e.amount), 0) as spent,
+        COALESCE(SUM(CASE WHEN e.recurring_id IS NOT NULL THEN e.amount END), 0) as fixed
+      FROM categories c
+      LEFT JOIN expenses e ON c.id = e.category_id AND e.date LIKE ?
+      WHERE c.budget_id = ?
+      GROUP BY c.id
+    `).all(`${month}%`, budgetId),
+    isCurrent ? db.prepare(`
+      SELECT category_id, SUM(amount) as s FROM recurring
+      WHERE budget_id = ? AND kind = 'expense' AND start_month <= ? AND (last_month IS NULL OR last_month < ?)
+      GROUP BY category_id
+    `).all(budgetId, month, month) : [],
+  ]);
   const pending = Object.fromEntries(pendingRows.map(r => [r.category_id, Number(r.s)]));
 
   const spent = cats.reduce((s, c) => s + Number(c.spent), 0);
@@ -125,9 +133,9 @@ export async function buildForecast(budgetId, month) {
     return { id: c.id, spent: catSpent, planned: catPlanned, runsOutDay, exhausted };
   });
 
-  const typical = await typicalMonth(budgetId, month);
   const prev = shiftMonth(now, -1);
-  const recapMonth = (await monthTotal(budgetId, prev)) > 0 ? prev : null;
+  const [typical, prevTotal] = await Promise.all([typicalMonth(budgetId, month), monthTotal(budgetId, prev)]);
+  const recapMonth = prevTotal > 0 ? prev : null;
 
   return { month, isCurrent, day, daysInMonth: dim, spent, planned, projected, categories, typical, recapMonth };
 }

@@ -49,7 +49,8 @@
   --shadow: rgba(0, 0, 0, 0.5);
   color-scheme: dark;
 }
-:root[data-theme="dark"] .sprite { filter: invert(1); }
+:root[data-theme="dark"] .sprite,
+:root[data-theme="dark"] .empty svg { filter: invert(1); }
 
 /* Postage-stamp cards stay paper-white in both themes. */
 .stamp { --ink: #111111; --ink-2: #444444; --muted: #9a9a9a; --surface-2: #efefef; --on-ink: #ffffff; --line: #e6e6e6; color: var(--ink); }

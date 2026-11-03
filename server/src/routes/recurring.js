@@ -39,7 +39,7 @@ router.post('/budgets/:budgetId/recurring', async (req, res) => {
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING *
   `).get(budgetId, req.userId, kind, amount, categoryId, source, req.body.description || null, Number(date.slice(8, 10)), date.slice(0, 7));
 
-  await materializeRecurring(budgetId);
+  await materializeRecurring(budgetId, { force: true });
   res.json(rule);
 });
 

@@ -3,7 +3,6 @@ import { IconPlus, IconTrash, IconPencil } from '@tabler/icons-react';
 import { api } from '../api/client';
 import { GridLines, PenguinPair, Ring } from '../components/Art';
 import Sheet from '../components/Sheet';
-import SpriteAnim from '../components/SpriteAnim';
 import Celebration from '../components/Celebration';
 import { money, byMonth, confirmAction } from '../format';
 
@@ -88,7 +87,7 @@ export default function Savings({ budget }) {
 
       {goals && goals.length === 0 && (
         <div className="empty">
-          <SpriteAnim name="idle" width={120} />
+          <PenguinPair height={70} />
           <div className="empty-text">На что копим вместе?</div>
           <button className="btn" style={{ maxWidth: 220 }} onClick={() => openForm(null)}>Создать цель</button>
         </div>

@@ -26,15 +26,25 @@ const PORT = process.env.PORT || 3001;
 app.use(cors());
 app.use(express.json({ limit: '3mb' }));
 
+// Every database round trip to Turso costs ~150 ms, so the user row is remembered for a few minutes.
+const userCache = new Map();
+const USER_TTL_MS = 5 * 60 * 1000;
+
 async function authMiddleware(req, res, next) {
-  const telegramId = req.headers['x-telegram-user-id'];
+  const telegramId = Number(req.headers['x-telegram-user-id']);
   if (!telegramId) {
     return res.status(401).json({ error: 'Not authenticated' });
   }
-  const user = await db.prepare('SELECT * FROM users WHERE telegram_id = ?').get(Number(telegramId));
-  if (!user) {
-    return res.status(401).json({ error: 'User not found' });
+  let cached = userCache.get(telegramId);
+  if (!cached || Date.now() - cached.at > USER_TTL_MS) {
+    const row = await db.prepare('SELECT * FROM users WHERE telegram_id = ?').get(telegramId);
+    if (!row) {
+      return res.status(401).json({ error: 'User not found' });
+    }
+    cached = { user: row, at: Date.now() };
+    userCache.set(telegramId, cached);
   }
+  const user = cached.user;
   req.userId = user.id;
   req.user = user;
   next();

@@ -45,16 +45,12 @@ router.post('/auth', async (req, res) => {
     return res.status(400).json({ error: 'Invalid user data' });
   }
 
-  const existing = await db.prepare('SELECT * FROM users WHERE telegram_id = ?').get(userData.id);
-  if (existing) {
-    await db.prepare('UPDATE users SET first_name = ?, last_name = ?, username = ? WHERE telegram_id = ?')
-      .run(userData.first_name, userData.last_name || null, userData.username || null, userData.id);
-  } else {
-    await db.prepare('INSERT INTO users (telegram_id, first_name, last_name, username) VALUES (?, ?, ?, ?)')
-      .run(userData.id, userData.first_name, userData.last_name || null, userData.username || null);
-  }
+  const user = await db.prepare(`
+    INSERT INTO users (telegram_id, first_name, last_name, username) VALUES (?, ?, ?, ?)
+    ON CONFLICT(telegram_id) DO UPDATE SET first_name = excluded.first_name, last_name = excluded.last_name, username = excluded.username
+    RETURNING *
+  `).get(userData.id, userData.first_name, userData.last_name || null, userData.username || null);
 
-  const user = await db.prepare('SELECT * FROM users WHERE telegram_id = ?').get(userData.id);
   // The budget picked last comes first, then the newest ones.
   const budgets = await db.prepare(`
     SELECT b.* FROM budgets b JOIN budget_members bm ON b.id = bm.budget_id WHERE bm.user_id = ?

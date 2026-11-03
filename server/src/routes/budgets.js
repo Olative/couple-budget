@@ -81,11 +81,10 @@ router.get('/budgets/:id', async (req, res) => {
   const budget = await db.prepare('SELECT * FROM budgets WHERE id = ?').get(req.params.id);
   if (!budget) return res.status(404).json({ error: 'Not found' });
 
-  const members = await db.prepare(
-    'SELECT u.*, bm.role FROM users u JOIN budget_members bm ON u.id = bm.user_id WHERE bm.budget_id = ?'
-  ).all(budget.id);
-
-  const categories = await db.prepare('SELECT * FROM categories WHERE budget_id = ? ORDER BY sort_order').all(budget.id);
+  const [members, categories] = await Promise.all([
+    db.prepare('SELECT u.*, bm.role FROM users u JOIN budget_members bm ON u.id = bm.user_id WHERE bm.budget_id = ?').all(budget.id),
+    db.prepare('SELECT * FROM categories WHERE budget_id = ? ORDER BY sort_order').all(budget.id),
+  ]);
 
   res.json({ ...budget, members, categories, invite_link: inviteLink(budget.invite_code) });
 });
@@ -108,10 +107,9 @@ router.get('/budgets/:id/summary', async (req, res) => {
   const currentMonth = month || new Date().toISOString().slice(0, 7);
   await materializeRecurring(id);
 
-  const totalRow = await db.prepare('SELECT COALESCE(SUM(amount), 0) as total FROM expenses WHERE budget_id = ? AND date LIKE ?')
-    .get(id, `${currentMonth}%`);
-
-  const byCategory = await db.prepare(`
+  const [totalRow, byCategory, byMember, incomeRow] = await Promise.all([
+    db.prepare('SELECT COALESCE(SUM(amount), 0) as total FROM expenses WHERE budget_id = ? AND date LIKE ?').get(id, `${currentMonth}%`),
+    db.prepare(`
     SELECT c.id, c.name, c.icon, c.color, c.planned_amount,
            COALESCE(SUM(e.amount), 0) as spent
     FROM categories c
@@ -119,9 +117,8 @@ router.get('/budgets/:id/summary', async (req, res) => {
     WHERE c.budget_id = ?
     GROUP BY c.id
     ORDER BY c.sort_order
-  `).all(`${currentMonth}%`, id);
-
-  const byMember = await db.prepare(`
+  `).all(`${currentMonth}%`, id),
+    db.prepare(`
     SELECT u.id, u.first_name, u.username,
       (SELECT COALESCE(SUM(e.amount), 0) FROM expenses e WHERE e.user_id = u.id AND e.budget_id = ? AND e.date LIKE ?) as spent,
       (SELECT COALESCE(SUM(i.amount), 0) FROM incomes i WHERE i.user_id = u.id AND i.budget_id = ? AND i.date LIKE ?) as earned
@@ -129,10 +126,9 @@ router.get('/budgets/:id/summary', async (req, res) => {
     JOIN budget_members bm ON u.id = bm.user_id
     WHERE bm.budget_id = ?
     ORDER BY bm.joined_at
-  `).all(id, `${currentMonth}%`, id, `${currentMonth}%`, id);
-
-  const incomeRow = await db.prepare('SELECT COALESCE(SUM(amount), 0) as total FROM incomes WHERE budget_id = ? AND date LIKE ?')
-    .get(id, `${currentMonth}%`);
+  `).all(id, `${currentMonth}%`, id, `${currentMonth}%`, id),
+    db.prepare('SELECT COALESCE(SUM(amount), 0) as total FROM incomes WHERE budget_id = ? AND date LIKE ?').get(id, `${currentMonth}%`),
+  ]);
 
   const totalPlanned = byCategory.reduce((sum, c) => sum + (c.planned_amount || 0), 0);
 
