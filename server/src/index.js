@@ -11,6 +11,7 @@ import categoryRoutes from './routes/categories.js';
 import savingsRoutes from './routes/savings.js';
 import incomeRoutes from './routes/incomes.js';
 import recurringRoutes from './routes/recurring.js';
+import socialRoutes from './routes/social.js';
 import { startBot } from './bot.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -42,6 +43,7 @@ app.use('/api', authMiddleware, categoryRoutes);
 app.use('/api', authMiddleware, savingsRoutes);
 app.use('/api', authMiddleware, incomeRoutes);
 app.use('/api', authMiddleware, recurringRoutes);
+app.use('/api', authMiddleware, socialRoutes);
 
 app.use((err, req, res, next) => {
   console.error('Unhandled error:', err);

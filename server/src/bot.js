@@ -1,6 +1,7 @@
 import TelegramBot from 'node-telegram-bot-api';
 import db from './db.js';
 import { currentMonth, shiftMonth } from './insights.js';
+import { sendEveningReminders } from './notify.js';
 
 const BOT_TOKEN = process.env.BOT_TOKEN;
 const WEB_APP_URL = process.env.WEB_APP_URL || 'https://couple-budget-z17f.onrender.com';
@@ -13,6 +14,11 @@ const openButton = (text = 'Открыть Lolo & Pepe', url = WEB_APP_URL) => (
 let bot;
 let botUsername = process.env.BOT_USERNAME || null;
 const pendingBroadcasts = new Map();
+
+export async function sendToUser(telegramId, text) {
+  if (!bot) return;
+  await bot.sendMessage(telegramId, text, openButton('Открыть Lolo & Pepe'));
+}
 
 export function inviteLink(code) {
   return botUsername ? `https://t.me/${botUsername}?start=${code}` : null;
@@ -192,6 +198,7 @@ export function startBot() {
 
   sendMonthlyRecaps().catch(e => console.error('Recap send error:', e));
   setInterval(() => sendMonthlyRecaps().catch(e => console.error('Recap send error:', e)), 60 * 60 * 1000);
+  setInterval(() => sendEveningReminders().catch(e => console.error('Reminder error:', e)), 10 * 60 * 1000);
 }
 
 const MONTHS_GEN = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];

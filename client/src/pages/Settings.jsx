@@ -6,10 +6,18 @@ import InviteCard from '../components/InviteCard';
 
 export default function Settings({ budget, user, onBack, onBudgetUpdate }) {
   const [budgetData, setBudgetData] = useState(null);
+  const [prefs, setPrefs] = useState(null);
 
   useEffect(() => {
     api.getBudget(budget.id).then(setBudgetData);
+    api.getNotify().then(setPrefs);
   }, [budget.id]);
+
+  const toggle = async (key) => {
+    const next = { ...prefs, [key]: prefs[key] ? 0 : 1 };
+    setPrefs(next);
+    setPrefs(await api.setNotify({ [key]: next[key] }));
+  };
 
   const changeCurrency = async (c) => {
     const updated = await api.updateBudget(budget.id, { currency: c });
@@ -46,6 +54,22 @@ export default function Settings({ budget, user, onBack, onBudgetUpdate }) {
       </div>
 
       <InviteCard budget={budget} />
+
+      <div className="section-label">Уведомления от бота</div>
+      {prefs && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {[
+            ['partner_activity', 'Траты, реакции и комментарии второго'],
+            ['limits', 'Лимит категории почти или полностью потрачен'],
+            ['reminder', 'Напомнить в 20:00, если за день ничего не записано'],
+          ].map(([key, label]) => (
+            <label key={key} className="switch-row">
+              <span>{label}</span>
+              <input type="checkbox" className="switch" checked={!!prefs[key]} onChange={() => toggle(key)} />
+            </label>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

@@ -29,10 +29,8 @@ router.post('/budgets/:budgetId/savings', async (req, res) => {
     return res.status(400).json({ error: 'name and target_amount required' });
   }
 
-  await db.prepare('INSERT INTO savings_goals (budget_id, name, target_amount, icon, deadline) VALUES (?, ?, ?, ?, ?)')
-    .run(req.params.budgetId, name, target_amount, icon || '🎯', deadline || null);
-
-  const result = await db.prepare('SELECT * FROM savings_goals WHERE rowid = last_insert_rowid()').get();
+  const result = await db.prepare('INSERT INTO savings_goals (budget_id, name, target_amount, icon, deadline) VALUES (?, ?, ?, ?, ?) RETURNING *')
+    .get(req.params.budgetId, name, target_amount, icon || '🎯', deadline || null);
   res.json(result);
 });
 

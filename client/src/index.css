@@ -138,6 +138,23 @@ button { font-family: inherit; color: inherit; }
 .switch:checked { background: var(--ink); }
 .switch:checked::after { transform: translateX(18px); }
 
+.reactions { display: flex; justify-content: space-between; background: var(--surface); border-radius: 100px; padding: 5px; }
+.reactions button {
+  border: none; background: none; width: 44px; height: 44px; border-radius: 50%; font-size: 22px; cursor: pointer;
+  transition: transform .15s, background .15s;
+}
+.reactions button:active { transform: scale(1.25); }
+.reactions button.on { background: var(--ink); }
+
+.comments { display: flex; flex-direction: column; gap: 6px; margin: 14px 0 10px; }
+.bubble {
+  max-width: 80%; align-self: flex-start; background: var(--surface); border-radius: 16px 16px 16px 4px;
+  padding: 8px 12px; font-size: 14px; line-height: 1.35; overflow-wrap: anywhere;
+}
+.bubble.me { align-self: flex-end; background: var(--ink); color: #fff; border-radius: 16px 16px 4px 16px; cursor: pointer; }
+.bubble-name { font-size: 11px; color: var(--muted); margin-bottom: 2px; }
+.comment-input { display: flex; gap: 8px; align-items: center; }
+
 /* Buttons */
 .btn {
   display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%;

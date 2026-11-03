@@ -99,6 +99,34 @@ await client.batch([
     month TEXT NOT NULL,
     PRIMARY KEY (budget_id, month)
   )`,
+  `CREATE TABLE IF NOT EXISTS reactions (
+    expense_id INTEGER NOT NULL,
+    user_id INTEGER NOT NULL,
+    emoji TEXT NOT NULL,
+    created_at TEXT DEFAULT (datetime('now')),
+    PRIMARY KEY (expense_id, user_id)
+  )`,
+  `CREATE TABLE IF NOT EXISTS comments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    expense_id INTEGER NOT NULL,
+    user_id INTEGER NOT NULL,
+    text TEXT NOT NULL,
+    created_at TEXT DEFAULT (datetime('now'))
+  )`,
+  `CREATE TABLE IF NOT EXISTS notify_prefs (
+    user_id INTEGER PRIMARY KEY,
+    partner_activity INTEGER NOT NULL DEFAULT 1,
+    limits INTEGER NOT NULL DEFAULT 1,
+    reminder INTEGER NOT NULL DEFAULT 0,
+    tz_offset INTEGER NOT NULL DEFAULT 0,
+    last_reminder TEXT
+  )`,
+  `CREATE TABLE IF NOT EXISTS limit_alerts (
+    category_id INTEGER NOT NULL,
+    month TEXT NOT NULL,
+    level INTEGER NOT NULL,
+    PRIMARY KEY (category_id, month, level)
+  )`,
   `CREATE TABLE IF NOT EXISTS recurring (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     budget_id TEXT NOT NULL,

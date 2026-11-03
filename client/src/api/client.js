@@ -47,6 +47,13 @@ export const api = {
   addIncome: (budgetId, data) => request(`/budgets/${budgetId}/incomes`, { method: 'POST', body: JSON.stringify(data) }),
   deleteIncome: (id) => request(`/incomes/${id}`, { method: 'DELETE' }),
 
+  getThread: (expenseId) => request(`/expenses/${expenseId}/thread`),
+  setReaction: (expenseId, emoji) => request(`/expenses/${expenseId}/reaction`, { method: 'PUT', body: JSON.stringify({ emoji }) }),
+  addComment: (expenseId, text) => request(`/expenses/${expenseId}/comments`, { method: 'POST', body: JSON.stringify({ text }) }),
+  deleteComment: (id) => request(`/comments/${id}`, { method: 'DELETE' }),
+  getNotify: () => request('/me/notify'),
+  setNotify: (data) => request('/me/notify', { method: 'PUT', body: JSON.stringify(data) }),
+
   getRecurring: (budgetId) => request(`/budgets/${budgetId}/recurring`),
   addRecurring: (budgetId, data) => request(`/budgets/${budgetId}/recurring`, { method: 'POST', body: JSON.stringify(data) }),
   deleteRecurring: (id) => request(`/recurring/${id}`, { method: 'DELETE' }),

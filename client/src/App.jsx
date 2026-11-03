@@ -84,6 +84,7 @@ export default function App() {
     api.auth(initData).then(async ({ user, budgets }) => {
       setUser(user);
       setTelegramUserId(user.telegram_id);
+      api.setNotify({ tz_offset: -new Date().getTimezoneOffset() }).catch(() => {});
       let active = budgets[0] || null;
       if (initialJoin) {
         try {

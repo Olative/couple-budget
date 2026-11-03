@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
-import { IconPlus, IconRepeat } from '@tabler/icons-react';
+import { IconPlus, IconRepeat, IconMessageCircle } from '@tabler/icons-react';
+import ExpenseSheet from '../components/ExpenseSheet';
 import { api } from '../api/client';
 import { PenguinPair } from '../components/Art';
 import { money, confirmAction, incomeSource } from '../format';
@@ -33,11 +34,13 @@ export default function Expenses({ budget, user, refreshKey, onAdd }) {
   useEffect(() => { load(); }, [load, refreshKey]);
   useEffect(() => { api.getBudget(budget.id).then(b => setMembers(b.members)); }, [budget.id]);
 
-  const remove = async (e) => {
+  const [openId, setOpenId] = useState(null);
+
+  const open = async (e) => {
+    if (e.kind === 'expense') { setOpenId(e.id); return; }
     if (e.user_id !== user.id) return;
     if (!(await confirmAction(`Удалить «${e.description || e.category_name}» на ${money(e.amount, budget.currency)}?`))) return;
-    if (e.kind === 'income') await api.deleteIncome(e.id);
-    else await api.deleteExpense(e.id);
+    await api.deleteIncome(e.id);
     load();
   };
 
@@ -75,14 +78,18 @@ export default function Expenses({ budget, user, refreshKey, onAdd }) {
           <div className="section-label" style={{ marginBottom: 6 }}>{dayLabel(date)}</div>
           <div className="card">
             {items.map(e => (
-              <div key={`${e.kind}${e.id}`} className="row" onClick={() => remove(e)} style={{ cursor: e.user_id === user.id ? 'pointer' : 'default' }}>
+              <div key={`${e.kind}${e.id}`} className="row" onClick={() => open(e)} style={{ cursor: e.kind === 'expense' || e.user_id === user.id ? 'pointer' : 'default' }}>
                 <span className="row-ic">{e.category_icon}</span>
                 <div className="row-main">
                   <div className="row-name">
                     {e.description || e.category_name}
                     {e.recurring_id && <IconRepeat size={13} stroke={1.8} color="#9a9a9a" style={{ marginLeft: 5, verticalAlign: -1 }} aria-label="повторяется каждый месяц" />}
                   </div>
-                  <div className="row-sub">{e.description ? `${e.category_name} · ` : ''}{e.user_name}</div>
+                  <div className="row-sub">
+                    {e.description ? `${e.category_name} · ` : ''}{e.user_name}
+                    {e.reactions && <span style={{ marginLeft: 6 }}>{e.reactions}</span>}
+                    {e.comment_count > 0 && <span style={{ marginLeft: 6 }}><IconMessageCircle size={11} style={{ verticalAlign: -1 }} /> {e.comment_count}</span>}
+                  </div>
                 </div>
                 {e.kind === 'income'
                   ? <span className="row-amt good">+{money(e.amount, budget.currency)}</span>
@@ -94,7 +101,11 @@ export default function Expenses({ budget, user, refreshKey, onAdd }) {
       ))}
 
       {expenses && groups.length > 0 && (
-        <div className="row-sub" style={{ textAlign: 'center', marginTop: 4 }}>Нажмите на свою запись, чтобы удалить её</div>
+        <div className="row-sub" style={{ textAlign: 'center', marginTop: 4 }}>Нажмите на трату, чтобы отреагировать или прокомментировать</div>
+      )}
+
+      {openId && (
+        <ExpenseSheet budget={budget} user={user} expenseId={openId} onClose={() => setOpenId(null)} onChanged={load} />
       )}
     </div>
   );
