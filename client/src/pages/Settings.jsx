@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
-import { IconChevronLeft, IconChevronRight, IconFileSpreadsheet, IconHelpCircle } from '@tabler/icons-react';
+import { IconChevronLeft, IconChevronRight, IconFileSpreadsheet, IconHelpCircle, IconRotate } from '@tabler/icons-react';
 import { api } from '../api/client';
 import CurrencyPicker from '../components/CurrencyPicker';
 import InviteCard from '../components/InviteCard';
 import Sheet from '../components/Sheet';
 import { getThemePref, setThemePref } from '../theme';
+
+const DEFAULT_NAME = 'Наш бюджет';
 
 export default function Settings({ budget, user, onBack, onBudgetUpdate, onOpenBudgets, onShowTutorial, onBudgetReset }) {
   const [budgetData, setBudgetData] = useState(null);
@@ -23,9 +25,10 @@ export default function Settings({ budget, user, onBack, onBudgetUpdate, onOpenB
     onBudgetReset();
   };
 
-  const saveName = async () => {
-    const next = name.trim();
+  const saveName = async (value = name) => {
+    const next = value.trim();
     if (!next || next === budget.name) { setName(budget.name); return; }
+    setName(next);
     onBudgetUpdate(await api.updateBudget(budget.id, { name: next }));
   };
 
@@ -97,11 +100,17 @@ export default function Settings({ budget, user, onBack, onBudgetUpdate, onOpenB
             value={name}
             maxLength={40}
             onChange={e => setName(e.target.value)}
-            onBlur={saveName}
+            onBlur={() => saveName()}
             onKeyDown={e => e.key === 'Enter' && e.currentTarget.blur()}
             aria-label="Название бюджета"
           />
         </div>
+        {budget.name !== DEFAULT_NAME && (
+          <button className="row row-btn" onClick={() => saveName(DEFAULT_NAME)}>
+            <div className="row-main"><div className="row-sub" style={{ fontSize: 13 }}>Вернуть название «{DEFAULT_NAME}»</div></div>
+            <IconRotate size={16} stroke={1.6} color="var(--muted)" />
+          </button>
+        )}
         <button className="row row-btn" onClick={onOpenBudgets}>
           <div className="row-main"><div className="row-name">Другие бюджеты</div><div className="row-sub">например, на поездку или с кем-то ещё</div></div>
           <IconChevronRight size={16} color="var(--muted)" />
