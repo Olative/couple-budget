@@ -11,8 +11,9 @@ import AddExpenseSheet from './components/AddExpenseSheet';
 import Recap from './components/Recap';
 
 // The splash lives in index.html so it shows before the bundle loads.
-// It stays until the dance has played through once; the timer covers a video that never starts.
-const SPLASH_FALLBACK_MS = 4200;
+// It stays until the short belly-bump loop has played twice; the timer covers a video that never starts.
+const SPLASH_LOOPS = 2;
+const SPLASH_FALLBACK_MS = 3000;
 
 function whenDanceFinished() {
   const video = document.querySelector('#splash video');
@@ -20,8 +21,9 @@ function whenDanceFinished() {
     const timer = setTimeout(resolve, Math.max(0, SPLASH_FALLBACK_MS - performance.now()));
     if (!video) return;
     let last = video.currentTime;
+    let loops = 0;
     const onTime = () => {
-      if (video.currentTime < last) {
+      if (video.currentTime < last && ++loops >= SPLASH_LOOPS) {
         video.removeEventListener('timeupdate', onTime);
         clearTimeout(timer);
         resolve();
