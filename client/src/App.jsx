@@ -16,21 +16,15 @@ const SPLASH_LOOPS = 2;
 const SPLASH_FALLBACK_MS = 3000;
 
 function whenDanceFinished() {
-  const video = document.querySelector('#splash video');
   return new Promise(resolve => {
     const timer = setTimeout(resolve, Math.max(0, SPLASH_FALLBACK_MS - performance.now()));
-    if (!video) return;
-    let last = video.currentTime;
-    let loops = 0;
-    const onTime = () => {
-      if (video.currentTime < last && ++loops >= SPLASH_LOOPS) {
-        video.removeEventListener('timeupdate', onTime);
-        clearTimeout(timer);
-        resolve();
-      }
-      last = video.currentTime;
+    const onLoop = (e) => {
+      if (e.detail < SPLASH_LOOPS) return;
+      window.removeEventListener('splashloop', onLoop);
+      clearTimeout(timer);
+      resolve();
     };
-    video.addEventListener('timeupdate', onTime);
+    window.addEventListener('splashloop', onLoop);
   });
 }
 
