@@ -4,6 +4,17 @@ import { currentMonth, shiftMonth } from './insights.js';
 import { sendEveningReminders, onExpenseAdded } from './notify.js';
 import { parseMessage } from './quickadd.js';
 import { buildExport } from './routes/files.js';
+import { readFileSync } from 'fs';
+import { createHash } from 'crypto';
+
+// Telegram caches media by URL, so a replaced welcome clip needs a new URL to show up.
+const WELCOME_VERSION = (() => {
+  try {
+    return createHash('md5').update(readFileSync(new URL('../public/bot/welcome.mp4', import.meta.url))).digest('hex').slice(0, 8);
+  } catch {
+    return 'dev';
+  }
+})();
 
 const BOT_TOKEN = process.env.BOT_TOKEN;
 const WEB_APP_URL = process.env.WEB_APP_URL || 'https://couple-budget-z17f.onrender.com';
@@ -78,7 +89,7 @@ export function startBot() {
     if (!(await firstTime(msgKey(msg)))) return;
     const chatId = msg.chat.id;
     const param = (match[1] || '').trim();
-    const animation = `${WEB_APP_URL}/bot/welcome.mp4`;
+    const animation = `${WEB_APP_URL}/bot/welcome.mp4?v=${WELCOME_VERSION}`;
 
     let inviter = null;
     if (param) {
