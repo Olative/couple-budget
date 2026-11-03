@@ -143,7 +143,7 @@ export default function Settings({ budget, user, onBack, onBudgetUpdate, onOpenB
               </button>
             ))}
           </div>
-          <div className="row-sub" style={{ margin: '0 4px' }}>По этой пропорции считается, кто кому должен</div>
+          <div className="row-sub" style={{ margin: '0 4px' }}>Пригодится, если вы вкладываетесь в общие траты не поровну</div>
         </>
       )}
 
