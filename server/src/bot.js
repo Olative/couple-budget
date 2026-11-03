@@ -54,7 +54,16 @@ async function firstTime(key) {
 }
 const msgKey = (msg) => `m:${msg.chat.id}:${msg.message_id}`;
 
+const BOT_NAME = 'Lolo & Pepe: бюджет на двоих';
+
 async function setupProfile() {
+  // Telegram rate-limits name changes, so only set it when it differs.
+  try {
+    const current = await bot._request('getMyName', { form: {} });
+    if (current.name !== BOT_NAME) await bot._request('setMyName', { form: { name: BOT_NAME } });
+  } catch (e) {
+    console.error('Bot name update failed:', e.message);
+  }
   await bot.setMyDescription({
     description: 'Считайте деньги вдвоём — без таблиц и споров 🐧\n\n' +
       'Видно, кто сколько потратил, сколько осталось до конца месяца и сколько уже отложено на мечту.',
