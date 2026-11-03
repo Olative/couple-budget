@@ -76,10 +76,6 @@ export default function Settings({ budget, user, onBack, onBudgetUpdate, onOpenB
         <div className="h-title">Настройки</div>
       </div>
 
-      <button className="btn btn-secondary" onClick={onShowTutorial}>
-        <IconHelpCircle size={18} stroke={1.6} /> Пройти обучение заново
-      </button>
-
       <div className="section-label">Бюджет</div>
       <div className="card">
         <div className="row">
@@ -175,6 +171,9 @@ export default function Settings({ budget, user, onBack, onBudgetUpdate, onOpenB
         ))}
       </div>
 
+      <button className="btn btn-secondary" style={{ marginTop: 8 }} onClick={onShowTutorial}>
+        <IconHelpCircle size={18} stroke={1.6} /> Как пользоваться
+      </button>
     </div>
   );
 }
