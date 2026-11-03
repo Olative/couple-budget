@@ -11,6 +11,7 @@ import AddExpenseSheet from './components/AddExpenseSheet';
 import Recap from './components/Recap';
 import BudgetSheet from './components/BudgetSheet';
 import Tutorial from './components/Tutorial';
+import Tour from './components/Tour';
 import { paintTelegram } from './theme';
 
 // The splash lives in index.html so it shows before the bundle loads.
@@ -67,6 +68,7 @@ export default function App() {
   const [refreshKey, setRefreshKey] = useState(0);
   const [showBudgets, setShowBudgets] = useState(false);
   const [showTutorial, setShowTutorial] = useState(false);
+  const [showTour, setShowTour] = useState(false);
 
   useEffect(() => {
     const tg = window.Telegram?.WebApp;
@@ -106,13 +108,19 @@ export default function App() {
 
   const handleBudgetReady = useCallback((budget) => setActiveBudget(budget), []);
 
+  const closeTour = useCallback(() => { setShowTour(false); window.scrollTo({ top: 0, behavior: 'smooth' }); }, []);
+
   const switchBudget = (budget) => {
     setActiveBudget(budget);
     setActiveTab('dashboard');
   };
 
+  // After the intro slides, walk through the real dashboard.
   const finishTutorial = () => {
     setShowTutorial(false);
+    setActiveTab('dashboard');
+    window.scrollTo(0, 0);
+    setTimeout(() => setShowTour(true), 300);
     api.setTutorialDone(true).catch(() => {});
   };
 
@@ -144,6 +152,7 @@ export default function App() {
         {TABS.map(({ id, label, Icon }) => (
           <button
             key={id}
+            data-tour={id}
             aria-label={label}
             className={`tab ${id === 'add' ? 'add' : ''} ${activeTab === id ? 'active' : ''}`}
             onClick={() => (id === 'add' ? (setAddRepeat(false), setShowAdd('expense')) : setActiveTab(id))}
@@ -166,6 +175,8 @@ export default function App() {
       {showBudgets && <BudgetSheet current={activeBudget} onPick={switchBudget} onClose={() => setShowBudgets(false)} />}
 
       {showTutorial && <Tutorial joined={!!initialJoin} onDone={finishTutorial} />}
+
+      {showTour && <Tour onDone={closeTour} />}
 
       {recapMonth && <Recap budget={activeBudget} month={recapMonth} onClose={() => setRecapMonth(null)} />}
     </div>

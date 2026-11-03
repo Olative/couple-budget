@@ -375,3 +375,17 @@ button { font-family: inherit; color: inherit; }
   color: var(--ink); text-align: right; width: 55%; min-width: 0; outline: none; line-height: 20px;
 }
 .name-input:focus { box-shadow: 0 0 0 1.5px var(--ink); }
+
+.tour { position: fixed; inset: 0; z-index: 460; }
+.tour-hole { position: fixed; box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.62); pointer-events: none; }
+.tour-card {
+  position: fixed; left: 16px; right: 16px; max-width: 420px; margin: 0 auto; background: var(--surface); color: var(--ink);
+  border-radius: 20px; padding: 16px; box-shadow: 0 12px 30px rgba(0, 0, 0, 0.25); animation: fadeIn .25s ease;
+}
+.tour-count { font-family: var(--font-display); font-size: 9px; letter-spacing: .16em; text-transform: uppercase; color: var(--muted); }
+.tour-title { font-family: var(--font-display); font-weight: 300; font-size: 17px; margin-top: 6px; }
+.tour-text { font-size: 14px; line-height: 1.45; color: var(--ink-2); margin-top: 6px; font-weight: 300; }
+.tour-actions { display: flex; align-items: center; gap: 8px; margin-top: 14px; }
+.tour-skip { border: none; background: none; color: var(--muted); font-size: 13px; cursor: pointer; margin-right: auto; padding: 0; }
+.tour-btn { width: auto; padding: 10px 18px; font-size: 14px; }
+.tour-actions .btn-secondary { background: var(--surface-2); }

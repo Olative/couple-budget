@@ -63,17 +63,17 @@ export default function Dashboard({ budget, user, refreshKey, onAdd, onOpenRecap
   const cur = budget.currency;
   const header = (
     <div className="page-head">
-      <button className="budget-pill" onClick={onOpenBudgets} aria-label="Сменить бюджет">
+      <button className="budget-pill" data-tour="budget" onClick={onOpenBudgets} aria-label="Сменить бюджет">
         <span>{budget.name}</span>
         <IconChevronDown size={15} stroke={1.8} />
       </button>
       <div className="head-actions">
-        <div className="chip">
+        <div className="chip" data-tour="month">
           <button onClick={() => setMonth(m => shiftMonth(m, -1))} aria-label="Предыдущий месяц"><IconChevronLeft size={16} /></button>
           <span>{monthLabel(month)}</span>
           <button onClick={() => setMonth(m => shiftMonth(m, 1))} aria-label="Следующий месяц"><IconChevronRight size={16} /></button>
         </div>
-        <button className="icon-btn" onClick={onOpenSettings} aria-label="Настройки"><IconSettings size={18} stroke={1.6} /></button>
+        <button className="icon-btn" data-tour="settings" onClick={onOpenSettings} aria-label="Настройки"><IconSettings size={18} stroke={1.6} /></button>
       </div>
     </div>
   );
@@ -108,7 +108,7 @@ export default function Dashboard({ budget, user, refreshKey, onAdd, onOpenRecap
         </button>
       )}
 
-      <div className="scallop">
+      <div className="scallop" data-tour="spent">
         <div className="scallop-in">
           <GridLines color="#fff" opacity={0.07} />
           <div className="rel">
@@ -151,7 +151,7 @@ export default function Dashboard({ budget, user, refreshKey, onAdd, onOpenRecap
       )}
 
       {members.length > 0 && (
-        <div style={{ display: 'grid', gridTemplateColumns: members.length > 1 ? '1fr 1fr' : '1fr', gap: 8 }}>
+        <div data-tour="members" style={{ display: 'grid', gridTemplateColumns: members.length > 1 ? '1fr 1fr' : '1fr', gap: 8 }}>
           {members.slice(0, 2).map((m, i) => {
             const inner = (
               <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 6 }}>
