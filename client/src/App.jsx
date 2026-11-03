@@ -140,7 +140,7 @@ export default function App() {
       case 'expenses': return <Expenses {...pageProps} />;
       case 'plan': return <Plan {...pageProps} />;
       case 'savings': return <Savings {...pageProps} />;
-      case 'settings': return <Settings {...pageProps} onBack={() => setActiveTab('dashboard')} onBudgetUpdate={(b) => setActiveBudget(prev => ({ ...prev, ...b }))} onOpenBudgets={() => setShowBudgets(true)} onShowTutorial={() => setShowTutorial(true)} onBudgetReset={() => { refresh(); setActiveTab('dashboard'); }} />;
+      case 'settings': return <Settings {...pageProps} onBack={() => setActiveTab('dashboard')} onBudgetUpdate={(b) => setActiveBudget(prev => ({ ...prev, ...b }))} onOpenBudgets={() => setShowBudgets(true)} onShowTutorial={() => setShowTutorial(true)} onBudgetReset={() => { refresh(); setActiveTab('dashboard'); }} onDataChanged={refresh} />;
       default: return null;
     }
   };

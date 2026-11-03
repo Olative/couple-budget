@@ -1,18 +1,20 @@
 import { useState, useEffect } from 'react';
-import { IconChevronLeft, IconChevronRight, IconFileSpreadsheet, IconHelpCircle, IconRotate } from '@tabler/icons-react';
+import { IconChevronLeft, IconChevronRight, IconFileSpreadsheet, IconHelpCircle, IconRotate, IconBuildingBank, IconFileUpload } from '@tabler/icons-react';
 import { api } from '../api/client';
 import CurrencyPicker from '../components/CurrencyPicker';
 import InviteCard from '../components/InviteCard';
 import Sheet from '../components/Sheet';
+import { BankNoticeSheet, StatementSheet } from '../components/BankSheets';
 import { getThemePref, setThemePref } from '../theme';
 
 const DEFAULT_NAME = 'Наш бюджет';
 
-export default function Settings({ budget, user, onBack, onBudgetUpdate, onOpenBudgets, onShowTutorial, onBudgetReset }) {
+export default function Settings({ budget, user, onBack, onBudgetUpdate, onOpenBudgets, onShowTutorial, onBudgetReset, onDataChanged }) {
   const [budgetData, setBudgetData] = useState(null);
   const [prefs, setPrefs] = useState(null);
   const [theme, setTheme] = useState(getThemePref);
   const [name, setName] = useState(budget.name);
+  const [bankSheet, setBankSheet] = useState(null);
   const [resetOpen, setResetOpen] = useState(false);
   const [removePartner, setRemovePartner] = useState(false);
   const [resetting, setResetting] = useState(false);
@@ -117,6 +119,26 @@ export default function Settings({ budget, user, onBack, onBudgetUpdate, onOpenB
         </button>
       </div>
       <CurrencyPicker value={budget.currency} onChange={changeCurrency} label="Валюта" />
+
+      <div className="section-label">Траты без ручного ввода</div>
+      <div className="card">
+        <button className="row row-btn" onClick={() => setBankSheet('notice')}>
+          <span className="row-ic"><IconBuildingBank size={17} stroke={1.6} /></span>
+          <div className="row-main"><div className="row-name">Уведомления банка</div><div className="row-sub">перешлите SMS боту или настройте автоматически</div></div>
+          <IconChevronRight size={16} color="var(--muted)" />
+        </button>
+        <button className="row row-btn" onClick={() => setBankSheet('statement')}>
+          <span className="row-ic"><IconFileUpload size={17} stroke={1.6} /></span>
+          <div className="row-main"><div className="row-name">Загрузить выписку</div><div className="row-sub">CSV или Excel из приложения банка</div></div>
+          <IconChevronRight size={16} color="var(--muted)" />
+        </button>
+      </div>
+      {bankSheet === 'notice' && (
+        <BankNoticeSheet botLink={budgetData?.invite_link?.split('?')[0]} onClose={() => setBankSheet(null)} />
+      )}
+      {bankSheet === 'statement' && (
+        <StatementSheet budget={budget} onClose={() => setBankSheet(null)} onDone={() => onDataChanged?.()} />
+      )}
 
       <div className="section-label">Участники</div>
       <div className="card">

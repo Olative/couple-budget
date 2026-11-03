@@ -3,6 +3,8 @@ import db from './db.js';
 import { currentMonth, shiftMonth } from './insights.js';
 import { sendEveningReminders, sendSavingsReminders, onExpenseAdded } from './notify.js';
 import { parseMessage } from './quickadd.js';
+import { looksLikeBankNotice, parseBankNotice, parseStatement } from './bank.js';
+import { recordNotice, prepareImport, commitImport, learnMerchant } from './importer.js';
 import { buildExport } from './routes/files.js';
 import { readFileSync } from 'fs';
 import { createHash } from 'crypto';
@@ -142,6 +144,7 @@ export function startBot() {
     if (!(await firstTime(msgKey(msg)))) return;
     let text = 'Всё самое важное — в приложении: нажмите кнопку «Открыть» внизу или кнопку под этим сообщением.\n\n' +
       'А траты можно записывать прямо здесь — просто напишите:\n«кофе 250», «такси 300 вчера», «+5000 подработка»\n\n' +
+      'Или перешлите SMS/уведомление банка — запишу сама. А выписку из банка (CSV или Excel) просто пришлите файлом.\n\n' +
       '/start — открыть приложение\n/export — выгрузить все траты в Excel\n/myid — узнать свой Telegram ID';
     if (isAdmin(msg)) {
       text += '\n\nДля администратора:\n/stats — статистика\n/broadcast текст — рассылка всем пользователям';
@@ -234,9 +237,22 @@ export function startBot() {
   });
 
   bot.on('message', async (msg) => {
-    if (!msg.text || msg.text.startsWith('/') || msg.chat.type !== 'private') return;
+    if (msg.chat.type !== 'private') return;
+    if (msg.document) {
+      if (!(await firstTime(msgKey(msg)))) return;
+      handleStatement(msg).catch(e => console.error('Statement import failed:', e));
+      return;
+    }
+    if (!msg.text || msg.text.startsWith('/')) return;
     if (!(await firstTime(msgKey(msg)))) return;
-    handleQuickAdd(msg).catch(e => console.error('Quick add failed:', e));
+    const handler = looksLikeBankNotice(msg.text) ? handleBankText : handleQuickAdd;
+    handler(msg).catch(e => console.error('Quick add failed:', e));
+  });
+
+  bot.on('callback_query', async (q) => {
+    if (!q.data?.startsWith('imp:')) return;
+    if (!(await firstTime(`cb:${q.id}`))) return;
+    handleImportCallback(q).catch(e => console.error('Import callback failed:', e));
   });
 
   bot.on('callback_query', async (q) => {
@@ -347,8 +363,88 @@ async function handleQuickAddCallback(q) {
     const cat = categories.find(c => String(c.id) === b);
     if (!cat) return;
     await db.prepare('UPDATE expenses SET category_id = ? WHERE id = ?').run(cat.id, rec.id);
+    if (rec.description) await learnMerchant(rec.budget_id, rec.description, cat.id);
     const r = quickAddReply('expense', rec, budget, `${cat.icon} ${cat.name}`);
     await bot.editMessageText(r.text, { ...chat, ...r.extra });
+  }
+}
+
+// ---------- bank notifications and statements ----------
+
+// Records a bank SMS / push text for a Telegram user and tells them in the chat. Used by the bot and the iPhone shortcut.
+export async function recordBankText(telegramId, text) {
+  const { user, budget } = await quickAddContext(telegramId);
+  if (!user || !budget) return { ok: false, reason: 'no budget' };
+  const prefs = await db.prepare('SELECT tz_offset FROM notify_prefs WHERE user_id = ?').get(user.id);
+  const parsed = parseBankNotice(text, Number(prefs?.tz_offset || 0));
+  if (!parsed) return { ok: false, reason: 'not a bank notice' };
+  const result = await recordNotice(user, budget, parsed, text);
+  if (result.duplicate) return { ok: true, duplicate: true };
+  if (bot) {
+    const r = result.kind === 'income'
+      ? quickAddReply('income', result.rec, budget, SOURCE_NAMES[result.rec.source] || SOURCE_NAMES.other)
+      : quickAddReply('expense', result.rec, budget, `${result.category.icon} ${result.category.name}`);
+    await bot.sendMessage(telegramId, `🏦 Из уведомления банка\n${r.text}`, r.extra);
+  }
+  if (result.kind === 'expense') await onExpenseAdded(result.rec, user);
+  return { ok: true, kind: result.kind, amount: result.rec.amount };
+}
+
+async function handleBankText(msg) {
+  const res = await recordBankText(msg.from.id, msg.text);
+  if (res.duplicate) await bot.sendMessage(msg.chat.id, 'Эта операция уже записана 👌');
+  else if (!res.ok) await handleQuickAdd(msg);
+}
+
+async function handleStatement(msg) {
+  const { user, budget } = await quickAddContext(msg.from.id);
+  if (!user || !budget) {
+    await bot.sendMessage(msg.chat.id, 'Сначала откройте приложение и создайте бюджет.', openButton());
+    return;
+  }
+  const doc = msg.document;
+  if (doc.file_size > 10 * 1024 * 1024) {
+    await bot.sendMessage(msg.chat.id, 'Файл слишком большой. Выгрузите выписку за месяц-два.');
+    return;
+  }
+  try {
+    const url = await bot.getFileLink(doc.file_id);
+    const buf = Buffer.from(await (await fetch(url)).arrayBuffer());
+    const ops = await parseStatement(buf, doc.file_name || 'statement.csv');
+    const s = await prepareImport(user, budget, ops);
+    await bot.sendMessage(msg.chat.id, importSummary(s), {
+      reply_markup: { inline_keyboard: [[{ text: `Записать ${s.count}`, callback_data: `imp:ok:${s.id}` }, { text: 'Отмена', callback_data: `imp:no:${s.id}` }]] },
+    });
+  } catch (e) {
+    await bot.sendMessage(msg.chat.id, `Не получилось прочитать выписку: ${e.message}`);
+  }
+}
+
+const shortDate = (d) => `${d.slice(8, 10)}.${d.slice(5, 7)}`;
+export function importSummary(s) {
+  return `📄 Нашла ${s.count} операций с ${shortDate(s.from)} по ${shortDate(s.to)}\n` +
+    `Расходы: ${s.expenses} на ${money(s.spent, s.currency)}\nДоходы: ${s.incomes} на ${money(s.earned, s.currency)}\n\n` +
+    `Запишу в бюджет «${s.budgetName}». То, что уже есть в бюджете (тот же день и сумма), пропущу.`;
+}
+
+async function handleImportCallback(q) {
+  const [, action, id] = q.data.split(':');
+  const chat = { chat_id: q.message.chat.id, message_id: q.message.message_id };
+  await bot.answerCallbackQuery(q.id).catch(() => {});
+  const user = await db.prepare('SELECT * FROM users WHERE telegram_id = ?').get(q.from.id);
+  if (!user) return;
+  if (action === 'no') {
+    await db.prepare('DELETE FROM imports WHERE id = ? AND user_id = ? AND done = 0').run(id, user.id);
+    await bot.editMessageText('Загрузка отменена.', chat);
+    return;
+  }
+  await bot.editMessageText('⏳ Записываю…', chat);
+  try {
+    const r = await commitImport(id, user.id);
+    await bot.editMessageText(r.already ? 'Эта выписка уже записана.' :
+      `✅ Записала ${r.added} операций${r.skipped ? `, пропустила ${r.skipped} — они уже были в бюджете` : ''}.`, { ...chat, ...openButton('Открыть бюджет') });
+  } catch (e) {
+    await bot.editMessageText(`Не получилось: ${e.message}`, chat);
   }
 }
 

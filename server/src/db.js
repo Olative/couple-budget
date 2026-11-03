@@ -121,6 +121,26 @@ await client.batch([
     tz_offset INTEGER NOT NULL DEFAULT 0,
     last_reminder TEXT
   )`,
+  `CREATE TABLE IF NOT EXISTS bank_events (
+    user_id INTEGER NOT NULL,
+    hash TEXT NOT NULL,
+    created_at TEXT DEFAULT (datetime('now')),
+    PRIMARY KEY (user_id, hash)
+  )`,
+  `CREATE TABLE IF NOT EXISTS merchant_categories (
+    budget_id TEXT NOT NULL,
+    merchant TEXT NOT NULL,
+    category_id INTEGER NOT NULL,
+    PRIMARY KEY (budget_id, merchant)
+  )`,
+  `CREATE TABLE IF NOT EXISTS imports (
+    id TEXT PRIMARY KEY,
+    user_id INTEGER NOT NULL,
+    budget_id TEXT NOT NULL,
+    payload TEXT NOT NULL,
+    done INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT DEFAULT (datetime('now'))
+  )`,
   `CREATE TABLE IF NOT EXISTS savings_alerts (
     goal_id INTEGER NOT NULL,
     month TEXT NOT NULL,
@@ -183,6 +203,7 @@ for (const sql of [
   'ALTER TABLE users ADD COLUMN tutorial_done INTEGER NOT NULL DEFAULT 0',
   'ALTER TABLE savings_goals ADD COLUMN monthly_plan REAL NOT NULL DEFAULT 0',
   'ALTER TABLE notify_prefs ADD COLUMN savings INTEGER NOT NULL DEFAULT 1',
+  'ALTER TABLE users ADD COLUMN hook_token TEXT',
 ]) {
   await client.execute(sql).catch(() => {});
 }

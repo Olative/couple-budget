@@ -14,7 +14,8 @@ import recurringRoutes from './routes/recurring.js';
 import socialRoutes from './routes/social.js';
 import splitRoutes from './routes/split.js';
 import fileRoutes from './routes/files.js';
-import { startBot } from './bot.js';
+import bankRoutes from './routes/bank.js';
+import { startBot, recordBankText } from './bot.js';
 
 // Bot handlers are async; a failure in one must not take the whole server down.
 process.on('unhandledRejection', (e) => console.error('Unhandled rejection:', e));
@@ -51,6 +52,15 @@ async function authMiddleware(req, res, next) {
 }
 
 app.get('/api/health', (req, res) => res.json({ ok: true, db: dbKind }));
+
+// iPhone Shortcuts automation posts the bank SMS text here; the token identifies the user.
+app.post('/hook/:token', express.text({ type: 'text/*', limit: '20kb' }), async (req, res) => {
+  const user = await db.prepare('SELECT telegram_id FROM users WHERE hook_token = ?').get(req.params.token);
+  if (!user) return res.status(404).json({ error: 'unknown link' });
+  const text = typeof req.body === 'string' ? req.body : (req.body?.text || req.body?.message || '');
+  if (!text.trim()) return res.status(400).json({ error: 'empty' });
+  res.json(await recordBankText(user.telegram_id, String(text).slice(0, 600)));
+});
 app.use('/api', authRoutes);
 app.use('/api', authMiddleware, budgetRoutes);
 app.use('/api', authMiddleware, expenseRoutes);
@@ -61,6 +71,7 @@ app.use('/api', authMiddleware, recurringRoutes);
 app.use('/api', authMiddleware, socialRoutes);
 app.use('/api', authMiddleware, splitRoutes);
 app.use('/api', authMiddleware, fileRoutes);
+app.use('/api', authMiddleware, bankRoutes);
 
 app.use((err, req, res, next) => {
   console.error('Unhandled error:', err);
