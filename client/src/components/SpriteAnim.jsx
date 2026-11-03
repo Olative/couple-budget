@@ -1,13 +1,17 @@
 import { useEffect, useRef } from 'react';
+import bump from '../assets/anim/bump.png';
+import highfive from '../assets/anim/highfive.png';
+import idle from '../assets/anim/idle.png';
+import celebrate from '../assets/anim/celebrate.png';
 
 // Sprite sheets of the penguin dances: frames tiled left-to-right, top-to-bottom.
 // Drawn on a canvas by a timer so they play everywhere, including iOS Low Power Mode.
 // Backgrounds are transparent; in the dark theme the ink turns white unless fixedInk (e.g. on a blue card).
 export const ANIMS = {
-  bump: { src: '/anim/bump.png', frames: 28, cols: 7, size: 640, fps: 24 },
-  highfive: { src: '/anim/highfive.png', frames: 25, cols: 7, size: 560, fps: 24 },
-  idle: { src: '/anim/idle.png', frames: 30, cols: 6, size: 480, fps: 12 },
-  celebrate: { src: '/anim/celebrate.png', frames: 30, cols: 6, size: 520, fps: 12 },
+  bump: { src: bump, frames: 28, cols: 7, size: 640, fps: 24 },
+  highfive: { src: highfive, frames: 25, cols: 7, size: 560, fps: 24 },
+  idle: { src: idle, frames: 30, cols: 6, size: 480, fps: 12 },
+  celebrate: { src: celebrate, frames: 30, cols: 6, size: 520, fps: 12 },
 };
 
 export default function SpriteAnim({ name, width = 160, loops = Infinity, onDone, fixedInk = false }) {

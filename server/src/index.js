@@ -57,6 +57,8 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: 'Internal server error' });
 });
 
+// Built files have content hashes in their names, so phones may keep them for good.
+app.use('/assets', express.static(join(__dirname, '..', 'public', 'assets'), { immutable: true, maxAge: '1y' }));
 app.use(express.static(join(__dirname, '..', 'public')));
 app.get('*', (req, res) => {
   res.sendFile(join(__dirname, '..', 'public', 'index.html'));
