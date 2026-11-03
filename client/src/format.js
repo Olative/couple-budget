@@ -31,6 +31,15 @@ export function thisMonth() {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
 }
 
+export const INCOME_SOURCES = [
+  { id: 'salary', name: 'Зарплата', icon: '💼' },
+  { id: 'side', name: 'Подработка', icon: '💻' },
+  { id: 'gift', name: 'Подарок', icon: '🎁' },
+  { id: 'refund', name: 'Возврат, кешбэк', icon: '↩️' },
+  { id: 'other', name: 'Другое', icon: '💰' },
+];
+export const incomeSource = (id) => INCOME_SOURCES.find(s => s.id === id) || INCOME_SOURCES[INCOME_SOURCES.length - 1];
+
 export function plural(n, one, few, many) {
   const m10 = n % 10;
   const m100 = n % 100;

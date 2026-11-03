@@ -3,21 +3,25 @@ import { IconPlus } from '@tabler/icons-react';
 import { api } from '../api/client';
 import Sheet from './Sheet';
 import CategorySheet from './CategorySheet';
+import { INCOME_SOURCES } from '../format';
 
 function today() {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
-export default function AddExpenseSheet({ budget, onClose, onSaved }) {
+export default function AddExpenseSheet({ budget, initialKind = 'expense', onClose, onSaved }) {
+  const [kind, setKind] = useState(initialKind);
   const [categories, setCategories] = useState([]);
   const [amount, setAmount] = useState('');
   const [categoryId, setCategoryId] = useState(null);
+  const [source, setSource] = useState('salary');
   const [description, setDescription] = useState('');
   const [date, setDate] = useState(today);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [showNewCat, setShowNewCat] = useState(false);
+  const isIncome = kind === 'income';
 
   useEffect(() => {
     api.getBudget(budget.id).then(b => {
@@ -27,11 +31,13 @@ export default function AddExpenseSheet({ budget, onClose, onSaved }) {
   }, [budget.id]);
 
   const save = async () => {
-    if (!amount || Number(amount) <= 0 || !categoryId) return;
+    if (!amount || Number(amount) <= 0 || (!isIncome && !categoryId)) return;
     setSaving(true);
     setError('');
     try {
-      await api.addExpense(budget.id, { category_id: categoryId, amount: Number(amount), description: description || null, date });
+      const common = { amount: Number(amount), description: description || null, date };
+      if (isIncome) await api.addIncome(budget.id, { ...common, source });
+      else await api.addExpense(budget.id, { ...common, category_id: categoryId });
       onSaved();
     } catch (e) {
       setError(e.message);
@@ -40,31 +46,48 @@ export default function AddExpenseSheet({ budget, onClose, onSaved }) {
   };
 
   return (
-    <Sheet title="Новый расход" onClose={onClose}>
+    <Sheet onClose={onClose}>
+      <div className="segmented" style={{ marginBottom: 12 }}>
+        <button className={!isIncome ? 'on' : ''} onClick={() => setKind('expense')}>Расход</button>
+        <button className={isIncome ? 'on income' : ''} onClick={() => setKind('income')}>Доход</button>
+      </div>
+
       <div className="card-pad" style={{ marginBottom: 10 }}>
         <input
           className="amount-input"
+          style={isIncome ? { color: 'var(--ok)' } : undefined}
           type="number"
           inputMode="decimal"
-          placeholder={`0 ${budget.currency}`}
+          placeholder={`${isIncome ? '+ ' : ''}0 ${budget.currency}`}
           value={amount}
           onChange={e => setAmount(e.target.value)}
           autoFocus
         />
       </div>
 
-      <div className="cat-grid" style={{ marginBottom: 10 }}>
-        {categories.map(c => (
-          <button key={c.id} className={`cat-btn ${categoryId === c.id ? 'on' : ''}`} onClick={() => setCategoryId(c.id)}>
-            <span className="e">{c.icon}</span>
-            <span>{c.name}</span>
+      {isIncome ? (
+        <div className="cat-grid" style={{ marginBottom: 10 }}>
+          {INCOME_SOURCES.map(s => (
+            <button key={s.id} className={`cat-btn ${source === s.id ? 'on' : ''}`} onClick={() => setSource(s.id)}>
+              <span className="e">{s.icon}</span>
+              <span>{s.name}</span>
+            </button>
+          ))}
+        </div>
+      ) : (
+        <div className="cat-grid" style={{ marginBottom: 10 }}>
+          {categories.map(c => (
+            <button key={c.id} className={`cat-btn ${categoryId === c.id ? 'on' : ''}`} onClick={() => setCategoryId(c.id)}>
+              <span className="e">{c.icon}</span>
+              <span>{c.name}</span>
+            </button>
+          ))}
+          <button className="cat-btn" style={{ background: 'transparent', border: '1.5px dashed #c8c8c8' }} onClick={() => setShowNewCat(true)}>
+            <span className="e"><IconPlus size={20} stroke={1.6} /></span>
+            <span>Своя</span>
           </button>
-        ))}
-        <button className="cat-btn" style={{ background: 'transparent', border: '1.5px dashed #c8c8c8' }} onClick={() => setShowNewCat(true)}>
-          <span className="e"><IconPlus size={20} stroke={1.6} /></span>
-          <span>Своя</span>
-        </button>
-      </div>
+        </div>
+      )}
 
       {showNewCat && (
         <CategorySheet

@@ -116,6 +116,13 @@ button { font-family: inherit; color: inherit; }
 }
 .pill.on { background: var(--ink); color: #fff; }
 
+.segmented { display: flex; background: var(--surface); border-radius: 100px; padding: 3px; }
+.segmented button {
+  flex: 1; border: none; background: none; border-radius: 100px; padding: 9px; font-size: 14px; cursor: pointer; color: var(--ink-2);
+}
+.segmented button.on { background: var(--ink); color: #fff; }
+.segmented button.on.income { background: var(--ok); }
+
 /* Buttons */
 .btn {
   display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%;

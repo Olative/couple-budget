@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { IconPlus } from '@tabler/icons-react';
 import { api } from '../api/client';
 import { PenguinPair } from '../components/Art';
-import { money, confirmAction } from '../format';
+import { money, confirmAction, incomeSource } from '../format';
 
 function dayLabel(dateStr) {
   const d = new Date(dateStr + 'T00:00:00');
@@ -20,7 +20,14 @@ export default function Expenses({ budget, user, refreshKey, onAdd }) {
   const [who, setWho] = useState(null);
 
   const load = useCallback(() => {
-    api.getExpenses(budget.id).then(setExpenses);
+    Promise.all([api.getExpenses(budget.id), api.getIncomes(budget.id)]).then(([ex, inc]) => {
+      const incomes = inc.map(i => {
+        const s = incomeSource(i.source);
+        return { ...i, kind: 'income', category_icon: s.icon, category_name: s.name };
+      });
+      setExpenses([...ex.map(e => ({ ...e, kind: 'expense' })), ...incomes]
+        .sort((a, b) => b.date.localeCompare(a.date) || b.created_at.localeCompare(a.created_at)));
+    });
   }, [budget.id]);
 
   useEffect(() => { load(); }, [load, refreshKey]);
@@ -29,7 +36,8 @@ export default function Expenses({ budget, user, refreshKey, onAdd }) {
   const remove = async (e) => {
     if (e.user_id !== user.id) return;
     if (!(await confirmAction(`Удалить «${e.description || e.category_name}» на ${money(e.amount, budget.currency)}?`))) return;
-    await api.deleteExpense(e.id);
+    if (e.kind === 'income') await api.deleteIncome(e.id);
+    else await api.deleteExpense(e.id);
     load();
   };
 
@@ -41,7 +49,7 @@ export default function Expenses({ budget, user, refreshKey, onAdd }) {
   return (
     <div className="page">
       <div className="page-head">
-        <div className="h-title">Расходы</div>
+        <div className="h-title">Операции</div>
         <button className="icon-btn dark" onClick={onAdd} aria-label="Добавить расход"><IconPlus size={18} /></button>
       </div>
 
@@ -57,7 +65,7 @@ export default function Expenses({ budget, user, refreshKey, onAdd }) {
       {expenses && groups.length === 0 && (
         <div className="empty">
           <PenguinPair height={70} />
-          <div className="empty-text">Расходов пока нет</div>
+          <div className="empty-text">Операций пока нет</div>
           <button className="btn" style={{ maxWidth: 220 }} onClick={onAdd}>Добавить первый</button>
         </div>
       )}
@@ -67,13 +75,15 @@ export default function Expenses({ budget, user, refreshKey, onAdd }) {
           <div className="section-label" style={{ marginBottom: 6 }}>{dayLabel(date)}</div>
           <div className="card">
             {items.map(e => (
-              <div key={e.id} className="row" onClick={() => remove(e)} style={{ cursor: e.user_id === user.id ? 'pointer' : 'default' }}>
+              <div key={`${e.kind}${e.id}`} className="row" onClick={() => remove(e)} style={{ cursor: e.user_id === user.id ? 'pointer' : 'default' }}>
                 <span className="row-ic">{e.category_icon}</span>
                 <div className="row-main">
                   <div className="row-name">{e.description || e.category_name}</div>
                   <div className="row-sub">{e.description ? `${e.category_name} · ` : ''}{e.user_name}</div>
                 </div>
-                <span className="row-amt">−{money(e.amount, budget.currency)}</span>
+                {e.kind === 'income'
+                  ? <span className="row-amt good">+{money(e.amount, budget.currency)}</span>
+                  : <span className="row-amt">−{money(e.amount, budget.currency)}</span>}
               </div>
             ))}
           </div>
@@ -81,7 +91,7 @@ export default function Expenses({ budget, user, refreshKey, onAdd }) {
       ))}
 
       {expenses && groups.length > 0 && (
-        <div className="row-sub" style={{ textAlign: 'center', marginTop: 4 }}>Нажмите на свой расход, чтобы удалить его</div>
+        <div className="row-sub" style={{ textAlign: 'center', marginTop: 4 }}>Нажмите на свою запись, чтобы удалить её</div>
       )}
     </div>
   );

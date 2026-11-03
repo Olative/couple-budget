@@ -40,6 +40,13 @@ export const api = {
   addExpense: (budgetId, data) => request(`/budgets/${budgetId}/expenses`, { method: 'POST', body: JSON.stringify(data) }),
   deleteExpense: (id) => request(`/expenses/${id}`, { method: 'DELETE' }),
 
+  getIncomes: (budgetId, params = {}) => {
+    const qs = new URLSearchParams(params).toString();
+    return request(`/budgets/${budgetId}/incomes${qs ? `?${qs}` : ''}`);
+  },
+  addIncome: (budgetId, data) => request(`/budgets/${budgetId}/incomes`, { method: 'POST', body: JSON.stringify(data) }),
+  deleteIncome: (id) => request(`/incomes/${id}`, { method: 'DELETE' }),
+
   updateCategory: (id, data) => request(`/categories/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   addCategory: (budgetId, data) => request(`/budgets/${budgetId}/categories`, { method: 'POST', body: JSON.stringify(data) }),
   deleteCategory: (id, moveTo) => request(`/categories/${id}${moveTo ? `?move_to=${moveTo}` : ''}`, { method: 'DELETE' }),

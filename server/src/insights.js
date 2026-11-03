@@ -143,6 +143,9 @@ export async function buildRecap(budgetId, month) {
   const biggest = await db.prepare(biggestSql(true)).get(budgetId, `${month}%`, `${prev}%`)
     || await db.prepare(biggestSql(false)).get(budgetId, `${month}%`);
 
+  const incomeRow = await db.prepare('SELECT COALESCE(SUM(amount), 0) as total FROM incomes WHERE budget_id = ? AND date LIKE ?')
+    .get(budgetId, `${month}%`);
+
   const saved = await db.prepare(`
     SELECT COALESCE(SUM(sc.amount), 0) as s FROM savings_contributions sc
     JOIN savings_goals g ON g.id = sc.goal_id
@@ -182,6 +185,7 @@ export async function buildRecap(budgetId, month) {
     hasData: true,
     totalSpent,
     totalPlanned,
+    totalIncome: Number(incomeRow.total),
     top: { name: top.name, icon: top.icon, spent: Number(top.spent), prevSpent: Number(top.prev_spent), planned: Number(top.planned_amount || 0), limitRunOutDay },
     byMember: byMember.map(m => ({ id: m.id, first_name: m.first_name, spent: Number(m.spent) })),
     biggest: biggest ? { ...biggest, amount: Number(biggest.amount) } : null,

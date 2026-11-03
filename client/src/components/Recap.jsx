@@ -47,6 +47,28 @@ function buildCards(r, cur) {
       : diff >= 0 ? `Уложились в план и сэкономили ${money(diff, cur)}` : `Вышли за план на ${money(-diff, cur)}`,
   });
 
+  if (r.totalIncome > 0) {
+    const left = r.totalIncome - r.totalSpent;
+    const pct = Math.round((left / r.totalIncome) * 100);
+    cards.push({
+      ...SAND,
+      body: (
+        <div style={{ width: '100%' }}>
+          <div className="big">+ {money(r.totalIncome, cur)}</div>
+          <div style={{ display: 'flex', height: 10, borderRadius: 5, overflow: 'hidden', margin: '18px 10px 8px', background: 'rgba(43,36,24,.12)' }}>
+            <div style={{ width: `${Math.min(100, (r.totalSpent / r.totalIncome) * 100)}%`, background: '#2b2418' }} />
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, margin: '0 10px', opacity: 0.7 }}>
+            <span>потратили {num(r.totalSpent)}</span>
+            <span>{left >= 0 ? `осталось ${num(left)}` : `минус ${num(-left)}`}</span>
+          </div>
+        </div>
+      ),
+      title: 'Заработали вместе',
+      sub: left >= 0 ? `Осталось ${money(left, cur)} — это ${pct}% дохода` : `Траты превысили доход на ${money(-left, cur)}`,
+    });
+  }
+
   const t = r.top;
   let topSub = '';
   if (t.prevSpent > 0) {

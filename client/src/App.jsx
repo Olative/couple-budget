@@ -111,7 +111,7 @@ export default function App() {
   }
 
   const refresh = () => setRefreshKey(k => k + 1);
-  const pageProps = { budget: activeBudget, user, refreshKey, onAdd: () => setShowAdd(true) };
+  const pageProps = { budget: activeBudget, user, refreshKey, onAdd: (kind) => setShowAdd(kind === 'income' ? 'income' : 'expense') };
 
   const renderPage = () => {
     switch (activeTab) {
@@ -134,7 +134,7 @@ export default function App() {
             key={id}
             aria-label={label}
             className={`tab ${id === 'add' ? 'add' : ''} ${activeTab === id ? 'active' : ''}`}
-            onClick={() => (id === 'add' ? setShowAdd(true) : setActiveTab(id))}
+            onClick={() => (id === 'add' ? setShowAdd('expense') : setActiveTab(id))}
           >
             <Icon size={21} stroke={1.6} />
           </button>
@@ -144,6 +144,7 @@ export default function App() {
       {showAdd && (
         <AddExpenseSheet
           budget={activeBudget}
+          initialKind={showAdd}
           onClose={() => setShowAdd(false)}
           onSaved={() => { setShowAdd(false); refresh(); }}
         />

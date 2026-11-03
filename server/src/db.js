@@ -80,6 +80,16 @@ await client.batch([
     amount REAL NOT NULL,
     created_at TEXT DEFAULT (datetime('now'))
   )`,
+  `CREATE TABLE IF NOT EXISTS incomes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    budget_id TEXT NOT NULL,
+    user_id INTEGER NOT NULL,
+    amount REAL NOT NULL,
+    source TEXT NOT NULL DEFAULT 'other',
+    description TEXT,
+    date TEXT DEFAULT (date('now')),
+    created_at TEXT DEFAULT (datetime('now'))
+  )`,
   `CREATE TABLE IF NOT EXISTS handled_updates (
     key TEXT PRIMARY KEY,
     created_at TEXT DEFAULT (datetime('now'))

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { IconChevronLeft, IconChevronRight, IconSettings, IconArrowRight } from '@tabler/icons-react';
+import { IconChevronLeft, IconChevronRight, IconSettings, IconArrowRight, IconPlus } from '@tabler/icons-react';
 import { api } from '../api/client';
 import { GridLines, Penguin, PenguinPair } from '../components/Art';
 import InviteCard from '../components/InviteCard';
@@ -57,6 +57,7 @@ export default function Dashboard({ budget, refreshKey, onAdd, onOpenRecap, onOp
   if (!summary || !forecast) return <div className="page">{header}</div>;
 
   const spent = Number(summary.totalSpent);
+  const income = Number(summary.totalIncome || 0);
   const planned = Number(summary.totalPlanned);
   const remaining = planned - spent;
   const forecastById = Object.fromEntries(forecast.categories.map(c => [c.id, c]));
@@ -105,6 +106,25 @@ export default function Dashboard({ budget, refreshKey, onAdd, onOpenRecap, onOp
           </div>
         </div>
       </div>
+
+      {income > 0 ? (
+        <div className="card-pad" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 6, padding: '14px 12px' }}>
+          {[
+            ['Пришло', `+${money(income, cur)}`, 'var(--ok)'],
+            ['Ушло', money(spent, cur), 'var(--ink)'],
+            [income - spent >= 0 ? 'Осталось' : 'Минус', money(Math.abs(income - spent), cur), income - spent >= 0 ? 'var(--ink)' : 'var(--danger)'],
+          ].map(([label, value, color]) => (
+            <div key={label} style={{ textAlign: 'center', minWidth: 0 }}>
+              <div className="label muted" style={{ fontSize: 7 }}>{label}</div>
+              <div className="num" style={{ fontSize: 13, marginTop: 6, color, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{value}</div>
+            </div>
+          ))}
+        </div>
+      ) : month === thisMonth() && (
+        <button className="btn btn-secondary" style={{ padding: 12, fontSize: 14 }} onClick={() => onAdd('income')}>
+          <IconPlus size={16} stroke={1.6} /> Добавить доход
+        </button>
+      )}
 
       {members.length > 0 && (
         <div style={{ display: 'grid', gridTemplateColumns: members.length > 1 ? '1fr 1fr' : '1fr', gap: 8 }}>

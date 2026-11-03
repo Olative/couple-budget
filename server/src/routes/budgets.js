@@ -107,17 +107,21 @@ router.get('/budgets/:id/summary', async (req, res) => {
   `).all(`${currentMonth}%`, id);
 
   const byMember = await db.prepare(`
-    SELECT u.id, u.first_name, u.username, COALESCE(SUM(e.amount), 0) as spent
+    SELECT u.id, u.first_name, u.username,
+      (SELECT COALESCE(SUM(e.amount), 0) FROM expenses e WHERE e.user_id = u.id AND e.budget_id = ? AND e.date LIKE ?) as spent,
+      (SELECT COALESCE(SUM(i.amount), 0) FROM incomes i WHERE i.user_id = u.id AND i.budget_id = ? AND i.date LIKE ?) as earned
     FROM users u
     JOIN budget_members bm ON u.id = bm.user_id
-    LEFT JOIN expenses e ON u.id = e.user_id AND e.budget_id = ? AND e.date LIKE ?
     WHERE bm.budget_id = ?
-    GROUP BY u.id
-  `).all(id, `${currentMonth}%`, id);
+    ORDER BY bm.joined_at
+  `).all(id, `${currentMonth}%`, id, `${currentMonth}%`, id);
+
+  const incomeRow = await db.prepare('SELECT COALESCE(SUM(amount), 0) as total FROM incomes WHERE budget_id = ? AND date LIKE ?')
+    .get(id, `${currentMonth}%`);
 
   const totalPlanned = byCategory.reduce((sum, c) => sum + (c.planned_amount || 0), 0);
 
-  res.json({ totalSpent: totalRow.total, totalPlanned, byCategory, byMember, month: currentMonth });
+  res.json({ totalSpent: totalRow.total, totalIncome: Number(incomeRow.total), totalPlanned, byCategory, byMember, month: currentMonth });
 });
 
 const MONTH_RE = /^\d{4}-\d{2}$/;
