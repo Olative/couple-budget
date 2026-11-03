@@ -10,6 +10,8 @@ function today() {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
+const daysIn = (iso) => new Date(Number(iso.slice(0, 4)), Number(iso.slice(5, 7)), 0).getDate();
+
 export default function AddExpenseSheet({ budget, initialKind = 'expense', initialRepeat = false, onClose, onSaved }) {
   const [kind, setKind] = useState(initialKind);
   const [categories, setCategories] = useState([]);
@@ -22,6 +24,8 @@ export default function AddExpenseSheet({ budget, initialKind = 'expense', initi
   const [error, setError] = useState('');
   const [showNewCat, setShowNewCat] = useState(false);
   const [repeat, setRepeat] = useState(initialRepeat);
+  const now = today();
+  const [repeatDay, setRepeatDay] = useState(Number(now.slice(8, 10)));
   const [personal, setPersonal] = useState(false);
   const isIncome = kind === 'income';
 
@@ -37,7 +41,9 @@ export default function AddExpenseSheet({ budget, initialKind = 'expense', initi
     setSaving(true);
     setError('');
     try {
-      const common = { amount: Number(amount), description: description || null, date };
+      // A repeating payment starts this month on the chosen day (the server waits if that day is still ahead).
+      const repeatDate = `${now.slice(0, 8)}${String(Math.min(repeatDay, daysIn(now))).padStart(2, '0')}`;
+      const common = { amount: Number(amount), description: description || null, date: repeat && !(personal && !isIncome) ? repeatDate : date };
       if (!isIncome && personal) await api.addPersonal(budget.id, { ...common, category_id: categoryId });
       else if (repeat) await api.addRecurring(budget.id, { ...common, kind, source, category_id: categoryId });
       else if (isIncome) await api.addIncome(budget.id, { ...common, source });
@@ -50,7 +56,7 @@ export default function AddExpenseSheet({ budget, initialKind = 'expense', initi
   };
 
   return (
-    <Sheet onClose={onClose}>
+    <Sheet onClose={onClose} title={initialRepeat ? 'Регулярный платёж' : undefined}>
       <div className="segmented" style={{ marginBottom: 12 }}>
         <button className={!isIncome ? 'on' : ''} onClick={() => setKind('expense')}>Расход</button>
         <button className={isIncome ? 'on income' : ''} onClick={() => setKind('income')}>Доход</button>
@@ -79,6 +85,8 @@ export default function AddExpenseSheet({ budget, initialKind = 'expense', initi
           ))}
         </div>
       ) : (
+        <>
+        {repeat && <div className="input-label">В какую категорию записывать каждый месяц</div>}
         <div className="cat-grid" style={{ marginBottom: 10 }}>
           {categories.map(c => (
             <button key={c.id} className={`cat-btn ${categoryId === c.id ? 'on' : ''}`} onClick={() => setCategoryId(c.id)}>
@@ -91,6 +99,7 @@ export default function AddExpenseSheet({ budget, initialKind = 'expense', initi
             <span>Своя</span>
           </button>
         </div>
+        </>
       )}
 
       {showNewCat && (
@@ -104,11 +113,13 @@ export default function AddExpenseSheet({ budget, initialKind = 'expense', initi
       <div className="input-group">
         <input className="input" placeholder="Комментарий" value={description} onChange={e => setDescription(e.target.value)} />
       </div>
-      <div className="input-group">
-        <input className="input" type="date" value={date} onChange={e => setDate(e.target.value)} />
-      </div>
+      {!(repeat && (isIncome || !personal)) && (
+        <div className="input-group">
+          <input className="input" type="date" value={date} onChange={e => setDate(e.target.value)} />
+        </div>
+      )}
 
-      {!isIncome && (
+      {!isIncome && !repeat && (
         <label className="switch-row" style={{ marginBottom: 6 }}>
           <span>
             <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><IconLock size={16} stroke={1.6} /> Личная трата</span>
@@ -119,13 +130,24 @@ export default function AddExpenseSheet({ budget, initialKind = 'expense', initi
       )}
 
       {(isIncome || !personal) && (
-        <label className="switch-row">
-          <span>
-            <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><IconRepeat size={16} stroke={1.6} /> Повторять каждый месяц</span>
-            {repeat && <span className="row-sub" style={{ display: 'block', marginTop: 2 }}>каждое {Number(date.slice(8, 10))}-е число, начиная с этой даты</span>}
-          </span>
-          <input type="checkbox" className="switch" checked={repeat} onChange={e => setRepeat(e.target.checked)} />
-        </label>
+        <div className="switch-row" style={{ flexWrap: 'wrap' }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1, cursor: 'pointer' }}>
+            <IconRepeat size={16} stroke={1.6} /> Повторять каждый месяц
+            <input type="checkbox" className="switch" style={{ marginLeft: 'auto' }} checked={repeat} onChange={e => setRepeat(e.target.checked)} />
+          </label>
+          {repeat && (
+            <div style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, marginTop: 10, fontSize: 14 }}>
+              <span>каждое</span>
+              <select className="day-select" value={repeatDay} onChange={e => setRepeatDay(Number(e.target.value))} aria-label="День месяца">
+                {Array.from({ length: 31 }, (_, i) => <option key={i + 1} value={i + 1}>{i + 1}</option>)}
+              </select>
+              <span>число</span>
+              <span className="row-sub" style={{ marginLeft: 'auto', marginTop: 0 }}>
+                {repeatDay > Number(now.slice(8, 10)) ? `первый раз ${repeatDay}-го` : repeatDay === Number(now.slice(8, 10)) ? 'первый раз — сегодня' : 'за этот месяц запишем сразу'}
+              </span>
+            </div>
+          )}
+        </div>
       )}
 
       {error && <div className="warn" style={{ fontSize: 13, margin: '0 4px' }}>{error}</div>}
