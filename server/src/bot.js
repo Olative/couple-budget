@@ -63,7 +63,7 @@ export function startBot() {
     if (!(await firstTime(msgKey(msg)))) return;
     const chatId = msg.chat.id;
     const param = (match[1] || '').trim();
-    const photo = `${WEB_APP_URL}/bot/welcome.jpg`;
+    const animation = `${WEB_APP_URL}/bot/welcome.mp4`;
 
     let inviter = null;
     if (param) {
@@ -90,11 +90,11 @@ export function startBot() {
       ];
 
     try {
-      await bot.sendPhoto(chatId, photo, { caption, ...button });
+      await bot.sendAnimation(chatId, animation, { caption, ...button });
     } catch (e) {
-      // Only fall back to text when Telegram rejected the photo; a network error may mean it was delivered.
+      // Only fall back to text when Telegram rejected the animation; a network error may mean it was delivered.
       if (e.code !== 'ETELEGRAM') {
-        console.error('Welcome photo send failed:', e.message);
+        console.error('Welcome animation send failed:', e.message);
         return;
       }
       await bot.sendMessage(chatId, caption, button);

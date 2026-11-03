@@ -11,13 +11,33 @@
     <style>
       #splash { position: fixed; inset: 0; z-index: 1000; background: #fff; display: flex; align-items: center; justify-content: center; transition: opacity .35s ease; }
       #splash.hide { opacity: 0; pointer-events: none; }
-      #splash video { width: min(86vw, 400px); aspect-ratio: 600 / 388; height: auto; }
+      #splash video, #splash img { width: min(86vw, 400px); aspect-ratio: 600 / 388; height: auto; }
+      #splash video::-webkit-media-controls-start-playback-button { display: none !important; -webkit-appearance: none; }
+      #splash video::-webkit-media-controls { display: none !important; }
     </style>
   </head>
   <body>
     <div id="splash">
-      <video src="/loading.mp4" poster="/loading-poster.jpg" autoplay muted loop playsinline webkit-playsinline preload="auto"></video>
+      <video src="/loading.mp4" poster="/loading-poster.jpg" autoplay muted loop playsinline webkit-playsinline preload="auto" disablepictureinpicture></video>
     </div>
+    <script>
+      // iOS Low Power Mode and some webviews block autoplay and show a play button; swap in a GIF, which always animates.
+      (function () {
+        var video = document.querySelector('#splash video');
+        var swapped = false;
+        function useGif() {
+          if (swapped || !video.isConnected) return;
+          swapped = true;
+          var img = new Image();
+          img.alt = '';
+          img.onload = function () { if (video.isConnected) video.replaceWith(img); };
+          img.src = '/loading.gif';
+        }
+        var playing = video.play();
+        if (playing && playing.catch) playing.catch(useGif);
+        setTimeout(function () { if (video.paused) useGif(); }, 600);
+      })();
+    </script>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
   </body>
