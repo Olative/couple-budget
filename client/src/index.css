@@ -355,3 +355,14 @@ button { font-family: inherit; color: inherit; }
 .tutorial-skip { align-self: flex-end; border: none; background: none; color: var(--muted); font-size: 14px; min-height: 32px; cursor: pointer; }
 .tutorial-body { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; text-align: center; animation: fadeIn .3s ease; }
 .tutorial-text { font-size: 15px; line-height: 1.45; color: var(--ink-2); max-width: 320px; font-weight: 300; }
+
+/* iOS collapses an empty date input to a sliver; keep it a full field with a hint. */
+.input[type="date"] { min-height: 48px; display: block; -webkit-appearance: none; text-align: left; }
+.input[type="date"]::-webkit-date-and-time-value { text-align: left; }
+.date-field { position: relative; }
+.date-placeholder { position: absolute; left: 16px; top: 50%; transform: translateY(-50%); color: var(--muted); font-size: 16px; pointer-events: none; }
+.date-empty, .date-empty::-webkit-datetime-edit { color: transparent; }
+
+/* Without an explicit line height iOS draws the caret below the text in Outfit. */
+.input, .select { line-height: 22px; }
+.amount-input { line-height: 1.2; }

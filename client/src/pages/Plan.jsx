@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { IconPlus, IconChevronRight, IconX } from '@tabler/icons-react';
+import { IconPlus, IconChevronRight, IconX, IconRepeat } from '@tabler/icons-react';
 import { api } from '../api/client';
 import { GridLines } from '../components/Art';
 import CategorySheet from '../components/CategorySheet';
@@ -10,7 +10,7 @@ const roundUp = (v) => Math.ceil(v / 100) * 100;
 // Last loaded plan per budget, so reopening the tab shows it at once while fresh data loads.
 const cache = {};
 
-export default function Plan({ budget, refreshKey }) {
+export default function Plan({ budget, refreshKey, onAdd }) {
   const cached = cache[budget.id] || {};
   const [categories, setCategories] = useState(cached.categories || null);
   const [typical, setTypical] = useState(cached.typical || null);
@@ -103,7 +103,7 @@ export default function Plan({ budget, refreshKey }) {
       <div className="section-label" style={{ marginTop: 14 }}>Регулярные платежи</div>
       {recurring.length === 0 ? (
         <div className="card-pad row-sub" style={{ fontSize: 13, lineHeight: 1.45 }}>
-          Аренда, подписки, зарплата — добавьте их через «+» с переключателем «Повторять каждый месяц», и они будут появляться сами.
+          Аренда, подписки, зарплата: добавьте один раз, и они будут появляться в нужный день каждого месяца.
         </div>
       ) : (
         <div className="card">
@@ -126,6 +126,10 @@ export default function Plan({ budget, refreshKey }) {
           })}
         </div>
       )}
+
+      <button className="btn btn-secondary" onClick={() => onAdd('expense', true)}>
+        <IconRepeat size={18} stroke={1.6} /> Добавить регулярный платёж
+      </button>
 
       {sheet && (
         <CategorySheet

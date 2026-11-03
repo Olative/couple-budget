@@ -62,6 +62,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [loading, setLoading] = useState(true);
   const [showAdd, setShowAdd] = useState(false);
+  const [addRepeat, setAddRepeat] = useState(false);
   const [recapMonth, setRecapMonth] = useState(initialRecap);
   const [refreshKey, setRefreshKey] = useState(0);
   const [budgetCount, setBudgetCount] = useState(0);
@@ -126,7 +127,7 @@ export default function App() {
   }
 
   const refresh = () => setRefreshKey(k => k + 1);
-  const pageProps = { budget: activeBudget, user, refreshKey, onAdd: (kind) => setShowAdd(kind === 'income' ? 'income' : 'expense') };
+  const pageProps = { budget: activeBudget, user, refreshKey, onAdd: (kind, repeat) => { setAddRepeat(repeat === true); setShowAdd(kind === 'income' ? 'income' : 'expense'); } };
 
   const renderPage = () => {
     switch (activeTab) {
@@ -149,7 +150,7 @@ export default function App() {
             key={id}
             aria-label={label}
             className={`tab ${id === 'add' ? 'add' : ''} ${activeTab === id ? 'active' : ''}`}
-            onClick={() => (id === 'add' ? setShowAdd('expense') : setActiveTab(id))}
+            onClick={() => (id === 'add' ? (setAddRepeat(false), setShowAdd('expense')) : setActiveTab(id))}
           >
             <Icon size={21} stroke={1.6} />
           </button>
@@ -160,6 +161,7 @@ export default function App() {
         <AddExpenseSheet
           budget={activeBudget}
           initialKind={showAdd}
+          initialRepeat={addRepeat}
           onClose={() => setShowAdd(false)}
           onSaved={() => { setShowAdd(false); refresh(); }}
         />

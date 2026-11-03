@@ -152,7 +152,10 @@ export default function Savings({ budget }) {
           </div>
           <div className="input-group">
             <label className="input-label">К какому сроку (необязательно)</label>
-            <input className="input" type="date" value={deadline} onChange={e => setDeadline(e.target.value)} />
+            <div className="date-field">
+              <input className={`input ${deadline ? "" : "date-empty"}`} type="date" value={deadline} onChange={e => setDeadline(e.target.value)} />
+              {!deadline && <span className="date-placeholder">Выбрать дату</span>}
+            </div>
           </div>
           <div className="input-group">
             <label className="input-label">Откладывать каждый месяц (необязательно)</label>

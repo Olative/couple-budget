@@ -10,7 +10,7 @@ function today() {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
-export default function AddExpenseSheet({ budget, initialKind = 'expense', onClose, onSaved }) {
+export default function AddExpenseSheet({ budget, initialKind = 'expense', initialRepeat = false, onClose, onSaved }) {
   const [kind, setKind] = useState(initialKind);
   const [categories, setCategories] = useState([]);
   const [amount, setAmount] = useState('');
@@ -21,7 +21,7 @@ export default function AddExpenseSheet({ budget, initialKind = 'expense', onClo
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [showNewCat, setShowNewCat] = useState(false);
-  const [repeat, setRepeat] = useState(false);
+  const [repeat, setRepeat] = useState(initialRepeat);
   const [personal, setPersonal] = useState(false);
   const isIncome = kind === 'income';
 
