@@ -99,14 +99,14 @@ button { font-family: inherit; color: inherit; }
 
 .scallop {
   background: var(--scallop); color: #fff; padding: 14px;
-  /* Bumps along each edge separately; "round" fits whole circles to any width or height (iOS cut the last ones otherwise). */
+  /* --ex/--ey: the exact step for this card's size, set by edges.js so whole bumps fit every side. */
   --bump: radial-gradient(circle 10px, #000 97%, #0000);
   --scallops:
     linear-gradient(#000 0 0) 10px 10px / calc(100% - 20px) calc(100% - 20px) no-repeat,
-    var(--bump) left top / 20px 20px round no-repeat,
-    var(--bump) left bottom / 20px 20px round no-repeat,
-    var(--bump) left top / 20px 20px no-repeat round,
-    var(--bump) right top / 20px 20px no-repeat round;
+    var(--bump) left top / var(--ex, 20px) 20px repeat-x,
+    var(--bump) left bottom / var(--ex, 20px) 20px repeat-x,
+    var(--bump) left top / 20px var(--ey, 20px) repeat-y,
+    var(--bump) right top / 20px var(--ey, 20px) repeat-y;
   -webkit-mask: var(--scallops);
   mask: var(--scallops);
 }
@@ -114,15 +114,15 @@ button { font-family: inherit; color: inherit; }
 
 .stamp-wrap { filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.07)); }
 .stamp {
-  /* Perforation cut by a mask; "round" fits whole holes along each edge whatever the card's size. */
+  /* Perforation cut by a mask; --ex/--ey from edges.js fit whole holes along each side. */
   background: #fafafa; padding: 16px; position: relative; overflow: hidden;
   --hole: radial-gradient(circle 4px, #0000 96%, #000);
   --perforation:
     linear-gradient(#000 0 0) 6px 6px / calc(100% - 12px) calc(100% - 12px) no-repeat,
-    var(--hole) left top -6px / 12px 12px round no-repeat,
-    var(--hole) left bottom -6px / 12px 12px round no-repeat,
-    var(--hole) left -6px top / 12px 12px no-repeat round,
-    var(--hole) right -6px top / 12px 12px no-repeat round;
+    var(--hole) left top -6px / var(--ex, 12px) 12px repeat-x,
+    var(--hole) left bottom -6px / var(--ex, 12px) 12px repeat-x,
+    var(--hole) left -6px top / 12px var(--ey, 12px) repeat-y,
+    var(--hole) right -6px top / 12px var(--ey, 12px) repeat-y;
   -webkit-mask: var(--perforation);
   mask: var(--perforation);
 }
