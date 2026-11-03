@@ -137,6 +137,13 @@ await client.batch([
     date TEXT DEFAULT (date('now')),
     created_at TEXT DEFAULT (datetime('now'))
   )`,
+  `CREATE TABLE IF NOT EXISTS receipts (
+    expense_id INTEGER PRIMARY KEY,
+    user_id INTEGER NOT NULL,
+    mime TEXT NOT NULL,
+    data TEXT NOT NULL,
+    created_at TEXT DEFAULT (datetime('now'))
+  )`,
   `CREATE TABLE IF NOT EXISTS settlements (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     budget_id TEXT NOT NULL,

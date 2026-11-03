@@ -155,6 +155,24 @@ button { font-family: inherit; color: inherit; }
 .bubble-name { font-size: 11px; color: var(--muted); margin-bottom: 2px; }
 .comment-input { display: flex; gap: 8px; align-items: center; }
 
+.receipt-thumb {
+  position: relative; display: block; width: 100%; height: 120px; border: none; padding: 0; border-radius: 16px;
+  overflow: hidden; margin-bottom: 10px; cursor: pointer; background: var(--surface);
+}
+.receipt-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.receipt-thumb span {
+  position: absolute; left: 10px; bottom: 10px; background: rgba(0,0,0,.6); color: #fff; border-radius: 100px;
+  padding: 4px 10px; font-size: 12px; display: flex; align-items: center; gap: 4px;
+}
+.receipt-view {
+  position: fixed; inset: 0; z-index: 400; background: rgba(0,0,0,.92); display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 16px;
+  padding: calc(env(safe-area-inset-top, 0px) + 16px) 16px calc(env(safe-area-inset-bottom, 0px) + 16px);
+}
+.receipt-view img { max-width: 100%; max-height: calc(100% - 80px); object-fit: contain; border-radius: 8px; }
+.receipt-actions { display: flex; gap: 8px; width: 100%; max-width: 420px; }
+.receipt-actions .btn { flex: 1; padding: 12px; font-size: 14px; }
+
 /* Buttons */
 .btn {
   display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%;

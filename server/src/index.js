@@ -13,14 +13,18 @@ import incomeRoutes from './routes/incomes.js';
 import recurringRoutes from './routes/recurring.js';
 import socialRoutes from './routes/social.js';
 import splitRoutes from './routes/split.js';
+import fileRoutes from './routes/files.js';
 import { startBot } from './bot.js';
+
+// Bot handlers are async; a failure in one must not take the whole server down.
+process.on('unhandledRejection', (e) => console.error('Unhandled rejection:', e));
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const app = express();
 const PORT = process.env.PORT || 3001;
 
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '3mb' }));
 
 async function authMiddleware(req, res, next) {
   const telegramId = req.headers['x-telegram-user-id'];
@@ -46,6 +50,7 @@ app.use('/api', authMiddleware, incomeRoutes);
 app.use('/api', authMiddleware, recurringRoutes);
 app.use('/api', authMiddleware, socialRoutes);
 app.use('/api', authMiddleware, splitRoutes);
+app.use('/api', authMiddleware, fileRoutes);
 
 app.use((err, req, res, next) => {
   console.error('Unhandled error:', err);

@@ -14,7 +14,8 @@ router.get('/budgets/:budgetId/expenses', async (req, res) => {
     SELECT e.*, c.name as category_name, c.icon as category_icon, c.color as category_color,
            u.first_name as user_name,
            (SELECT group_concat(r.emoji, '') FROM reactions r WHERE r.expense_id = e.id) as reactions,
-           (SELECT COUNT(*) FROM comments cm WHERE cm.expense_id = e.id) as comment_count
+           (SELECT COUNT(*) FROM comments cm WHERE cm.expense_id = e.id) as comment_count,
+           EXISTS (SELECT 1 FROM receipts rc WHERE rc.expense_id = e.id) as has_receipt
     FROM expenses e
     JOIN categories c ON e.category_id = c.id
     JOIN users u ON e.user_id = u.id
@@ -62,6 +63,7 @@ router.delete('/expenses/:id', async (req, res) => {
   }
   await db.prepare('DELETE FROM reactions WHERE expense_id = ?').run(expense.id);
   await db.prepare('DELETE FROM comments WHERE expense_id = ?').run(expense.id);
+  await db.prepare('DELETE FROM receipts WHERE expense_id = ?').run(expense.id);
   await db.prepare('DELETE FROM expenses WHERE id = ?').run(expense.id);
   res.json({ ok: true });
 });

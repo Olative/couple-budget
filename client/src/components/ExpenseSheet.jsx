@@ -1,8 +1,8 @@
-import { useState, useEffect, useCallback } from 'react';
-import { IconSend, IconRepeat } from '@tabler/icons-react';
-import { api } from '../api/client';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { IconSend, IconRepeat, IconPaperclip } from '@tabler/icons-react';
+import { api, fetchReceiptUrl } from '../api/client';
 import Sheet from './Sheet';
-import { money, confirmAction, MONTHS_GEN } from '../format';
+import { money, confirmAction, MONTHS_GEN, compressImage } from '../format';
 
 const REACTIONS = ['😍', '👍', '😱', '🤔', '💸', '🐧'];
 
@@ -15,8 +15,41 @@ export default function ExpenseSheet({ budget, user, expenseId, onClose, onChang
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
 
+  const [receipt, setReceipt] = useState(null);
+  const [showReceipt, setShowReceipt] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const fileInput = useRef(null);
+
   const load = useCallback(() => api.getThread(expenseId).then(setThread), [expenseId]);
   useEffect(() => { load(); }, [load]);
+
+  const loadReceipt = useCallback(async () => {
+    const url = await fetchReceiptUrl(expenseId);
+    setReceipt(prev => { if (prev) URL.revokeObjectURL(prev); return url; });
+  }, [expenseId]);
+  useEffect(() => { loadReceipt(); }, [loadReceipt]);
+
+  const attach = async (ev) => {
+    const file = ev.target.files?.[0];
+    ev.target.value = '';
+    if (!file) return;
+    setUploading(true);
+    try {
+      await api.uploadReceipt(expenseId, await compressImage(file));
+      await loadReceipt();
+      onChanged();
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const removeReceipt = async () => {
+    if (!(await confirmAction('Удалить фото чека?'))) return;
+    await api.deleteReceipt(expenseId);
+    setShowReceipt(false);
+    setReceipt(null);
+    onChanged();
+  };
 
   if (!thread) return <Sheet onClose={onClose}><div className="empty" style={{ padding: 30 }}>…</div></Sheet>;
 
@@ -65,6 +98,29 @@ export default function ExpenseSheet({ budget, user, expenseId, onClose, onChang
           {e.recurring_id && <> · <IconRepeat size={12} style={{ verticalAlign: -1 }} /> каждый месяц</>}
         </div>
       </div>
+
+      <input ref={fileInput} type="file" accept="image/*" style={{ display: 'none' }} onChange={attach} />
+      {receipt ? (
+        <button className="receipt-thumb" onClick={() => setShowReceipt(true)} aria-label="Открыть фото чека">
+          <img src={receipt} alt="Фото чека" />
+          <span><IconPaperclip size={14} /> Чек</span>
+        </button>
+      ) : (
+        <button className="btn btn-secondary" style={{ marginBottom: 10, padding: 12, fontSize: 14 }} onClick={() => fileInput.current.click()} disabled={uploading}>
+          <IconPaperclip size={16} stroke={1.6} /> {uploading ? 'Загружаем…' : 'Фото чека'}
+        </button>
+      )}
+
+      {showReceipt && receipt && (
+        <div className="receipt-view" onClick={() => setShowReceipt(false)}>
+          <img src={receipt} alt="Фото чека" />
+          <div className="receipt-actions" onClick={ev => ev.stopPropagation()}>
+            <button className="btn btn-secondary" onClick={() => fileInput.current.click()}>Заменить</button>
+            <button className="btn btn-secondary" style={{ color: 'var(--danger)' }} onClick={removeReceipt}>Удалить</button>
+            <button className="btn" onClick={() => setShowReceipt(false)}>Закрыть</button>
+          </div>
+        </div>
+      )}
 
       <div className="reactions">
         {REACTIONS.map(r => (

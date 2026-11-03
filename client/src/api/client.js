@@ -22,7 +22,17 @@ async function request(path, options = {}) {
   return res.json();
 }
 
+export async function fetchReceiptUrl(expenseId) {
+  const res = await fetch(`${API_BASE}/expenses/${expenseId}/receipt`, { headers: { 'X-Telegram-User-Id': telegramUserId } });
+  if (!res.ok) return null;
+  return URL.createObjectURL(await res.blob());
+}
+
 export const api = {
+  uploadReceipt: (expenseId, image) => request(`/expenses/${expenseId}/receipt`, { method: 'PUT', body: JSON.stringify({ image }) }),
+  deleteReceipt: (expenseId) => request(`/expenses/${expenseId}/receipt`, { method: 'DELETE' }),
+  exportBudget: (budgetId) => request(`/budgets/${budgetId}/export`, { method: 'POST' }),
+
   auth: (initData) => request('/auth', { method: 'POST', body: JSON.stringify({ initData }) }),
 
   createBudget: (data) => request('/budgets', { method: 'POST', body: JSON.stringify(data) }),

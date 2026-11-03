@@ -3,6 +3,7 @@ import db from './db.js';
 import { currentMonth, shiftMonth } from './insights.js';
 import { sendEveningReminders, onExpenseAdded } from './notify.js';
 import { parseMessage } from './quickadd.js';
+import { buildExport } from './routes/files.js';
 
 const BOT_TOKEN = process.env.BOT_TOKEN;
 const WEB_APP_URL = process.env.WEB_APP_URL || 'https://couple-budget-z17f.onrender.com';
@@ -19,6 +20,11 @@ const pendingBroadcasts = new Map();
 export async function sendToUser(telegramId, text) {
   if (!bot) return;
   await bot.sendMessage(telegramId, text, openButton('Открыть Lolo & Pepe'));
+}
+
+export async function sendDocumentToUser(telegramId, file, caption) {
+  if (!bot) throw new Error('Bot is disabled');
+  await bot.sendDocument(telegramId, file.buffer, { caption }, { filename: file.filename, contentType: 'text/csv' });
 }
 
 export function inviteLink(code) {
@@ -44,11 +50,13 @@ async function setupProfile() {
   await bot.setChatMenuButton({ menu_button: JSON.stringify({ type: 'web_app', text: 'Открыть', web_app: { url: WEB_APP_URL } }) });
   await bot.setMyCommands([
     { command: 'start', description: 'Открыть приложение' },
+    { command: 'export', description: 'Выгрузить траты в Excel' },
     { command: 'help', description: 'Помощь' },
   ]);
   if (ADMIN_ID) {
     await bot.setMyCommands([
       { command: 'start', description: 'Открыть приложение' },
+      { command: 'export', description: 'Выгрузить траты в Excel' },
       { command: 'stats', description: 'Статистика' },
       { command: 'broadcast', description: 'Рассылка всем пользователям' },
       { command: 'help', description: 'Помощь' },
@@ -112,11 +120,22 @@ export function startBot() {
     if (!(await firstTime(msgKey(msg)))) return;
     let text = 'Всё самое важное — в приложении: нажмите кнопку «Открыть» внизу или кнопку под этим сообщением.\n\n' +
       'А траты можно записывать прямо здесь — просто напишите:\n«кофе 250», «такси 300 вчера», «+5000 подработка»\n\n' +
-      '/start — открыть приложение\n/myid — узнать свой Telegram ID';
+      '/start — открыть приложение\n/export — выгрузить все траты в Excel\n/myid — узнать свой Telegram ID';
     if (isAdmin(msg)) {
       text += '\n\nДля администратора:\n/stats — статистика\n/broadcast текст — рассылка всем пользователям';
     }
     bot.sendMessage(msg.chat.id, text, openButton());
+  });
+
+  bot.onText(/^\/export/, async (msg) => {
+    if (!(await firstTime(msgKey(msg)))) return;
+    const { user, budget } = await quickAddContext(msg.from.id);
+    if (!user || !budget) {
+      await bot.sendMessage(msg.chat.id, 'Пока нечего выгружать — сначала создайте бюджет в приложении.', openButton());
+      return;
+    }
+    const file = await buildExport(budget.id, user.id);
+    await sendDocumentToUser(msg.chat.id, file, `📊 Все траты и доходы — ${file.count} записей. Файл открывается в Excel и Google Таблицах.`);
   });
 
   bot.onText(/^\/myid/, async (msg) => {

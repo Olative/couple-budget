@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { IconChevronLeft } from '@tabler/icons-react';
+import { IconChevronLeft, IconFileSpreadsheet } from '@tabler/icons-react';
 import { api } from '../api/client';
 import CurrencyPicker from '../components/CurrencyPicker';
 import InviteCard from '../components/InviteCard';
@@ -32,6 +32,21 @@ export default function Settings({ budget, user, onBack, onBudgetUpdate }) {
     await api.setPersonalLimit(budget.id, Number(limit) || 0);
     setLimitSaved(true);
     setTimeout(() => setLimitSaved(false), 1500);
+  };
+
+  const [exporting, setExporting] = useState(null);
+  const [exportError, setExportError] = useState('');
+
+  const exportAll = async () => {
+    setExporting('sending');
+    setExportError('');
+    try {
+      await api.exportBudget(budget.id);
+      setExporting('done');
+    } catch (e) {
+      setExportError(e.message);
+      setExporting(null);
+    }
   };
 
   const toggle = async (key) => {
@@ -103,6 +118,13 @@ export default function Settings({ budget, user, onBack, onBudgetUpdate }) {
         <button className="btn" style={{ width: 'auto', padding: '0 18px' }} onClick={saveLimit}>{limitSaved ? 'Готово' : 'Сохранить'}</button>
       </div>
       <div className="row-sub" style={{ margin: '0 4px' }}>Личные траты не попадают в общий бюджет — второй видит только сумму за месяц</div>
+
+      <div className="section-label">Выгрузка</div>
+      <button className="btn btn-secondary" onClick={exportAll} disabled={exporting === 'sending'}>
+        <IconFileSpreadsheet size={18} stroke={1.6} />
+        {exporting === 'sending' ? 'Готовим файл…' : exporting === 'done' ? 'Файл отправлен в чат с ботом' : 'Выгрузить в Excel'}
+      </button>
+      {exportError && <div className="warn" style={{ fontSize: 13, margin: '0 4px' }}>{exportError}</div>}
 
       <div className="section-label">Уведомления от бота</div>
       {prefs && (

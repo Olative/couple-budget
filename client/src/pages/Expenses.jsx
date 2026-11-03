@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { IconPlus, IconRepeat, IconMessageCircle, IconLock } from '@tabler/icons-react';
+import { IconPlus, IconRepeat, IconMessageCircle, IconLock, IconPaperclip } from '@tabler/icons-react';
 import ExpenseSheet from '../components/ExpenseSheet';
 import { api } from '../api/client';
 import { PenguinPair } from '../components/Art';
@@ -88,6 +88,7 @@ export default function Expenses({ budget, user, refreshKey, onAdd }) {
                   <div className="row-name">
                     {e.description || e.category_name}
                     {e.recurring_id && <IconRepeat size={13} stroke={1.8} color="#9a9a9a" style={{ marginLeft: 5, verticalAlign: -1 }} aria-label="повторяется каждый месяц" />}
+                    {!!e.has_receipt && <IconPaperclip size={13} stroke={1.8} color="#9a9a9a" style={{ marginLeft: 5, verticalAlign: -1 }} aria-label="есть фото чека" />}
                   </div>
                   <div className="row-sub">
                     {e.kind === 'personal' && <IconLock size={11} style={{ verticalAlign: -1, marginRight: 3 }} />}
