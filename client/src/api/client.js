@@ -47,6 +47,10 @@ export const api = {
   addIncome: (budgetId, data) => request(`/budgets/${budgetId}/incomes`, { method: 'POST', body: JSON.stringify(data) }),
   deleteIncome: (id) => request(`/incomes/${id}`, { method: 'DELETE' }),
 
+  getRecurring: (budgetId) => request(`/budgets/${budgetId}/recurring`),
+  addRecurring: (budgetId, data) => request(`/budgets/${budgetId}/recurring`, { method: 'POST', body: JSON.stringify(data) }),
+  deleteRecurring: (id) => request(`/recurring/${id}`, { method: 'DELETE' }),
+
   updateCategory: (id, data) => request(`/categories/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   addCategory: (budgetId, data) => request(`/budgets/${budgetId}/categories`, { method: 'POST', body: JSON.stringify(data) }),
   deleteCategory: (id, moveTo) => request(`/categories/${id}${moveTo ? `?move_to=${moveTo}` : ''}`, { method: 'DELETE' }),

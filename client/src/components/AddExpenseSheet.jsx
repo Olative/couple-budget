@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { IconPlus } from '@tabler/icons-react';
+import { IconPlus, IconRepeat } from '@tabler/icons-react';
 import { api } from '../api/client';
 import Sheet from './Sheet';
 import CategorySheet from './CategorySheet';
@@ -21,6 +21,7 @@ export default function AddExpenseSheet({ budget, initialKind = 'expense', onClo
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [showNewCat, setShowNewCat] = useState(false);
+  const [repeat, setRepeat] = useState(false);
   const isIncome = kind === 'income';
 
   useEffect(() => {
@@ -36,7 +37,8 @@ export default function AddExpenseSheet({ budget, initialKind = 'expense', onClo
     setError('');
     try {
       const common = { amount: Number(amount), description: description || null, date };
-      if (isIncome) await api.addIncome(budget.id, { ...common, source });
+      if (repeat) await api.addRecurring(budget.id, { ...common, kind, source, category_id: categoryId });
+      else if (isIncome) await api.addIncome(budget.id, { ...common, source });
       else await api.addExpense(budget.id, { ...common, category_id: categoryId });
       onSaved();
     } catch (e) {
@@ -103,6 +105,14 @@ export default function AddExpenseSheet({ budget, initialKind = 'expense', onClo
       <div className="input-group">
         <input className="input" type="date" value={date} onChange={e => setDate(e.target.value)} />
       </div>
+
+      <label className="switch-row">
+        <span>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><IconRepeat size={16} stroke={1.6} /> Повторять каждый месяц</span>
+          {repeat && <span className="row-sub" style={{ display: 'block', marginTop: 2 }}>каждое {Number(date.slice(8, 10))}-е число, начиная с этой даты</span>}
+        </span>
+        <input type="checkbox" className="switch" checked={repeat} onChange={e => setRepeat(e.target.checked)} />
+      </label>
 
       {error && <div className="warn" style={{ fontSize: 13, margin: '0 4px' }}>{error}</div>}
 

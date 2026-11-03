@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { IconPlus } from '@tabler/icons-react';
+import { IconPlus, IconRepeat } from '@tabler/icons-react';
 import { api } from '../api/client';
 import { PenguinPair } from '../components/Art';
 import { money, confirmAction, incomeSource } from '../format';
@@ -78,7 +78,10 @@ export default function Expenses({ budget, user, refreshKey, onAdd }) {
               <div key={`${e.kind}${e.id}`} className="row" onClick={() => remove(e)} style={{ cursor: e.user_id === user.id ? 'pointer' : 'default' }}>
                 <span className="row-ic">{e.category_icon}</span>
                 <div className="row-main">
-                  <div className="row-name">{e.description || e.category_name}</div>
+                  <div className="row-name">
+                    {e.description || e.category_name}
+                    {e.recurring_id && <IconRepeat size={13} stroke={1.8} color="#9a9a9a" style={{ marginLeft: 5, verticalAlign: -1 }} aria-label="повторяется каждый месяц" />}
+                  </div>
                   <div className="row-sub">{e.description ? `${e.category_name} · ` : ''}{e.user_name}</div>
                 </div>
                 {e.kind === 'income'

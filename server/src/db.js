@@ -99,7 +99,29 @@ await client.batch([
     month TEXT NOT NULL,
     PRIMARY KEY (budget_id, month)
   )`,
+  `CREATE TABLE IF NOT EXISTS recurring (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    budget_id TEXT NOT NULL,
+    user_id INTEGER NOT NULL,
+    kind TEXT NOT NULL,
+    amount REAL NOT NULL,
+    category_id INTEGER,
+    source TEXT,
+    description TEXT,
+    day_of_month INTEGER NOT NULL,
+    start_month TEXT NOT NULL,
+    last_month TEXT,
+    created_at TEXT DEFAULT (datetime('now'))
+  )`,
 ]);
+
+// Columns added after launch; ALTER fails harmlessly once they exist.
+for (const sql of [
+  'ALTER TABLE expenses ADD COLUMN recurring_id INTEGER',
+  'ALTER TABLE incomes ADD COLUMN recurring_id INTEGER',
+]) {
+  await client.execute(sql).catch(() => {});
+}
 
 console.log('Database tables initialized');
 

@@ -14,6 +14,37 @@ export function daysInMonth(month) {
   return new Date(Date.UTC(y, m, 0)).getUTCDate();
 }
 
+const pad2 = (n) => String(n).padStart(2, '0');
+
+// Creates the expense/income entries recurring rules owe up to today. Each month is claimed with a
+// conditional UPDATE first, so two requests running at once can't create the same entry twice.
+export async function materializeRecurring(budgetId) {
+  const rules = await db.prepare('SELECT * FROM recurring WHERE budget_id = ?').all(budgetId);
+  const now = currentMonth();
+  const today = new Date().getUTCDate();
+  for (const r of rules) {
+    let month = r.last_month ? shiftMonth(r.last_month, 1) : r.start_month;
+    while (month <= now) {
+      const day = Math.min(Number(r.day_of_month), daysInMonth(month));
+      if (month === now && day > today) break;
+      const claim = await db.prepare(
+        'UPDATE recurring SET last_month = ? WHERE id = ? AND (last_month IS NULL OR last_month < ?)'
+      ).run(month, r.id, month);
+      if (claim.rowsAffected > 0) {
+        const date = `${month}-${pad2(day)}`;
+        if (r.kind === 'income') {
+          await db.prepare('INSERT INTO incomes (budget_id, user_id, amount, source, description, date, recurring_id) VALUES (?, ?, ?, ?, ?, ?, ?)')
+            .run(budgetId, r.user_id, r.amount, r.source || 'other', r.description, date, r.id);
+        } else {
+          await db.prepare('INSERT INTO expenses (budget_id, category_id, user_id, amount, description, date, recurring_id) VALUES (?, ?, ?, ?, ?, ?, ?)')
+            .run(budgetId, r.category_id, r.user_id, r.amount, r.description, date, r.id);
+        }
+      }
+      month = shiftMonth(month, 1);
+    }
+  }
+}
+
 export async function monthTotal(budgetId, month) {
   const row = await db.prepare('SELECT COALESCE(SUM(amount), 0) as total FROM expenses WHERE budget_id = ? AND date LIKE ?')
     .get(budgetId, `${month}%`);
@@ -58,24 +89,37 @@ export async function buildForecast(budgetId, month) {
   const day = isCurrent ? new Date().getUTCDate() : month < now ? dim : 0;
 
   const cats = await db.prepare(`
-    SELECT c.id, c.planned_amount, COALESCE(SUM(e.amount), 0) as spent
+    SELECT c.id, c.planned_amount, COALESCE(SUM(e.amount), 0) as spent,
+      COALESCE(SUM(CASE WHEN e.recurring_id IS NOT NULL THEN e.amount END), 0) as fixed
     FROM categories c
     LEFT JOIN expenses e ON c.id = e.category_id AND e.date LIKE ?
     WHERE c.budget_id = ?
     GROUP BY c.id
   `).all(`${month}%`, budgetId);
 
+  // Recurring expenses still due later this month are known in advance, not projected from pace.
+  const pendingRows = isCurrent ? await db.prepare(`
+    SELECT category_id, SUM(amount) as s FROM recurring
+    WHERE budget_id = ? AND kind = 'expense' AND start_month <= ? AND (last_month IS NULL OR last_month < ?)
+    GROUP BY category_id
+  `).all(budgetId, month, month) : [];
+  const pending = Object.fromEntries(pendingRows.map(r => [r.category_id, Number(r.s)]));
+
   const spent = cats.reduce((s, c) => s + Number(c.spent), 0);
   const planned = cats.reduce((s, c) => s + Number(c.planned_amount || 0), 0);
-  const projected = isCurrent && day > 0 ? (spent / day) * dim : spent;
+  const fixedTotal = cats.reduce((s, c) => s + Number(c.fixed) + (pending[c.id] || 0), 0);
+  const variable = spent - cats.reduce((s, c) => s + Number(c.fixed), 0);
+  const projected = isCurrent && day > 0 ? (variable / day) * dim + fixedTotal : spent;
 
   const categories = cats.map(c => {
     const catSpent = Number(c.spent);
     const catPlanned = Number(c.planned_amount || 0);
+    const catFixed = Number(c.fixed) + (pending[c.id] || 0);
+    const catVariable = catSpent - Number(c.fixed);
     let runsOutDay = null;
     const exhausted = catPlanned > 0 && catSpent >= catPlanned;
-    if (isCurrent && catPlanned > 0 && !exhausted && day >= 3 && catSpent > 0) {
-      const d = Math.ceil(catPlanned / (catSpent / day));
+    if (isCurrent && catPlanned > 0 && !exhausted && day >= 3 && catVariable > 0 && catPlanned > catFixed) {
+      const d = Math.ceil((catPlanned - catFixed) / (catVariable / day));
       if (d <= dim) runsOutDay = d;
     }
     return { id: c.id, spent: catSpent, planned: catPlanned, runsOutDay, exhausted };

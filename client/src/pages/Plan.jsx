@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
-import { IconPlus, IconChevronRight } from '@tabler/icons-react';
+import { IconPlus, IconChevronRight, IconX } from '@tabler/icons-react';
 import { api } from '../api/client';
 import { GridLines } from '../components/Art';
 import CategorySheet from '../components/CategorySheet';
-import { money, confirmAction } from '../format';
+import { money, confirmAction, incomeSource } from '../format';
 
 const roundUp = (v) => Math.ceil(v / 100) * 100;
 
@@ -13,10 +13,19 @@ export default function Plan({ budget, refreshKey }) {
   const [filling, setFilling] = useState(false);
   const [sheet, setSheet] = useState(null);
 
+  const [recurring, setRecurring] = useState([]);
+
   const load = useCallback(() => {
     api.getBudget(budget.id).then(b => setCategories(b.categories));
     api.getForecast(budget.id).then(f => setTypical(f.typical));
+    api.getRecurring(budget.id).then(setRecurring);
   }, [budget.id]);
+
+  const stopRecurring = async (r) => {
+    if (!(await confirmAction('Перестать повторять этот платёж? Уже созданные записи останутся.'))) return;
+    await api.deleteRecurring(r.id);
+    load();
+  };
 
   useEffect(() => { load(); }, [load, refreshKey]);
 
@@ -84,6 +93,33 @@ export default function Plan({ budget, refreshKey }) {
       <button className="btn btn-secondary" onClick={() => setSheet('new')}>
         <IconPlus size={18} stroke={1.6} /> Новая категория
       </button>
+
+      <div className="section-label" style={{ marginTop: 14 }}>Регулярные платежи</div>
+      {recurring.length === 0 ? (
+        <div className="card-pad row-sub" style={{ fontSize: 13, lineHeight: 1.45 }}>
+          Аренда, подписки, зарплата — добавьте их через «+» с переключателем «Повторять каждый месяц», и они будут появляться сами.
+        </div>
+      ) : (
+        <div className="card">
+          {recurring.map(r => {
+            const income = r.kind === 'income';
+            const s = income ? incomeSource(r.source) : null;
+            return (
+              <div key={r.id} className="row">
+                <span className="row-ic">{income ? s.icon : r.category_icon}</span>
+                <div className="row-main">
+                  <div className="row-name">{r.description || (income ? s.name : r.category_name)}</div>
+                  <div className="row-sub">каждое {r.day_of_month}-е · {r.user_name}</div>
+                </div>
+                <span className={`row-amt ${income ? 'good' : ''}`}>{income ? '+' : '−'}{money(r.amount, cur)}</span>
+                <button className="icon-btn" style={{ width: 30, height: 30, background: 'var(--surface-2)' }} onClick={() => stopRecurring(r)} aria-label="Отменить повтор">
+                  <IconX size={14} />
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       {sheet && (
         <CategorySheet

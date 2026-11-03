@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import crypto from 'crypto';
 import db from '../db.js';
-import { buildForecast, buildRecap, currentMonth, shiftMonth } from '../insights.js';
+import { buildForecast, buildRecap, currentMonth, shiftMonth, materializeRecurring } from '../insights.js';
 import { inviteLink } from '../bot.js';
 
 const router = Router();
@@ -92,6 +92,7 @@ router.get('/budgets/:id/summary', async (req, res) => {
   const { id } = req.params;
   const { month } = req.query;
   const currentMonth = month || new Date().toISOString().slice(0, 7);
+  await materializeRecurring(id);
 
   const totalRow = await db.prepare('SELECT COALESCE(SUM(amount), 0) as total FROM expenses WHERE budget_id = ? AND date LIKE ?')
     .get(id, `${currentMonth}%`);

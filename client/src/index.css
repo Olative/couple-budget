@@ -123,6 +123,21 @@ button { font-family: inherit; color: inherit; }
 .segmented button.on { background: var(--ink); color: #fff; }
 .segmented button.on.income { background: var(--ok); }
 
+.switch-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  background: var(--surface); border-radius: 14px; padding: 12px 16px; font-size: 14px; cursor: pointer;
+}
+.switch {
+  appearance: none; -webkit-appearance: none; flex-shrink: 0; width: 44px; height: 26px; border-radius: 13px;
+  background: #d9d9d9; position: relative; cursor: pointer; transition: background .2s;
+}
+.switch::after {
+  content: ''; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%;
+  background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.2); transition: transform .2s;
+}
+.switch:checked { background: var(--ink); }
+.switch:checked::after { transform: translateX(18px); }
+
 /* Buttons */
 .btn {
   display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%;

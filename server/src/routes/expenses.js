@@ -1,11 +1,13 @@
 import { Router } from 'express';
 import db from '../db.js';
+import { materializeRecurring } from '../insights.js';
 
 const router = Router();
 
 router.get('/budgets/:budgetId/expenses', async (req, res) => {
   const { budgetId } = req.params;
   const { month, category_id, limit = 50, offset = 0 } = req.query;
+  await materializeRecurring(budgetId);
 
   let query = `
     SELECT e.*, c.name as category_name, c.icon as category_icon, c.color as category_color,
