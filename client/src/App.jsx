@@ -12,7 +12,7 @@ import Recap from './components/Recap';
 
 // The splash lives in index.html so it shows before the bundle loads.
 // It stays until the dance has played through once; the timer covers a video that never starts.
-const SPLASH_FALLBACK_MS = 6000;
+const SPLASH_FALLBACK_MS = 4200;
 
 function whenDanceFinished() {
   const video = document.querySelector('#splash video');
