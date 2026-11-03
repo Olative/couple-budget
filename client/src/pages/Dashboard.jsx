@@ -3,6 +3,8 @@ import { IconChevronLeft, IconChevronRight, IconSettings, IconArrowRight, IconPl
 import { api } from '../api/client';
 import { GridLines, Penguin, PenguinPair } from '../components/Art';
 import InviteCard from '../components/InviteCard';
+import SpriteAnim from '../components/SpriteAnim';
+import Celebration from '../components/Celebration';
 import { money, MONTHS, MONTHS_GEN, shiftMonth, thisMonth, confirmAction } from '../format';
 
 function monthLabel(month) {
@@ -34,6 +36,7 @@ export default function Dashboard({ budget, user, refreshKey, onAdd, onOpenRecap
   const [balance, setBalance] = useState(null);
   const [personal, setPersonal] = useState(null);
   const [reload, setReload] = useState(0);
+  const [celebrate, setCelebrate] = useState(null);
 
   useEffect(() => {
     Promise.all([
@@ -51,6 +54,7 @@ export default function Dashboard({ budget, user, refreshKey, onAdd, onOpenRecap
     const d = balance.debt;
     if (!(await confirmAction(`Отметить долг ${d.from.first_name} → ${d.to.first_name} ${money(d.amount, budget.currency)} как возвращённый?`))) return;
     await api.settle(budget.id);
+    setCelebrate({ from: d.from.first_name, to: d.to.first_name, amount: d.amount });
     setReload(r => r + 1);
   };
 
@@ -238,10 +242,20 @@ export default function Dashboard({ budget, user, refreshKey, onAdd, onOpenRecap
         </div>
       ) : (
         <div className="empty">
-          <PenguinPair height={70} />
+          <SpriteAnim name="idle" width={120} />
           <div className="empty-text">В этом месяце трат пока нет</div>
           <button className="btn" style={{ maxWidth: 220 }} onClick={onAdd}>Добавить расход</button>
         </div>
+      )}
+
+      {celebrate && (
+        <Celebration
+          anim="highfive"
+          label="в расчёте"
+          title={money(celebrate.amount, cur)}
+          subtitle={`${celebrate.from} → ${celebrate.to}. Долг закрыт, можно тратить дальше`}
+          onClose={() => setCelebrate(null)}
+        />
       )}
     </div>
   );

@@ -3,6 +3,8 @@ import { IconPlus, IconTrash } from '@tabler/icons-react';
 import { api } from '../api/client';
 import { GridLines, PenguinPair, Ring } from '../components/Art';
 import Sheet from '../components/Sheet';
+import SpriteAnim from '../components/SpriteAnim';
+import Celebration from '../components/Celebration';
 import { money, byMonth, confirmAction } from '../format';
 
 function etaText(goal) {
@@ -28,6 +30,7 @@ export default function Savings({ budget }) {
   const [deadline, setDeadline] = useState('');
   const [contributeAmount, setContributeAmount] = useState('');
   const [saving, setSaving] = useState(false);
+  const [reached, setReached] = useState(null);
 
   const load = useCallback(() => { api.getSavings(budget.id).then(setGoals); }, [budget.id]);
   useEffect(() => { load(); }, [load]);
@@ -45,10 +48,14 @@ export default function Savings({ budget }) {
   const contribute = async () => {
     if (!contributeAmount || Number(contributeAmount) <= 0) return;
     setSaving(true);
-    await api.contributeSavings(contributeTo.id, Number(contributeAmount));
+    const goal = contributeTo;
+    const updated = await api.contributeSavings(goal.id, Number(contributeAmount));
     setContributeAmount('');
     setContributeTo(null);
     setSaving(false);
+    if (Number(goal.current_amount) < Number(goal.target_amount) && Number(updated.current_amount) >= Number(updated.target_amount)) {
+      setReached(goal);
+    }
     load();
   };
 
@@ -69,7 +76,7 @@ export default function Savings({ budget }) {
 
       {goals && goals.length === 0 && (
         <div className="empty">
-          <PenguinPair height={70} />
+          <SpriteAnim name="idle" width={120} />
           <div className="empty-text">На что копим вместе?</div>
           <button className="btn" style={{ maxWidth: 220 }} onClick={() => setShowAdd(true)}>Создать цель</button>
         </div>
@@ -137,6 +144,16 @@ export default function Savings({ budget }) {
             <button className="btn" onClick={contribute} disabled={saving || !contributeAmount}>{saving ? 'Сохраняем…' : 'Пополнить'}</button>
           </div>
         </Sheet>
+      )}
+
+      {reached && (
+        <Celebration
+          anim="celebrate"
+          label="цель достигнута"
+          title={reached.name}
+          subtitle={`Накопили ${money(reached.target_amount, cur)}. Можно тратить с удовольствием`}
+          onClose={() => setReached(null)}
+        />
       )}
     </div>
   );

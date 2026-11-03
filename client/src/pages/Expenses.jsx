@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { IconPlus, IconRepeat, IconMessageCircle, IconLock, IconPaperclip } from '@tabler/icons-react';
 import ExpenseSheet from '../components/ExpenseSheet';
 import { api } from '../api/client';
-import { PenguinPair } from '../components/Art';
+import SpriteAnim from '../components/SpriteAnim';
 import { money, confirmAction, incomeSource } from '../format';
 
 function dayLabel(dateStr) {
@@ -71,9 +71,9 @@ export default function Expenses({ budget, user, refreshKey, onAdd }) {
 
       {expenses && groups.length === 0 && (
         <div className="empty">
-          <PenguinPair height={70} />
+          <SpriteAnim name="idle" width={120} />
           <div className="empty-text">Операций пока нет</div>
-          <button className="btn" style={{ maxWidth: 220 }} onClick={onAdd}>Добавить первый</button>
+          <button className="btn" style={{ maxWidth: 220 }} onClick={onAdd}>Добавить</button>
         </div>
       )}
 

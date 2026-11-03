@@ -7,14 +7,16 @@ import { buildExport } from './routes/files.js';
 import { readFileSync } from 'fs';
 import { createHash } from 'crypto';
 
-// Telegram caches media by URL, so a replaced welcome clip needs a new URL to show up.
-const WELCOME_VERSION = (() => {
+// Telegram caches media by URL, so a replaced clip needs a new URL to show up.
+function mediaVersion(file) {
   try {
-    return createHash('md5').update(readFileSync(new URL('../public/bot/welcome.mp4', import.meta.url))).digest('hex').slice(0, 8);
+    return createHash('md5').update(readFileSync(new URL(`../public/bot/${file}`, import.meta.url))).digest('hex').slice(0, 8);
   } catch {
     return 'dev';
   }
-})();
+}
+const WELCOME_VERSION = mediaVersion('welcome.mp4');
+const RECAP_VERSION = mediaVersion('recap.mp4');
 
 const BOT_TOKEN = process.env.BOT_TOKEN;
 const WEB_APP_URL = process.env.WEB_APP_URL || 'https://couple-budget-z17f.onrender.com';
@@ -358,10 +360,16 @@ async function sendMonthlyRecaps() {
       'SELECT u.telegram_id FROM users u JOIN budget_members bm ON u.id = bm.user_id WHERE bm.budget_id = ?'
     ).all(id);
     const label = MONTHS_GEN[Number(month.slice(5, 7)) - 1];
+    const text = `Итоги ${label} готовы!\n\nСколько потратили, на что ушло больше всего и что ждёт в новом месяце.`;
+    const button = openButton('Смотреть итоги', `${WEB_APP_URL}?recap=${month}`);
     for (const m of members) {
       try {
-        await bot.sendMessage(m.telegram_id, `🐧 Итоги ${label} готовы!\n\nСколько потратили, на что ушло больше всего и что ждёт в новом месяце.`,
-          openButton('Смотреть итоги', `${WEB_APP_URL}?recap=${month}`));
+        try {
+          await bot.sendAnimation(m.telegram_id, `${WEB_APP_URL}/bot/recap.mp4?v=${RECAP_VERSION}`, { caption: text, ...button });
+        } catch (e) {
+          console.error(`Recap clip to ${m.telegram_id} failed, sending text:`, e.message);
+          await bot.sendMessage(m.telegram_id, `🐧 ${text}`, button);
+        }
       } catch (e) {
         console.error(`Recap message to ${m.telegram_id} failed:`, e.message);
       }

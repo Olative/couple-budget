@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { IconArrowLeft, IconArrowRight, IconX, IconAlertCircle } from '@tabler/icons-react';
 import { api } from '../api/client';
 import { GridLines, Penguin, PenguinPair, Ring } from './Art';
+import SpriteAnim from './SpriteAnim';
 import { money, num, monthIndex, shiftMonth, byMonth, MONTHS, MONTHS_GEN, MONTHS_PREP } from '../format';
 
 const BLUE = { bg: 'var(--blue-grad)', fg: '#fff', mut: 'rgba(255,255,255,.75)', back: '#7fb7ee' };
@@ -10,16 +11,21 @@ const WHITE = { bg: '#fafafa', fg: '#111', mut: '#9a9a9a', back: '#d6d6d6', cls:
 const SAGE = { bg: 'var(--sage)', fg: '#fff', mut: 'rgba(255,255,255,.65)', back: '#6f7f6d' };
 const SAND = { bg: 'var(--sand)', fg: '#2b2418', mut: 'rgba(43,36,24,.55)', back: '#b7a88f' };
 
+// The sprites are drawn on white; multiply lets the blue card show through.
+const COVER_ANIM = { mixBlendMode: 'multiply', borderRadius: 24 };
+
 function buildCards(r, cur) {
   const mi = monthIndex(r.month);
   if (!r.hasData) {
-    return [{ ...BLUE, body: <PenguinPair height={130} />, title: `Итоги ${MONTHS_GEN[mi]}`, sub: `В ${MONTHS_PREP[mi]} трат не было. Пингвины отдыхали` }];
+    return [{ ...BLUE, body: <SpriteAnim name="idle" width={170} style={COVER_ANIM} />, title: `Итоги ${MONTHS_GEN[mi]}`, sub: `В ${MONTHS_PREP[mi]} трат не было. Пингвины отдыхали` }];
   }
 
+  // Within plan — they bump bellies; over plan — they just shuffle.
+  const onPlan = r.totalPlanned === 0 || r.totalSpent <= r.totalPlanned;
   const cards = [{
     ...BLUE,
     grid: true,
-    body: <PenguinPair height={140} />,
+    body: <SpriteAnim name={onPlan ? 'bump' : 'idle'} width={180} style={COVER_ANIM} />,
     title: `Итоги ${MONTHS_GEN[mi]}`,
     sub: 'Листайте, чтобы узнать, как прошёл месяц',
   }];
