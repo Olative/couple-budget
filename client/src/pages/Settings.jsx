@@ -9,6 +9,13 @@ export default function Settings({ budget, user, onBack, onBudgetUpdate, onOpenB
   const [budgetData, setBudgetData] = useState(null);
   const [prefs, setPrefs] = useState(null);
   const [theme, setTheme] = useState(getThemePref);
+  const [name, setName] = useState(budget.name);
+
+  const saveName = async () => {
+    const next = name.trim();
+    if (!next || next === budget.name) { setName(budget.name); return; }
+    onBudgetUpdate(await api.updateBudget(budget.id, { name: next }));
+  };
 
   useEffect(() => {
     api.getBudget(budget.id).then(setBudgetData);
@@ -73,7 +80,15 @@ export default function Settings({ budget, user, onBack, onBudgetUpdate, onOpenB
       <div className="card">
         <div className="row">
           <div className="row-main"><div className="row-name">Название</div></div>
-          <span style={{ fontSize: 14 }}>{budget.name}</span>
+          <input
+            className="name-input"
+            value={name}
+            maxLength={40}
+            onChange={e => setName(e.target.value)}
+            onBlur={saveName}
+            onKeyDown={e => e.key === 'Enter' && e.currentTarget.blur()}
+            aria-label="Название бюджета"
+          />
         </div>
         <button className="row row-btn" onClick={onOpenBudgets}>
           <div className="row-main"><div className="row-name">Другие бюджеты</div><div className="row-sub">например, на поездку или с кем-то ещё</div></div>

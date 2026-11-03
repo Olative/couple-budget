@@ -344,8 +344,11 @@ button { font-family: inherit; color: inherit; }
 
 .envelope { margin-top: 14px; padding: 10px 12px; background: var(--surface-2); border-radius: 12px; text-align: left; }
 .row-btn { width: 100%; border: none; background: none; text-align: left; font: inherit; color: inherit; cursor: pointer; }
-.title-btn { border: none; background: none; color: inherit; cursor: pointer; display: flex; align-items: center; gap: 6px; padding: 0; min-width: 0; }
-.title-btn span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.budget-pill {
+  border: none; background: var(--surface); color: inherit; cursor: pointer; display: flex; align-items: center; gap: 6px;
+  padding: 0 12px 0 14px; height: 34px; border-radius: 100px; min-width: 0; font-size: 14px;
+}
+.budget-pill span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 .tutorial {
   position: fixed; inset: 0; z-index: 450; background: var(--bg); display: flex; flex-direction: column; align-items: center;
@@ -366,3 +369,9 @@ button { font-family: inherit; color: inherit; }
 /* Without an explicit line height iOS draws the caret below the text in Outfit. */
 .input, .select { line-height: 22px; }
 .amount-input { line-height: 1.2; }
+
+.name-input {
+  border: none; background: var(--surface-2); border-radius: 10px; padding: 8px 10px; font: inherit; font-size: 14px;
+  color: var(--ink); text-align: right; width: 55%; min-width: 0; outline: none; line-height: 20px;
+}
+.name-input:focus { box-shadow: 0 0 0 1.5px var(--ink); }

@@ -103,7 +103,7 @@ export default function Plan({ budget, refreshKey, onAdd }) {
       <div className="section-label" style={{ marginTop: 14 }}>Регулярные платежи</div>
       {recurring.length === 0 ? (
         <div className="card-pad row-sub" style={{ fontSize: 13, lineHeight: 1.45 }}>
-          Аренда, подписки, зарплата: добавьте один раз, и они будут появляться в нужный день каждого месяца.
+          Это не категории, а конкретные платежи, которые повторяются: например, аренда 25 000 каждое 5-е число или зарплата. Добавьте платёж один раз, и он сам будет записываться каждый месяц в свою категорию.
         </div>
       ) : (
         <div className="card">

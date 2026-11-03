@@ -25,7 +25,7 @@ export default function BudgetSheet({ current, onPick, onClose }) {
   const create = async () => {
     setSaving(true);
     const b = await api.createBudget({ name: name || 'Новый бюджет', currency });
-    onPick(b, true);
+    onPick(b);
     onClose();
   };
 

@@ -65,7 +65,6 @@ export default function App() {
   const [addRepeat, setAddRepeat] = useState(false);
   const [recapMonth, setRecapMonth] = useState(initialRecap);
   const [refreshKey, setRefreshKey] = useState(0);
-  const [budgetCount, setBudgetCount] = useState(0);
   const [showBudgets, setShowBudgets] = useState(false);
   const [showTutorial, setShowTutorial] = useState(false);
 
@@ -86,13 +85,11 @@ export default function App() {
       setUser(user);
       setTelegramUserId(user.telegram_id);
       api.setNotify({ tz_offset: -new Date().getTimezoneOffset() }).catch(() => {});
-      setBudgetCount(budgets.length);
       if (!user.tutorial_done) setShowTutorial(true);
       let active = budgets[0] || null;
       if (initialJoin) {
         try {
           active = await api.joinBudget(initialJoin);
-          if (!budgets.some(b => b.id === active.id)) setBudgetCount(n => n + 1);
         } catch (e) {
           if (tg?.showAlert && tg.platform !== 'unknown') tg.showAlert(e.message);
           else window.alert(e.message);
@@ -107,10 +104,9 @@ export default function App() {
     if (!loading) hideSplash();
   }, [loading]);
 
-  const handleBudgetReady = useCallback((budget) => { setActiveBudget(budget); setBudgetCount(n => n || 1); }, []);
+  const handleBudgetReady = useCallback((budget) => setActiveBudget(budget), []);
 
-  const switchBudget = (budget, created) => {
-    if (created) setBudgetCount(n => n + 1);
+  const switchBudget = (budget) => {
     setActiveBudget(budget);
     setActiveTab('dashboard');
   };
@@ -131,7 +127,7 @@ export default function App() {
 
   const renderPage = () => {
     switch (activeTab) {
-      case 'dashboard': return <Dashboard {...pageProps} onOpenRecap={setRecapMonth} onOpenSettings={() => setActiveTab('settings')} onOpenSavings={() => setActiveTab('savings')} onOpenBudgets={() => setShowBudgets(true)} multiBudget={budgetCount > 1} />;
+      case 'dashboard': return <Dashboard {...pageProps} onOpenRecap={setRecapMonth} onOpenSettings={() => setActiveTab('settings')} onOpenSavings={() => setActiveTab('savings')} onOpenBudgets={() => setShowBudgets(true)} />;
       case 'expenses': return <Expenses {...pageProps} />;
       case 'plan': return <Plan {...pageProps} />;
       case 'savings': return <Savings {...pageProps} />;

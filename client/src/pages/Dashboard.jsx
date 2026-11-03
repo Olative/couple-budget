@@ -28,7 +28,7 @@ function ForecastLine({ forecast, currency }) {
   );
 }
 
-export default function Dashboard({ budget, user, refreshKey, onAdd, onOpenRecap, onOpenSettings, onOpenSavings, onOpenBudgets, multiBudget }) {
+export default function Dashboard({ budget, user, refreshKey, onAdd, onOpenRecap, onOpenSettings, onOpenSavings, onOpenBudgets }) {
   const [month, setMonth] = useState(thisMonth);
   const [summary, setSummary] = useState(null);
   const [forecast, setForecast] = useState(null);
@@ -63,9 +63,9 @@ export default function Dashboard({ budget, user, refreshKey, onAdd, onOpenRecap
   const cur = budget.currency;
   const header = (
     <div className="page-head">
-      <button className="h-title title-btn" onClick={onOpenBudgets} aria-label="Бюджеты">
-        <span>{multiBudget ? budget.name : 'Lolo & Pepe'}</span>
-        <IconChevronDown size={14} stroke={1.6} />
+      <button className="budget-pill" onClick={onOpenBudgets} aria-label="Сменить бюджет">
+        <span>{budget.name}</span>
+        <IconChevronDown size={15} stroke={1.8} />
       </button>
       <div className="head-actions">
         <div className="chip">
