@@ -99,8 +99,16 @@ button { font-family: inherit; color: inherit; }
 
 .scallop {
   background: var(--scallop); color: #fff; padding: 14px;
-  -webkit-mask: linear-gradient(#000 0 0) 10px 10px / calc(100% - 20px) calc(100% - 20px) no-repeat, radial-gradient(circle 10px, #000 97%, #0000) 0 0 / 20px 20px round;
-  mask: linear-gradient(#000 0 0) 10px 10px / calc(100% - 20px) calc(100% - 20px) no-repeat, radial-gradient(circle 10px, #000 97%, #0000) 0 0 / 20px 20px round;
+  /* Bumps along each edge separately; "round" fits whole circles to any width or height (iOS cut the last ones otherwise). */
+  --bump: radial-gradient(circle 10px, #000 97%, #0000);
+  --scallops:
+    linear-gradient(#000 0 0) 10px 10px / calc(100% - 20px) calc(100% - 20px) no-repeat,
+    var(--bump) left top / 20px 20px round no-repeat,
+    var(--bump) left bottom / 20px 20px round no-repeat,
+    var(--bump) left top / 20px 20px no-repeat round,
+    var(--bump) right top / 20px 20px no-repeat round;
+  -webkit-mask: var(--scallops);
+  mask: var(--scallops);
 }
 .scallop-in { background: var(--scallop-in); border-radius: 10px; position: relative; overflow: hidden; padding: 20px 16px 18px; text-align: center; }
 
