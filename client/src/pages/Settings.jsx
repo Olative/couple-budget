@@ -13,6 +13,27 @@ export default function Settings({ budget, user, onBack, onBudgetUpdate }) {
     api.getNotify().then(setPrefs);
   }, [budget.id]);
 
+  const [balance, setBalance] = useState(null);
+  const [limit, setLimit] = useState('');
+  const [limitSaved, setLimitSaved] = useState(false);
+
+  useEffect(() => {
+    api.getBalance(budget.id).then(setBalance);
+    api.getPersonal(budget.id).then(p => {
+      const me = p.members.find(m => m.id === user.id);
+      setLimit(me?.limit ? String(me.limit) : '');
+    });
+  }, [budget.id, user.id]);
+
+  const myShare = balance?.members.find(m => m.id === user.id)?.share;
+  const partner = balance?.members.find(m => m.id !== user.id);
+
+  const saveLimit = async () => {
+    await api.setPersonalLimit(budget.id, Number(limit) || 0);
+    setLimitSaved(true);
+    setTimeout(() => setLimitSaved(false), 1500);
+  };
+
   const toggle = async (key) => {
     const next = { ...prefs, [key]: prefs[key] ? 0 : 1 };
     setPrefs(next);
@@ -54,6 +75,34 @@ export default function Settings({ budget, user, onBack, onBudgetUpdate }) {
       </div>
 
       <InviteCard budget={budget} />
+
+      {partner && (
+        <>
+          <div className="section-label">Как делим общие траты</div>
+          <div className="pills">
+            {[50, 60, 70, 40, 30].map(p => (
+              <button key={p} className={`pill ${Math.round(myShare) === p ? 'on' : ''}`} onClick={async () => setBalance(await api.setShares(budget.id, p))}>
+                Я {p}% · {partner.first_name} {100 - p}%
+              </button>
+            ))}
+          </div>
+          <div className="row-sub" style={{ margin: '0 4px' }}>По этой пропорции считается, кто кому должен</div>
+        </>
+      )}
+
+      <div className="section-label">Мои личные деньги в месяц</div>
+      <div style={{ display: 'flex', gap: 8 }}>
+        <input
+          className="input"
+          type="number"
+          inputMode="numeric"
+          placeholder={`0 ${budget.currency}`}
+          value={limit}
+          onChange={e => setLimit(e.target.value)}
+        />
+        <button className="btn" style={{ width: 'auto', padding: '0 18px' }} onClick={saveLimit}>{limitSaved ? 'Готово' : 'Сохранить'}</button>
+      </div>
+      <div className="row-sub" style={{ margin: '0 4px' }}>Личные траты не попадают в общий бюджет — второй видит только сумму за месяц</div>
 
       <div className="section-label">Уведомления от бота</div>
       {prefs && (

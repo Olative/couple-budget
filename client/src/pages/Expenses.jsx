@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { IconPlus, IconRepeat, IconMessageCircle } from '@tabler/icons-react';
+import { IconPlus, IconRepeat, IconMessageCircle, IconLock } from '@tabler/icons-react';
 import ExpenseSheet from '../components/ExpenseSheet';
 import { api } from '../api/client';
 import { PenguinPair } from '../components/Art';
@@ -21,12 +21,15 @@ export default function Expenses({ budget, user, refreshKey, onAdd }) {
   const [who, setWho] = useState(null);
 
   const load = useCallback(() => {
-    Promise.all([api.getExpenses(budget.id), api.getIncomes(budget.id)]).then(([ex, inc]) => {
+    Promise.all([api.getExpenses(budget.id), api.getIncomes(budget.id), api.getPersonal(budget.id)]).then(([ex, inc, pers]) => {
       const incomes = inc.map(i => {
         const s = incomeSource(i.source);
         return { ...i, kind: 'income', category_icon: s.icon, category_name: s.name };
       });
-      setExpenses([...ex.map(e => ({ ...e, kind: 'expense' })), ...incomes]
+      const personal = pers.items.map(p => ({
+        ...p, kind: 'personal', category_icon: p.category_icon || '🔒', category_name: 'Личная', user_name: user.first_name,
+      }));
+      setExpenses([...ex.map(e => ({ ...e, kind: 'expense' })), ...incomes, ...personal]
         .sort((a, b) => b.date.localeCompare(a.date) || b.created_at.localeCompare(a.created_at)));
     });
   }, [budget.id]);
@@ -40,7 +43,8 @@ export default function Expenses({ budget, user, refreshKey, onAdd }) {
     if (e.kind === 'expense') { setOpenId(e.id); return; }
     if (e.user_id !== user.id) return;
     if (!(await confirmAction(`Удалить «${e.description || e.category_name}» на ${money(e.amount, budget.currency)}?`))) return;
-    await api.deleteIncome(e.id);
+    if (e.kind === 'personal') await api.deletePersonal(e.id);
+    else await api.deleteIncome(e.id);
     load();
   };
 
@@ -86,7 +90,8 @@ export default function Expenses({ budget, user, refreshKey, onAdd }) {
                     {e.recurring_id && <IconRepeat size={13} stroke={1.8} color="#9a9a9a" style={{ marginLeft: 5, verticalAlign: -1 }} aria-label="повторяется каждый месяц" />}
                   </div>
                   <div className="row-sub">
-                    {e.description ? `${e.category_name} · ` : ''}{e.user_name}
+                    {e.kind === 'personal' && <IconLock size={11} style={{ verticalAlign: -1, marginRight: 3 }} />}
+                    {e.kind === 'personal' ? 'личная · видите только вы' : <>{e.description ? `${e.category_name} · ` : ''}{e.user_name}</>}
                     {e.reactions && <span style={{ marginLeft: 6 }}>{e.reactions}</span>}
                     {e.comment_count > 0 && <span style={{ marginLeft: 6 }}><IconMessageCircle size={11} style={{ verticalAlign: -1 }} /> {e.comment_count}</span>}
                   </div>

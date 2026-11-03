@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
-import { IconChevronLeft, IconChevronRight, IconSettings, IconArrowRight, IconPlus } from '@tabler/icons-react';
+import { IconChevronLeft, IconChevronRight, IconSettings, IconArrowRight, IconPlus, IconLock } from '@tabler/icons-react';
 import { api } from '../api/client';
 import { GridLines, Penguin, PenguinPair } from '../components/Art';
 import InviteCard from '../components/InviteCard';
-import { money, MONTHS, MONTHS_GEN, shiftMonth, thisMonth } from '../format';
+import { money, MONTHS, MONTHS_GEN, shiftMonth, thisMonth, confirmAction } from '../format';
 
 function monthLabel(month) {
   const name = MONTHS[Number(month.slice(5, 7)) - 1].toLowerCase();
@@ -27,17 +27,32 @@ function ForecastLine({ forecast, currency }) {
   );
 }
 
-export default function Dashboard({ budget, refreshKey, onAdd, onOpenRecap, onOpenSettings }) {
+export default function Dashboard({ budget, user, refreshKey, onAdd, onOpenRecap, onOpenSettings }) {
   const [month, setMonth] = useState(thisMonth);
   const [summary, setSummary] = useState(null);
   const [forecast, setForecast] = useState(null);
+  const [balance, setBalance] = useState(null);
+  const [personal, setPersonal] = useState(null);
+  const [reload, setReload] = useState(0);
 
   useEffect(() => {
-    Promise.all([api.getSummary(budget.id, month), api.getForecast(budget.id, month)]).then(([s, f]) => {
+    Promise.all([
+      api.getSummary(budget.id, month), api.getForecast(budget.id, month),
+      api.getBalance(budget.id), api.getPersonal(budget.id, month),
+    ]).then(([s, f, b, p]) => {
       setSummary(s);
       setForecast(f);
+      setBalance(b);
+      setPersonal(p);
     });
-  }, [budget.id, month, refreshKey]);
+  }, [budget.id, month, refreshKey, reload]);
+
+  const settle = async () => {
+    const d = balance.debt;
+    if (!(await confirmAction(`Отметить долг ${d.from.first_name} → ${d.to.first_name} ${money(d.amount, budget.currency)} как возвращённый?`))) return;
+    await api.settle(budget.id);
+    setReload(r => r + 1);
+  };
 
   const cur = budget.currency;
   const header = (
@@ -146,6 +161,54 @@ export default function Dashboard({ budget, refreshKey, onAdd, onOpenRecap, onOp
           })}
         </div>
       )}
+
+      {balance && balance.members.length === 2 && (
+        <div className="card-pad" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <span className="row-ic" style={{ width: 40, height: 40, fontSize: 19 }}>🤝</span>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            {balance.debt ? (
+              <>
+                <div className="row-sub">{balance.debt.from.first_name} → {balance.debt.to.first_name}, вернуть</div>
+                <div className="num" style={{ fontSize: 17, marginTop: 3 }}>{money(balance.debt.amount, cur)}</div>
+              </>
+            ) : (
+              <div style={{ fontSize: 14 }}>Вы в расчёте</div>
+            )}
+            <div className="row-sub" style={{ marginTop: 2 }}>
+              общие траты делим {balance.members.map(m => Math.round(m.share)).join('/')}
+            </div>
+          </div>
+          {balance.debt && (
+            <button className="btn btn-secondary" style={{ width: 'auto', padding: '10px 14px', fontSize: 13, background: 'var(--surface-2)' }} onClick={settle}>
+              Рассчитались
+            </button>
+          )}
+        </div>
+      )}
+
+      {(() => {
+        const me = personal?.members.find(m => m.id === user.id);
+        if (!me || (me.limit === 0 && me.spent === 0)) return null;
+        const other = personal.members.find(m => m.id !== user.id);
+        return (
+          <div className="card-pad">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+              <span style={{ fontSize: 14, display: 'flex', alignItems: 'center', gap: 6 }}><IconLock size={15} stroke={1.6} /> Мои личные</span>
+              <span className="num" style={{ fontSize: 13 }}>{money(me.spent, cur)}{me.limit > 0 && <span className="muted"> из {money(me.limit, cur)}</span>}</span>
+            </div>
+            {me.limit > 0 && (
+              <div className="progress">
+                <div className="progress-fill" style={{ width: `${Math.min(100, (me.spent / me.limit) * 100)}%`, background: me.spent > me.limit ? 'var(--danger)' : 'var(--ink)' }} />
+              </div>
+            )}
+            {other && (other.limit > 0 || other.spent > 0) && (
+              <div className="row-sub" style={{ marginTop: 8 }}>
+                {other.first_name}: {money(other.spent, cur)}{other.limit > 0 ? ` из ${money(other.limit, cur)}` : ''}
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       {activeCats.length > 0 ? (
         <div className="card">

@@ -127,6 +127,24 @@ await client.batch([
     level INTEGER NOT NULL,
     PRIMARY KEY (category_id, month, level)
   )`,
+  `CREATE TABLE IF NOT EXISTS personal_expenses (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    budget_id TEXT NOT NULL,
+    user_id INTEGER NOT NULL,
+    category_id INTEGER,
+    amount REAL NOT NULL,
+    description TEXT,
+    date TEXT DEFAULT (date('now')),
+    created_at TEXT DEFAULT (datetime('now'))
+  )`,
+  `CREATE TABLE IF NOT EXISTS settlements (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    budget_id TEXT NOT NULL,
+    from_user INTEGER NOT NULL,
+    to_user INTEGER NOT NULL,
+    amount REAL NOT NULL,
+    created_at TEXT DEFAULT (datetime('now'))
+  )`,
   `CREATE TABLE IF NOT EXISTS recurring (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     budget_id TEXT NOT NULL,
@@ -147,6 +165,8 @@ await client.batch([
 for (const sql of [
   'ALTER TABLE expenses ADD COLUMN recurring_id INTEGER',
   'ALTER TABLE incomes ADD COLUMN recurring_id INTEGER',
+  'ALTER TABLE budget_members ADD COLUMN share REAL',
+  'ALTER TABLE budget_members ADD COLUMN personal_limit REAL NOT NULL DEFAULT 0',
 ]) {
   await client.execute(sql).catch(() => {});
 }
