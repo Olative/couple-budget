@@ -86,12 +86,6 @@ export const api = {
   settle: (budgetId) => request(`/budgets/${budgetId}/settle`, { method: 'POST' }),
   setShares: (budgetId, myShare) => request(`/budgets/${budgetId}/shares`, { method: 'PUT', body: JSON.stringify({ myShare }) }),
   getPersonal: (budgetId, month) => request(`/budgets/${budgetId}/personal${month ? `?month=${month}` : ''}`),
-  addPersonal: (budgetId, data) => request(`/budgets/${budgetId}/personal`, { method: 'POST', body: JSON.stringify(data) }),
-  deletePersonal: (id) => request(`/personal/${id}`, { method: 'DELETE' }),
-  getPersonalEdits: (id) => request(`/personal/${id}/edits`),
-  expenseToPersonal: (id, data) => request(`/expenses/${id}/to-personal`, { method: 'POST', body: JSON.stringify(data) }),
-  personalToShared: (id, data) => request(`/personal/${id}/to-shared`, { method: 'POST', body: JSON.stringify(data) }),
-  updatePersonal: (id, data) => request(`/personal/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   setPersonalLimit: (budgetId, amount) => request(`/budgets/${budgetId}/personal-limit`, { method: 'PUT', body: JSON.stringify({ amount }) }),
 
   getRecurring: (budgetId) => request(`/budgets/${budgetId}/recurring`),

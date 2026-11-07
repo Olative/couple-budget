@@ -243,17 +243,35 @@ for (const sql of [
   'ALTER TABLE users ADD COLUMN hook_token TEXT',
   "ALTER TABLE expense_edits ADD COLUMN kind TEXT NOT NULL DEFAULT 'expense'",
   'ALTER TABLE users ADD COLUMN support_until TEXT',
+  'ALTER TABLE expenses ADD COLUMN personal INTEGER NOT NULL DEFAULT 0',
 ]) {
   await client.execute(sql).catch(() => {});
 }
 
-// All money that left the budget: shared and personal expenses alike. Totals, limits, the remainder,
-// forecasts and the monthly recap are counted from this; "personal" only marks whose purchase it was.
+// Personal purchases used to live in their own table. Now every expense is in one list and "personal" is a
+// mark on it, so comments, reactions, receipts and edit history work the same for all. Old rows move over once,
+// each in its own transaction, with a copy kept in personal_expenses_backup.
+await client.execute('CREATE TABLE IF NOT EXISTS personal_expenses_backup AS SELECT * FROM personal_expenses WHERE 0');
+const legacy = (await client.execute('SELECT * FROM personal_expenses ORDER BY id')).rows;
+for (const p of legacy) {
+  const cat = p.category_id ?? (await client.execute({
+    sql: "SELECT id FROM categories WHERE budget_id = ? ORDER BY name = 'Прочее' DESC, sort_order LIMIT 1", args: [p.budget_id],
+  })).rows[0]?.id;
+  if (cat == null) continue;
+  // A failed row stays in personal_expenses (nothing is lost) and is retried on the next start.
+  await client.batch([
+    { sql: 'INSERT INTO personal_expenses_backup SELECT * FROM personal_expenses WHERE id = ?', args: [p.id] },
+    { sql: 'INSERT INTO expenses (budget_id, category_id, user_id, amount, description, date, created_at, personal) VALUES (?, ?, ?, ?, ?, ?, ?, 1)',
+      args: [p.budget_id, cat, p.user_id, p.amount, p.description, p.date, p.created_at] },
+    { sql: "UPDATE expense_edits SET expense_id = last_insert_rowid(), kind = 'expense' WHERE kind = 'personal' AND expense_id = ?", args: [p.id] },
+    { sql: 'DELETE FROM personal_expenses WHERE id = ?', args: [p.id] },
+  ], 'write').catch(e => console.error(`Personal expense ${p.id} not moved:`, e.message));
+}
+if (legacy.length) console.log(`Moved ${legacy.length} personal expenses into the shared list`);
+
+// Everything spent from the budget; kept as a view so totals have one name to read from.
 await client.execute('DROP VIEW IF EXISTS spending').catch(() => {});
-await client.execute(`CREATE VIEW spending AS
-  SELECT id, budget_id, category_id, user_id, amount, description, date, created_at, recurring_id, 0 AS personal FROM expenses
-  UNION ALL
-  SELECT id, budget_id, category_id, user_id, amount, description, date, created_at, NULL, 1 AS personal FROM personal_expenses`);
+await client.execute('CREATE VIEW spending AS SELECT * FROM expenses');
 
 console.log('Database tables initialized');
 

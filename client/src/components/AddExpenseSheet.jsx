@@ -53,7 +53,7 @@ export default function AddExpenseSheet({ budget, initialKind = 'expense', initi
       // A repeating payment starts this month on the chosen day (the server waits if that day is still ahead).
       const repeatDate = `${now.slice(0, 8)}${String(Math.min(repeatDay, daysIn(now))).padStart(2, '0')}`;
       const common = { amount: Number(amount), description: description || null, date: repeat && !(personal && !isIncome) ? repeatDate : date };
-      if (!isIncome && personal) await api.addPersonal(budget.id, { ...common, category_id: categoryId });
+      if (!isIncome && personal) await api.addExpense(budget.id, { ...common, category_id: categoryId, personal: true });
       else if (repeat) await api.addRecurring(budget.id, { ...common, kind, source, category_id: categoryId, day_of_month: repeatDay });
       else if (isIncome) await api.addIncome(budget.id, { ...common, source });
       else await api.addExpense(budget.id, { ...common, category_id: categoryId });

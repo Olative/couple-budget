@@ -9,7 +9,6 @@ const OWNER = [
   [/^\/savings\/(\d+)/, 'SELECT budget_id FROM savings_goals WHERE id = ?'],
   [/^\/recurring\/(\d+)/, 'SELECT budget_id FROM recurring WHERE id = ?'],
   [/^\/incomes\/(\d+)/, 'SELECT budget_id FROM incomes WHERE id = ?'],
-  [/^\/personal\/(\d+)/, 'SELECT budget_id FROM personal_expenses WHERE id = ?'],
   [/^\/comments\/(\d+)/, 'SELECT e.budget_id FROM comments c JOIN expenses e ON e.id = c.expense_id WHERE c.id = ?'],
 ];
 

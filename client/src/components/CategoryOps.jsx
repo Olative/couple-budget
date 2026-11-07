@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback } from 'react';
 import { IconRepeat, IconMessageCircle, IconPaperclip } from '@tabler/icons-react';
 import Sheet from './Sheet';
 import ExpenseSheet from './ExpenseSheet';
-import OperationSheet from './OperationSheet';
 import { api } from '../api/client';
 import { money, MONTHS_PREP, MONTHS_GEN } from '../format';
 
@@ -12,20 +11,10 @@ const shortDay = (d) => `${Number(d.slice(8, 10))} ${MONTHS_GEN[Number(d.slice(5
 export default function CategoryOps({ budget, user, category, month, onClose, onChanged }) {
   const [items, setItems] = useState(null);
   const [openId, setOpenId] = useState(null);
-  const [openOp, setOpenOp] = useState(null);
   const cur = budget.currency;
 
   const load = useCallback(() => {
-    Promise.all([
-      api.getExpenses(budget.id, { month, category_id: category.id, limit: 500 }),
-      api.getPersonal(budget.id, month),
-    ]).then(([ex, pers]) => {
-      const personal = pers.items
-        .filter(p => p.category_id === category.id && p.date.startsWith(month))
-        .map(p => ({ ...p, kind: 'personal' }));
-      setItems([...ex.map(e => ({ ...e, kind: 'expense' })), ...personal]
-        .sort((a, b) => b.date.localeCompare(a.date) || b.created_at.localeCompare(a.created_at)));
-    });
+    api.getExpenses(budget.id, { month, category_id: category.id, limit: 500 }).then(setItems);
   }, [budget.id, category.id, month]);
   useEffect(() => { load(); }, [load]);
 
@@ -45,8 +34,8 @@ export default function CategoryOps({ budget, user, category, month, onClose, on
       {items && items.length > 0 && (
         <div className="card">
           {items.map(e => (
-            <div key={`${e.kind}${e.id}`} className="row" style={{ cursor: 'pointer' }}
-              onClick={() => (e.kind === 'expense' ? setOpenId(e.id) : setOpenOp(e))}>
+            <div key={e.id} className="row" style={{ cursor: 'pointer' }}
+              onClick={() => setOpenId(e.id)}>
               <div className="row-main">
                 <div className="row-name">
                   {e.description || category.name}
@@ -54,7 +43,7 @@ export default function CategoryOps({ budget, user, category, month, onClose, on
                   {!!e.has_receipt && <IconPaperclip size={13} stroke={1.8} color="#9a9a9a" style={{ marginLeft: 5, verticalAlign: -1 }} aria-label="есть фото чека" />}
                 </div>
                 <div className="row-sub">
-                  {shortDay(e.date)} · {e.kind === 'personal' ? `личная · ${e.user_name}` : e.user_name}
+                  {shortDay(e.date)} · {e.personal ? 'личная · ' : ''}{e.user_name}
                   {e.reactions && <span style={{ marginLeft: 6 }}>{e.reactions}</span>}
                   {e.comment_count > 0 && <span style={{ marginLeft: 6 }}><IconMessageCircle size={11} style={{ verticalAlign: -1 }} /> {e.comment_count}</span>}
                 </div>
@@ -65,7 +54,6 @@ export default function CategoryOps({ budget, user, category, month, onClose, on
         </div>
       )}
       {openId && <ExpenseSheet budget={budget} user={user} expenseId={openId} onClose={() => setOpenId(null)} onChanged={changed} />}
-      {openOp && <OperationSheet budget={budget} user={user} item={openOp} onClose={() => setOpenOp(null)} onChanged={changed} />}
     </Sheet>
   );
 }

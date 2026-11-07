@@ -47,8 +47,7 @@ router.post('/logout', async (req, res) => {
   res.json({ ok: true });
 });
 
-const ACTIVITY = `SELECT user_id, created_at FROM expenses UNION ALL SELECT user_id, created_at FROM incomes
-  UNION ALL SELECT user_id, created_at FROM personal_expenses`;
+const ACTIVITY = 'SELECT user_id, created_at FROM expenses UNION ALL SELECT user_id, created_at FROM incomes';
 const n = async (sql, ...args) => Number((await db.prepare(sql).get(...args))?.n || 0);
 
 router.get('/stats', async (req, res) => {

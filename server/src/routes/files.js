@@ -49,7 +49,7 @@ const SOURCE_NAMES = { salary: 'Зарплата', side: 'Подработка',
 export async function buildExport(budgetId, userId) {
   const budget = await db.prepare('SELECT * FROM budgets WHERE id = ?').get(budgetId);
   const expenses = await db.prepare(`
-    SELECT e.date, c.name as category, e.description, u.first_name as who, e.amount
+    SELECT e.date, c.name as category, e.description, u.first_name as who, e.amount, e.personal
     FROM expenses e JOIN categories c ON c.id = e.category_id JOIN users u ON u.id = e.user_id
     WHERE e.budget_id = ?
   `).all(budgetId);
@@ -57,16 +57,10 @@ export async function buildExport(budgetId, userId) {
     SELECT i.date, i.source, i.description, u.first_name as who, i.amount
     FROM incomes i JOIN users u ON u.id = i.user_id WHERE i.budget_id = ?
   `).all(budgetId);
-  const personal = await db.prepare(`
-    SELECT p.date, c.name as category, p.description, u.first_name as who, p.amount
-    FROM personal_expenses p LEFT JOIN categories c ON c.id = p.category_id JOIN users u ON u.id = p.user_id
-    WHERE p.budget_id = ? AND p.user_id = ?
-  `).all(budgetId, userId);
 
   const rows = [
-    ...expenses.map(e => [e.date, 'Расход', e.category, e.description, e.who, -Number(e.amount)]),
+    ...expenses.map(e => [e.date, e.personal ? 'Расход (личный)' : 'Расход', e.category, e.description, e.who, -Number(e.amount)]),
     ...incomes.map(i => [i.date, 'Доход', SOURCE_NAMES[i.source] || 'Другое', i.description, i.who, Number(i.amount)]),
-    ...personal.map(p => [p.date, 'Личный расход', p.category || '', p.description, p.who, -Number(p.amount)]),
   ].sort((a, b) => b[0].localeCompare(a[0]));
 
   // Semicolons, comma decimals and a BOM make Excel with a Russian locale open it directly.

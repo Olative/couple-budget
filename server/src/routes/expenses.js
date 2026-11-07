@@ -50,15 +50,16 @@ router.post('/budgets/:budgetId/expenses', async (req, res) => {
   const cat = await db.prepare('SELECT id FROM categories WHERE id = ? AND budget_id = ?').get(req.body.category_id, budgetId);
   if (!cat) return res.status(400).json({ error: 'Выберите категорию' });
   const category_id = cat.id, description = textOf(req.body.description), date = dateOf(req.body.date);
+  const personal = req.body.personal ? 1 : 0;
 
   const result = await db.prepare(
-    'INSERT INTO expenses (budget_id, category_id, user_id, amount, description, date) VALUES (?, ?, ?, ?, ?, ?) RETURNING *'
-  ).get(budgetId, category_id, userId, amount, description, date);
+    'INSERT INTO expenses (budget_id, category_id, user_id, amount, description, date, personal) VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING *'
+  ).get(budgetId, category_id, userId, amount, description, date, personal);
   res.json(result);
   onExpenseAdded(result, req.user).catch(e => console.error('Expense notify failed:', e.message));
 });
 
-const FIELD_NAMES = { category: 'категория', amount: 'сумма', description: 'описание', date: 'дата' };
+const FIELD_NAMES = { category: 'категория', amount: 'сумма', description: 'описание', date: 'дата', personal: 'личная' };
 const fmtDate = (d) => `${Number(d.slice(8, 10))}.${d.slice(5, 7)}`;
 
 // Either member can fix an expense; every change is kept so the other one can see who changed what.
@@ -72,7 +73,7 @@ router.put('/expenses/:id', async (req, res) => {
   if (!member) return res.status(403).json({ error: 'Нет доступа' });
 
   const changes = [];
-  const next = { category_id: e.category_id, amount: Number(e.amount), description: e.description, date: e.date };
+  const next = { category_id: e.category_id, amount: Number(e.amount), description: e.description, date: e.date, personal: Number(e.personal) };
   if (req.body.category_id != null && Number(req.body.category_id) !== Number(e.category_id)) {
     const cat = await db.prepare('SELECT * FROM categories WHERE id = ? AND budget_id = ?').get(req.body.category_id, e.budget_id);
     if (!cat) return res.status(400).json({ error: 'Нет такой категории' });
@@ -92,10 +93,15 @@ router.put('/expenses/:id', async (req, res) => {
     next.date = req.body.date;
     changes.push(['date', e.date, req.body.date]);
   }
+  // "Personal" only marks a purchase someone made for themselves; it stays in the budget either way.
+  if (req.body.personal !== undefined && (req.body.personal ? 1 : 0) !== next.personal) {
+    next.personal = req.body.personal ? 1 : 0;
+    changes.push(['personal', next.personal ? 'нет' : 'да', next.personal ? 'да' : 'нет']);
+  }
   if (!changes.length) return res.json({ ok: true, changed: 0 });
 
   await db.batch([
-    { sql: 'UPDATE expenses SET category_id = ?, amount = ?, description = ?, date = ? WHERE id = ?', args: [next.category_id, next.amount, next.description, next.date, e.id] },
+    { sql: 'UPDATE expenses SET category_id = ?, amount = ?, description = ?, date = ?, personal = ? WHERE id = ?', args: [next.category_id, next.amount, next.description, next.date, next.personal, e.id] },
     ...changes.map(([field, from, to]) => ({
       sql: 'INSERT INTO expense_edits (expense_id, user_id, field, old_value, new_value) VALUES (?, ?, ?, ?, ?)',
       args: [e.id, req.userId, field, from, to],
@@ -105,7 +111,7 @@ router.put('/expenses/:id', async (req, res) => {
 
   if (e.user_id !== req.userId) {
     const what = changes.map(([field, from, to]) => {
-      const show = (v) => (field === 'amount' ? `${Math.round(Number(v))} ${e.currency}` : field === 'date' ? fmtDate(v) : `«${v || '—'}»`);
+      const show = (v) => (field === 'amount' ? `${Math.round(Number(v))} ${e.currency}` : field === 'date' ? fmtDate(v) : field === 'personal' ? v : `«${v || '—'}»`);
       return `${FIELD_NAMES[field]} ${show(from)} → ${show(to)}`;
     }).join(', ');
     notifyUser(e.user_id, `✏️ ${req.user.first_name}: правка в вашей трате «${e.description || e.category_name}» — ${what}`)

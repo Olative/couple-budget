@@ -51,7 +51,12 @@ router.delete('/me', async (req, res) => {
 
   const statements = budgets.filter(b => b.members <= 1).flatMap(b => budgetWipe(b.id));
   statements.push(
-    { sql: "DELETE FROM expense_edits WHERE kind = 'personal' AND expense_id IN (SELECT id FROM personal_expenses WHERE user_id = ?)", args: [uid] },
+    // Purchases marked as one's own go with the account; shared ones stay with the other member.
+    { sql: 'DELETE FROM reactions WHERE expense_id IN (SELECT id FROM expenses WHERE user_id = ? AND personal = 1)', args: [uid] },
+    { sql: 'DELETE FROM comments WHERE expense_id IN (SELECT id FROM expenses WHERE user_id = ? AND personal = 1)', args: [uid] },
+    { sql: 'DELETE FROM receipts WHERE expense_id IN (SELECT id FROM expenses WHERE user_id = ? AND personal = 1)', args: [uid] },
+    { sql: "DELETE FROM expense_edits WHERE kind = 'expense' AND expense_id IN (SELECT id FROM expenses WHERE user_id = ? AND personal = 1)", args: [uid] },
+    { sql: 'DELETE FROM expenses WHERE user_id = ? AND personal = 1', args: [uid] },
     { sql: 'DELETE FROM personal_expenses WHERE user_id = ?', args: [uid] },
     { sql: 'DELETE FROM incomes WHERE user_id = ?', args: [uid] },
     { sql: 'DELETE FROM recurring WHERE user_id = ?', args: [uid] },

@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { IconSend, IconRepeat, IconPaperclip, IconPencil } from '@tabler/icons-react';
+import { IconSend, IconRepeat, IconPaperclip, IconPencil, IconPlus, IconUser } from '@tabler/icons-react';
 import { api, fetchReceiptUrl } from '../api/client';
 import Sheet from './Sheet';
+import CategorySheet from './CategorySheet';
 import { money, confirmAction, MONTHS_GEN, compressImage } from '../format';
 
 const REACTIONS = ['😍', '👍', '😱', '🤔', '💸', '🐧'];
@@ -10,17 +11,18 @@ function when(date) {
   return `${Number(date.slice(8, 10))} ${MONTHS_GEN[Number(date.slice(5, 7)) - 1]}`;
 }
 
-const FIELD = { category: 'категория', amount: 'сумма', description: 'описание', date: 'дата' };
+const FIELD = { category: 'категория', amount: 'сумма', description: 'описание', date: 'дата', personal: 'личная' };
 
 // "Оля: категория «Прочее» → «Красота» · 7 ноября"
 function editLine(ed, currency) {
-  const show = (v) => (ed.field === 'amount' ? money(Number(v), currency) : ed.field === 'date' ? when(v) : `«${v || '—'}»`);
+  const show = (v) => (ed.field === 'amount' ? money(Number(v), currency) : ed.field === 'date' ? when(v) : ed.field === 'personal' ? v : `«${v || '—'}»`);
   return `${ed.user_name}: ${FIELD[ed.field]} ${show(ed.old_value)} → ${show(ed.new_value)} · ${when(ed.created_at.slice(0, 10))}`;
 }
 
 // Either of the two can fix category, amount, description or date.
-function EditForm({ budget, expense, onSaved, onMoved, onCancel }) {
-  const [personal, setPersonal] = useState(false);
+function EditForm({ budget, expense, onSaved, onCancel }) {
+  const [personal, setPersonal] = useState(!!expense.personal);
+  const [showNewCat, setShowNewCat] = useState(false);
   const [categories, setCategories] = useState([]);
   const [categoryId, setCategoryId] = useState(expense.category_id);
   const [amount, setAmount] = useState(String(expense.amount));
@@ -34,13 +36,7 @@ function EditForm({ budget, expense, onSaved, onMoved, onCancel }) {
     setSaving(true);
     setError('');
     try {
-      const data = { category_id: categoryId, amount: Number(amount), description, date };
-      if (personal) {
-        await api.expenseToPersonal(expense.id, data);
-        onMoved();
-        return;
-      }
-      await api.updateExpense(expense.id, data);
+      await api.updateExpense(expense.id, { category_id: categoryId, amount: Number(amount), description, date, personal });
       onSaved();
     } catch (e) {
       setError(e.message);
@@ -59,7 +55,17 @@ function EditForm({ budget, expense, onSaved, onMoved, onCancel }) {
             <span className="e">{c.icon}</span><span>{c.name}</span>
           </button>
         ))}
+        <button className="cat-btn" style={{ background: 'transparent', border: '1.5px dashed #c8c8c8' }} onClick={() => setShowNewCat(true)}>
+          <span className="e"><IconPlus size={20} stroke={1.6} /></span><span>Своя</span>
+        </button>
       </div>
+      {showNewCat && (
+        <CategorySheet
+          budget={budget}
+          onClose={() => setShowNewCat(false)}
+          onSaved={(cat) => { setCategories(cs => [...cs, cat]); setCategoryId(cat.id); setShowNewCat(false); }}
+        />
+      )}
       <div className="input-group">
         <input className="input" placeholder="Описание" value={description} onChange={ev => setDescription(ev.target.value)} />
       </div>
@@ -70,7 +76,7 @@ function EditForm({ budget, expense, onSaved, onMoved, onCancel }) {
         <span>
           Личная трата
           <span className="row-sub" style={{ display: 'block', marginTop: 2 }}>
-            {personal ? `останется в бюджете с пометкой «личная» у ${expense.user_name}; комментарии и чек не сохранятся` : 'покупка для себя — по-прежнему из общего бюджета'}
+            {personal ? `покупка для себя — идёт из общего бюджета и покажется в карточке ${expense.user_name} на главной` : 'отметить как покупку для себя'}
           </span>
         </span>
         <input type="checkbox" className="switch" checked={personal} onChange={ev => setPersonal(ev.target.checked)} />
@@ -134,8 +140,7 @@ export default function ExpenseSheet({ budget, user, expenseId, onClose, onChang
     return (
       <Sheet title="Изменить трату" onClose={onClose}>
         <EditForm budget={budget} expense={e} onCancel={() => setEditing(false)}
-          onSaved={async () => { setEditing(false); await load(); onChanged(); }}
-          onMoved={() => { onChanged(); onClose(); }} />
+          onSaved={async () => { setEditing(false); await load(); onChanged(); }} />
       </Sheet>
     );
   }
@@ -179,7 +184,7 @@ export default function ExpenseSheet({ budget, user, expenseId, onClose, onChang
         <div className="num" style={{ fontSize: 28, margin: '6px 0 4px' }}>{money(e.amount, budget.currency)}</div>
         <div style={{ fontSize: 15 }}>{e.description || e.category_name}</div>
         <div className="row-sub" style={{ marginTop: 4 }}>
-          {e.description ? `${e.category_name} · ` : ''}{e.user_name} · {when(e.date)}
+          {e.description ? `${e.category_name} · ` : ''}{e.personal ? <><IconUser size={12} style={{ verticalAlign: -1 }} /> личная · </> : ''}{e.user_name} · {when(e.date)}
           {e.recurring_id && <> · <IconRepeat size={12} style={{ verticalAlign: -1 }} /> каждый месяц</>}
         </div>
         {edits.length > 0 && (
