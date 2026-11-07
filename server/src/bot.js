@@ -584,7 +584,6 @@ async function sendAutoGuide(chatId, telegramId) {
     return;
   }
   const link = `${WEB_APP_URL}/hook/${await hookToken(user.id)}`;
-  await sendAutoVideo(chatId, '🎬 Все способы за минуту — а ниже пошагово с вашей ссылкой').catch(e => console.error('Auto video failed:', e.message));
   await bot.sendMessage(chatId,
     '🐧 Как записывать траты и доходы без ручного ввода\n\n' +
     '1️⃣ Перешлите сюда SMS или уведомление банка — о покупке или о зачислении. Сама найду сумму и магазин и запишу трату в нужную категорию, а зарплату или перевод — в доходы. ' +
