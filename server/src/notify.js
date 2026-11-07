@@ -1,8 +1,39 @@
 import db from './db.js';
 import { sendToUser } from './bot.js';
 import { currentMonth } from './insights.js';
+import { tr, langOfTelegram } from './i18n.js';
 
 const fmt = (n, cur) => `${new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 }).format(Math.round(n))} ${cur}`;
+
+// Notices that some routes still build as ready Russian text, recognised and retold in English.
+const EDIT_FIELDS = { 'категория': 'category', 'сумма': 'amount', 'описание': 'description', 'дата': 'date', 'личная': 'personal' };
+const NOTICE_PATTERNS = [
+  [/^🐧 (.+?) удаляет свой аккаунт и больше не участвует в бюджете «(.*)»\. Общие траты и копилка остаются у вас\.$/s,
+    (m) => `🐧 ${m[1]} is deleting their account and is no longer a member of the budget «${m[2]}». Shared expenses and savings stay with you.`],
+  [/^🐧 (.+?): бюджет «(.*)» очищен и начат заново\. Вы больше не участник этого бюджета\.$/s,
+    (m) => `🐧 ${m[1]}: the budget «${m[2]}» was cleared and started over. You are no longer a member of this budget.`],
+  [/^🐧 (.+?): бюджет «(.*)» очищен — траты, доходы и копилка начинаются с нуля\.$/s,
+    (m) => `🐧 ${m[1]}: the budget «${m[2]}» was cleared — expenses, income and savings start from zero.`],
+  [/^🤝 (.+?): долг (.+) → (.+) (\S+ \S+) отмечен как возвращённый\. Вы в расчёте\.$/s,
+    (m) => `🤝 ${m[1]}: the debt ${m[2]} → ${m[3]} ${m[4]} is marked as paid back. You're all square.`],
+  [/^✏️ (.+?): правка в вашей трате «(.*?)» — (.*)$/s, (m) => {
+    const what = m[3]
+      .replace(/(^|, )(категория|сумма|описание|дата|личная) /g, (x, sep, f) => `${sep}${EDIT_FIELDS[f]} `)
+      .replace(/(^|, )personal (да|нет) → (да|нет)/g, (x, sep, a, b) => `${sep}personal ${a === 'да' ? 'yes' : 'no'} → ${b === 'да' ? 'yes' : 'no'}`);
+    return `✏️ ${m[1]}: an edit to your expense «${m[2]}» — ${what}`;
+  }],
+];
+
+// A notification is either a function of the language or a ready Russian text.
+function localize(text, lang) {
+  if (typeof text === 'function') return text(lang);
+  if (lang !== 'en') return text;
+  for (const [re, en] of NOTICE_PATTERNS) {
+    const m = re.exec(text);
+    if (m) return en(m);
+  }
+  return tr(lang, text);
+}
 
 export async function getPrefs(userId) {
   await db.prepare('INSERT OR IGNORE INTO notify_prefs (user_id) VALUES (?)').run(userId);
@@ -20,7 +51,10 @@ async function members(budgetId) {
 
 // Fire-and-forget: a failed Telegram message must never break the request that triggered it.
 function deliver(telegramId, text) {
-  sendToUser(telegramId, text).catch(e => console.error('Notify failed:', e.message));
+  (async () => {
+    const lang = await langOfTelegram(telegramId);
+    await sendToUser(telegramId, localize(text, lang), lang);
+  })().catch(e => console.error('Notify failed:', e.message));
 }
 
 export async function notifyPartners(budgetId, actorId, text) {
@@ -49,7 +83,7 @@ export async function expenseLabel(expenseId) {
 export async function onExpenseAdded(expense, actor) {
   const info = await expenseLabel(expense.id);
   if (!info) return;
-  await notifyPartners(info.e.budget_id, actor.id, `🐧 ${actor.first_name}: новая трата ${info.label}`);
+  await notifyPartners(info.e.budget_id, actor.id, (lang) => tr(lang, '🐧 {name}: новая трата {label}', { name: actor.first_name, label: info.label }));
   await checkLimit(info.e.budget_id, info.e.category_id, info.e.currency);
 }
 
@@ -70,9 +104,10 @@ export async function checkLimit(budgetId, categoryId, currency) {
   if (!res.rowsAffected) return;
   if (level === 100) await db.prepare('INSERT OR IGNORE INTO limit_alerts (category_id, month, level) VALUES (?, ?, 80)').run(categoryId, month);
 
-  const text = level === 100
-    ? `🔴 «${cat.name}»: лимит на месяц исчерпан — ${fmt(spent, currency)} из ${fmt(planned, currency)}`
-    : `⚠️ «${cat.name}»: потрачено ${Math.round((spent / planned) * 100)}% лимита — ${fmt(spent, currency)} из ${fmt(planned, currency)}`;
+  const vars = { name: cat.name, spent: fmt(spent, currency), planned: fmt(planned, currency), pct: Math.round((spent / planned) * 100) };
+  const text = (lang) => (level === 100
+    ? tr(lang, '🔴 «{name}»: лимит на месяц исчерпан — {spent} из {planned}', vars)
+    : tr(lang, '⚠️ «{name}»: потрачено {pct}% лимита — {spent} из {planned}', vars));
   for (const m of await members(budgetId)) if (m.limits) deliver(m.telegram_id, text);
 }
 
@@ -92,7 +127,7 @@ export async function sendEveningReminders() {
       WHERE bm.user_id = ? AND e.date = ?
     `).get(u.id, localDate);
     if (Number(row.n) === 0) {
-      deliver(u.telegram_id, '🐧 Сегодня ни одной траты? Если что-то покупали — запишите, пока помните.');
+      deliver(u.telegram_id, (lang) => tr(lang, '🐧 Сегодня ни одной траты? Если что-то покупали — запишите, пока помните.'));
     }
   }
 }
@@ -116,9 +151,10 @@ export async function sendSavingsReminders() {
     if (saved >= Number(g.monthly_plan) || Number(g.total_saved) >= Number(g.target_amount)) continue;
     const res = await db.prepare('INSERT OR IGNORE INTO savings_alerts (goal_id, month) VALUES (?, ?)').run(g.id, month);
     if (!res.rowsAffected) continue;
-    const text = saved > 0
-      ? `🐧 Копилка «${g.name}»: в этом месяце отложено ${fmt(saved, g.currency)} из ${fmt(g.monthly_plan, g.currency)}. Осталось ${fmt(g.monthly_plan - saved, g.currency)}`
-      : `🐧 Копилка «${g.name}»: в этом месяце ещё ничего не отложено, а план — ${fmt(g.monthly_plan, g.currency)}`;
+    const vars = { name: g.name, saved: fmt(saved, g.currency), plan: fmt(g.monthly_plan, g.currency), left: fmt(g.monthly_plan - saved, g.currency) };
+    const text = (lang) => (saved > 0
+      ? tr(lang, '🐧 Копилка «{name}»: в этом месяце отложено {saved} из {plan}. Осталось {left}', vars)
+      : tr(lang, '🐧 Копилка «{name}»: в этом месяце ещё ничего не отложено, а план — {plan}', vars));
     const people = await db.prepare(`
       SELECT u.telegram_id FROM users u JOIN budget_members bm ON bm.user_id = u.id
       LEFT JOIN notify_prefs p ON p.user_id = u.id

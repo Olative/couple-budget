@@ -4,6 +4,7 @@ import { api } from '../api/client';
 import Sheet from './Sheet';
 import CategorySheet from './CategorySheet';
 import { INCOME_SOURCES } from '../format';
+import { t } from '../i18n';
 
 function today() {
   const d = new Date();
@@ -16,9 +17,9 @@ const daysIn = (iso) => new Date(Number(iso.slice(0, 4)), Number(iso.slice(5, 7)
 function firstHint(day, now) {
   const today = Number(now.slice(8, 10));
   const actual = Math.min(day, daysIn(now));
-  if (actual > today) return `первый раз ${actual}-го`;
-  if (actual === today) return 'первый раз — сегодня';
-  return 'за этот месяц запишем сразу';
+  if (actual > today) return t('первый раз {day}-го', { day: actual });
+  if (actual === today) return t('первый раз — сегодня');
+  return t('за этот месяц запишем сразу');
 }
 
 export default function AddExpenseSheet({ budget, initialKind = 'expense', initialRepeat = false, onClose, onSaved }) {
@@ -65,10 +66,10 @@ export default function AddExpenseSheet({ budget, initialKind = 'expense', initi
   };
 
   return (
-    <Sheet onClose={onClose} title={initialRepeat ? 'Регулярный платёж' : undefined}>
+    <Sheet onClose={onClose} title={initialRepeat ? t('Регулярный платёж') : undefined}>
       <div className="segmented" style={{ marginBottom: 12 }}>
-        <button className={!isIncome ? 'on' : ''} onClick={() => setKind('expense')}>Расход</button>
-        <button className={isIncome ? 'on income' : ''} onClick={() => setKind('income')}>Доход</button>
+        <button className={!isIncome ? 'on' : ''} onClick={() => setKind('expense')}>{t('Расход')}</button>
+        <button className={isIncome ? 'on income' : ''} onClick={() => setKind('income')}>{t('Доход')}</button>
       </div>
 
       <div className="card-pad" style={{ marginBottom: 10 }}>
@@ -95,17 +96,17 @@ export default function AddExpenseSheet({ budget, initialKind = 'expense', initi
         </div>
       ) : (
         <>
-        {repeat && <div className="input-label">В какую категорию записывать каждый месяц</div>}
+        {repeat && <div className="input-label">{t('В какую категорию записывать каждый месяц')}</div>}
         <div className="cat-grid" style={{ marginBottom: 10 }}>
           {categories.map(c => (
             <button key={c.id} className={`cat-btn ${categoryId === c.id ? 'on' : ''}`} onClick={() => setCategoryId(c.id)}>
               <span className="e">{c.icon}</span>
-              <span>{c.name}</span>
+              <span>{t(c.name)}</span>
             </button>
           ))}
           <button className="cat-btn" style={{ background: 'transparent', border: '1.5px dashed #c8c8c8' }} onClick={() => setShowNewCat(true)}>
             <span className="e"><IconPlus size={20} stroke={1.6} /></span>
-            <span>Своя</span>
+            <span>{t('Своя')}</span>
           </button>
         </div>
         </>
@@ -120,7 +121,7 @@ export default function AddExpenseSheet({ budget, initialKind = 'expense', initi
       )}
 
       <div className="input-group">
-        <input className="input" placeholder="Комментарий" value={description} onChange={e => setDescription(e.target.value)} />
+        <input className="input" placeholder={t('Комментарий')} value={description} onChange={e => setDescription(e.target.value)} />
       </div>
       {!(repeat && (isIncome || !personal)) && (
         <div className="input-group">
@@ -131,8 +132,8 @@ export default function AddExpenseSheet({ budget, initialKind = 'expense', initi
       {!isIncome && !repeat && (
         <label className="switch-row" style={{ marginBottom: 6 }}>
           <span>
-            <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><IconUser size={16} stroke={1.6} /> Личная трата</span>
-            {personal && <span className="row-sub" style={{ display: 'block', marginTop: 2 }}>покупка для себя: спишется из общего бюджета и покажется в вашей карточке на главной</span>}
+            <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><IconUser size={16} stroke={1.6} /> {t('Личная трата')}</span>
+            {personal && <span className="row-sub" style={{ display: 'block', marginTop: 2 }}>{t('покупка для себя: спишется из общего бюджета и покажется в вашей карточке на главной')}</span>}
           </span>
           <input type="checkbox" className="switch" checked={personal} onChange={e => setPersonal(e.target.checked)} />
         </label>
@@ -141,22 +142,22 @@ export default function AddExpenseSheet({ budget, initialKind = 'expense', initi
       {(isIncome || !personal) && (
         <div className="switch-row" style={{ flexWrap: 'wrap' }}>
           <label style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1, cursor: 'pointer' }}>
-            <IconRepeat size={16} stroke={1.6} /> Повторять каждый месяц
+            <IconRepeat size={16} stroke={1.6} /> {t('Повторять каждый месяц')}
             <input type="checkbox" className="switch" style={{ marginLeft: 'auto' }} checked={repeat} onChange={e => setRepeat(e.target.checked)} />
           </label>
           {repeat && (
             <div style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, marginTop: 10, fontSize: 14 }}>
-              <span>каждое</span>
-              <select className="day-select" value={repeatDay} onChange={e => setRepeatDay(Number(e.target.value))} aria-label="День месяца">
+              <span>{t('каждое')}</span>
+              <select className="day-select" value={repeatDay} onChange={e => setRepeatDay(Number(e.target.value))} aria-label={t('День месяца')}>
                 {Array.from({ length: 31 }, (_, i) => <option key={i + 1} value={i + 1}>{i + 1}</option>)}
               </select>
-              <span>число</span>
+              <span>{t('число')}</span>
               <span className="row-sub" style={{ marginLeft: 'auto', marginTop: 0 }}>
                 {firstHint(repeatDay, now)}
               </span>
               {repeatDay > 28 && (
                 <span className="row-sub" style={{ width: '100%', marginTop: 4 }}>
-                  В месяцах, где нет {repeatDay}-го числа, — в последний день месяца
+                  {t('В месяцах, где нет {day}-го числа, — в последний день месяца', { day: repeatDay })}
                 </span>
               )}
             </div>
@@ -167,9 +168,9 @@ export default function AddExpenseSheet({ budget, initialKind = 'expense', initi
       {error && <div className="warn" style={{ fontSize: 13, margin: '0 4px' }}>{error}</div>}
 
       <div className="sheet-actions">
-        <button className="btn btn-secondary" onClick={onClose}>Отмена</button>
+        <button className="btn btn-secondary" onClick={onClose}>{t('Отмена')}</button>
         <button className="btn" onClick={save} disabled={saving || !amount || Number(amount) <= 0}>
-          {saving ? 'Сохраняем…' : 'Сохранить'}
+          {saving ? t('Сохраняем…') : t('Сохранить')}
         </button>
       </div>
     </Sheet>

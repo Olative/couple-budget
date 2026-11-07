@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import db from '../db.js';
-import { sendDocumentToUser } from '../bot.js';
+import { sendDocumentToUser, exportCaption } from '../bot.js';
+import { tr, normLang } from '../i18n.js';
 
 const router = Router();
 const MAX_BYTES = 1.5 * 1024 * 1024;
@@ -41,12 +42,12 @@ router.delete('/expenses/:id/receipt', async (req, res) => {
 
 const csvCell = (v) => {
   const s = v == null ? '' : String(v);
-  return /[";\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  return /[";,\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 };
 
 const SOURCE_NAMES = { salary: 'Зарплата', side: 'Подработка', gift: 'Подарок', refund: 'Возврат, кешбэк', other: 'Другое' };
 
-export async function buildExport(budgetId, userId) {
+export async function buildExport(budgetId, userId, lang = 'ru') {
   const budget = await db.prepare('SELECT * FROM budgets WHERE id = ?').get(budgetId);
   const expenses = await db.prepare(`
     SELECT e.date, c.name as category, e.description, u.first_name as who, e.amount, e.personal
@@ -59,22 +60,27 @@ export async function buildExport(budgetId, userId) {
   `).all(budgetId);
 
   const rows = [
-    ...expenses.map(e => [e.date, e.personal ? 'Расход (личный)' : 'Расход', e.category, e.description, e.who, -Number(e.amount)]),
-    ...incomes.map(i => [i.date, 'Доход', SOURCE_NAMES[i.source] || 'Другое', i.description, i.who, Number(i.amount)]),
+    ...expenses.map(e => [e.date, tr(lang, e.personal ? 'Расход (личный)' : 'Расход'), e.category, e.description, e.who, -Number(e.amount)]),
+    ...incomes.map(i => [i.date, tr(lang, 'Доход'), tr(lang, SOURCE_NAMES[i.source] || 'Другое'), i.description, i.who, Number(i.amount)]),
   ].sort((a, b) => b[0].localeCompare(a[0]));
 
-  // Semicolons, comma decimals and a BOM make Excel with a Russian locale open it directly.
-  const lines = [['Дата', 'Тип', 'Категория', 'Описание', 'Кто', `Сумма, ${budget.currency}`], ...rows]
-    .map(r => r.map((v, i) => (i === 5 && typeof v === 'number' ? String(v).replace('.', ',') : csvCell(v))).join(';'));
+  // Semicolons, comma decimals and a BOM make Excel with a Russian locale open it directly;
+  // English Excel expects commas and dot decimals.
+  const en = lang === 'en';
+  const sep = en ? ',' : ';';
+  const header = ['Дата', 'Тип', 'Категория', 'Описание', 'Кто'].map(h => tr(lang, h)).concat(tr(lang, 'Сумма, {currency}', { currency: budget.currency }));
+  const lines = [header, ...rows]
+    .map(r => r.map((v, i) => (i === 5 && typeof v === 'number' ? (en ? String(v) : String(v).replace('.', ',')) : csvCell(v))).join(sep));
   return { buffer: Buffer.from(`﻿${lines.join('\r\n')}`, 'utf8'), filename: `lolo-pepe-${new Date().toISOString().slice(0, 10)}.csv`, count: rows.length };
 }
 
 router.post('/budgets/:id/export', async (req, res) => {
   const member = await db.prepare('SELECT 1 FROM budget_members WHERE budget_id = ? AND user_id = ?').get(req.params.id, req.userId);
   if (!member) return res.status(403).json({ error: 'Нет доступа' });
-  const file = await buildExport(req.params.id, req.userId);
+  const lang = normLang(req.user.lang);
+  const file = await buildExport(req.params.id, req.userId, lang);
   try {
-    await sendDocumentToUser(req.user.telegram_id, file, `📊 Все траты и доходы — ${file.count} записей. Файл открывается в Excel и Google Таблицах.`);
+    await sendDocumentToUser(req.user.telegram_id, file, exportCaption(file.count, lang));
   } catch (e) {
     console.error('Export send failed:', e.message);
     return res.status(502).json({ error: 'Не получилось отправить файл. Напишите боту /start и попробуйте ещё раз' });

@@ -244,9 +244,14 @@ for (const sql of [
   "ALTER TABLE expense_edits ADD COLUMN kind TEXT NOT NULL DEFAULT 'expense'",
   'ALTER TABLE users ADD COLUMN support_until TEXT',
   'ALTER TABLE expenses ADD COLUMN personal INTEGER NOT NULL DEFAULT 0',
+  'ALTER TABLE users ADD COLUMN lang TEXT',
 ]) {
   await client.execute(sql).catch(() => {});
 }
+
+// Everyone who joined before English existed is Russian-speaking, even if their Telegram is in English;
+// new users get a language from Telegram when they first open the app.
+await client.execute("UPDATE users SET lang = 'ru' WHERE lang IS NULL").catch(() => {});
 
 // Personal purchases used to live in their own table. Now every expense is in one list and "personal" is a
 // mark on it, so comments, reactions, receipts and edit history work the same for all. Old rows move over once,

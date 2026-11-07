@@ -11,7 +11,7 @@ const RU_LANGS = ['ru', 'uk', 'be', 'kk', 'ky', 'uz', 'tg', 'hy', 'az', 'ka', 't
 export const langFromCode = (code) => (RU_LANGS.includes(String(code || '').slice(0, 2).toLowerCase()) ? 'ru' : 'en');
 
 // English stays off until the screens are translated; then this switch goes away.
-const ENGLISH_READY = false;
+const ENGLISH_READY = true;
 
 function initialLang() {
   if (!ENGLISH_READY) return 'ru';

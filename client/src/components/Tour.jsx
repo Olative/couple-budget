@@ -1,5 +1,6 @@
 import { useState, useEffect, useLayoutEffect } from 'react';
 import { createPortal } from 'react-dom';
+import { t } from '../i18n';
 
 // Guided tour over the real screen: dims everything but one element and explains it.
 // Elements are found by their data-tour attribute; a step whose element isn't on screen is skipped.
@@ -40,9 +41,9 @@ export default function Tour({ onDone }) {
     // Smooth scrolling keeps moving the element, so follow every scroll frame.
     window.addEventListener('scroll', measure, true);
     window.addEventListener('resize', measure);
-    const t = setTimeout(measure, 700);
+    const timer = setTimeout(measure, 700);
     return () => {
-      clearTimeout(t);
+      clearTimeout(timer);
       window.removeEventListener('scroll', measure, true);
       window.removeEventListener('resize', measure);
     };
@@ -65,13 +66,13 @@ export default function Tour({ onDone }) {
         className="tour-card"
         style={below ? { top: rect.bottom + PAD + 12 } : { bottom: window.innerHeight - rect.top + PAD + 12 }}
       >
-        <div className="tour-count">{i + 1} из {steps.length}</div>
-        <div className="tour-title">{step.title}</div>
-        <div className="tour-text">{step.text}</div>
+        <div className="tour-count">{t('{i} из {n}', { i: i + 1, n: steps.length })}</div>
+        <div className="tour-title">{t(step.title)}</div>
+        <div className="tour-text">{t(step.text)}</div>
         <div className="tour-actions">
-          <button className="tour-skip" onClick={onDone}>{last ? '' : 'Пропустить'}</button>
-          {i > 0 && <button className="btn btn-secondary tour-btn" onClick={() => setI(i - 1)}>Назад</button>}
-          <button className="btn tour-btn" onClick={() => (last ? onDone() : setI(i + 1))}>{last ? 'Понятно' : 'Дальше'}</button>
+          <button className="tour-skip" onClick={onDone}>{last ? '' : t('Пропустить')}</button>
+          {i > 0 && <button className="btn btn-secondary tour-btn" onClick={() => setI(i - 1)}>{t('Назад')}</button>}
+          <button className="btn tour-btn" onClick={() => (last ? onDone() : setI(i + 1))}>{last ? t('Понятно') : t('Дальше')}</button>
         </div>
       </div>
     </div>,

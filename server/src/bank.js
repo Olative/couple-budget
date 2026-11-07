@@ -19,7 +19,7 @@ function unzippedSize(buf) {
   }
   return Infinity;
 }
-import { CATEGORY_HINTS } from './quickadd.js';
+import { CATEGORY_HINTS, EN_CATEGORY_NAMES } from './quickadd.js';
 
 // Latin merchant names as banks print them, and bank category names, mapped to our default categories.
 const MERCHANT_HINTS = {
@@ -35,6 +35,9 @@ const MERCHANT_HINTS = {
 
 const norm = (s) => (s || '').toLowerCase().replace(/ё/g, 'е');
 
+// A default category by its Russian name, or its English name in an English budget.
+const findDefault = (categories, name) => categories.find(x => norm(x.name) === norm(name) || norm(x.name) === norm(EN_CATEGORY_NAMES[name]));
+
 // Picks a category for a merchant: what this budget learned before, then name hints, then "Прочее".
 export function categorize(text, categories, learned = {}) {
   const t = norm(text);
@@ -45,17 +48,17 @@ export function categorize(text, categories, learned = {}) {
   }
   for (const [name, hints] of Object.entries(MERCHANT_HINTS)) {
     if (hints.some(h => t.includes(h))) {
-      const c = categories.find(x => norm(x.name) === norm(name));
+      const c = findDefault(categories, name);
       if (c) return c;
     }
   }
   for (const [name, hints] of Object.entries(CATEGORY_HINTS)) {
     if (hints.some(h => t.includes(h))) {
-      const c = categories.find(x => norm(x.name) === norm(name));
+      const c = findDefault(categories, name);
       if (c) return c;
     }
   }
-  return categories.find(c => c.name === 'Прочее') || categories[categories.length - 1];
+  return findDefault(categories, 'Прочее') || categories[categories.length - 1];
 }
 
 // A stable key for "the same shop": letters only, without store numbers and city tails.

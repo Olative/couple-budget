@@ -2,6 +2,7 @@ import { Router } from 'express';
 import crypto from 'crypto';
 import db from '../db.js';
 import { parseStatement } from '../bank.js';
+import { userMessage } from '../safety.js';
 import { prepareImport, commitImport, hookToken } from '../importer.js';
 
 const router = Router();
@@ -31,7 +32,7 @@ router.post('/budgets/:id/import', async (req, res) => {
     const budget = await db.prepare('SELECT * FROM budgets WHERE id = ?').get(req.params.id);
     res.json(await prepareImport(req.user, budget, ops));
   } catch (e) {
-    res.status(400).json({ error: e.message });
+    res.status(400).json({ error: userMessage(e, 'Не получилось прочитать файл. Проверьте, что это выписка из банка') });
   }
 });
 
@@ -39,7 +40,7 @@ router.post('/imports/:id/commit', async (req, res) => {
   try {
     res.json(await commitImport(req.params.id, req.userId));
   } catch (e) {
-    res.status(400).json({ error: e.message });
+    res.status(400).json({ error: userMessage(e, 'Не получилось записать операции, попробуйте ещё раз') });
   }
 });
 

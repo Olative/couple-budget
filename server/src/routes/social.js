@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import db from '../db.js';
 import { expenseLabel, getPrefs, notifyUser } from '../notify.js';
+import { tr, clearLangCache } from '../i18n.js';
 
 const router = Router();
 
@@ -47,7 +48,7 @@ router.put('/expenses/:id/reaction', async (req, res) => {
   `).run(info.e.id, req.userId, emoji);
 
   if (info.e.user_id !== req.userId && prev?.emoji !== emoji) {
-    await notifyUser(info.e.user_id, `${req.user.first_name}: ${emoji} на трату ${info.label}`);
+    await notifyUser(info.e.user_id, (lang) => tr(lang, '{name}: {emoji} на трату {label}', { name: req.user.first_name, emoji, label: info.label }));
   }
   res.json({ ok: true });
 });
@@ -62,7 +63,7 @@ router.post('/expenses/:id/comments', async (req, res) => {
     .get(info.e.id, req.userId, text);
 
   if (info.e.user_id !== req.userId) {
-    await notifyUser(info.e.user_id, `💬 ${req.user.first_name} к трате ${info.label}:\n«${text}»`);
+    await notifyUser(info.e.user_id, (lang) => tr(lang, '💬 {name} к трате {label}:\n«{text}»', { name: req.user.first_name, label: info.label, text }));
   }
   res.json({ ...comment, user_name: req.user.first_name });
 });
@@ -96,6 +97,16 @@ router.put('/me/active-budget', async (req, res) => {
   const member = await db.prepare('SELECT 1 FROM budget_members WHERE budget_id = ? AND user_id = ?').get(req.body.budget_id, req.userId);
   if (!member) return res.status(404).json({ error: 'Бюджет не найден' });
   await db.prepare('UPDATE users SET active_budget_id = ? WHERE id = ?').run(req.body.budget_id, req.userId);
+  res.json({ ok: true });
+});
+
+// Interface language, also used for everything the bot sends this user.
+router.put('/me/lang', async (req, res) => {
+  const { lang } = req.body;
+  if (!['ru', 'en'].includes(lang)) return res.status(400).json({ error: 'Unknown language' });
+  await db.prepare('UPDATE users SET lang = ? WHERE id = ?').run(lang, req.userId);
+  req.user.lang = lang;
+  clearLangCache();
   res.json({ ok: true });
 });
 

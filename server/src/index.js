@@ -18,6 +18,9 @@ import { startBot, recordBankText, botName } from './bot.js';
 import { telegramUserFromInitData, devMode } from './telegramAuth.js';
 import { legalPage, CONTACT_EMAIL } from './legal.js';
 import { accessGuard } from './access.js';
+import { catchAsyncErrors, rateLimit, securityHeaders } from './safety.js';
+
+catchAsyncErrors();
 import accountRoutes, { setUserCacheReset } from './routes/account.js';
 import adminRoutes from './routes/admin.js';
 
@@ -27,7 +30,16 @@ process.on('unhandledRejection', (e) => console.error('Unhandled rejection:', e)
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const app = express();
 app.disable('x-powered-by');
+app.set('trust proxy', 1);
+app.use(securityHeaders);
 const PORT = process.env.PORT || 3001;
+
+// Limits against password-guessing style abuse: sign-in, the SMS hook and statement uploads are the costly ones.
+app.use('/admin-api/login', rateLimit({ max: 10 }));
+app.use('/api/auth', rateLimit({ max: 30 }));
+app.use('/hook/:token', rateLimit({ max: 30, key: (req) => `hook:${req.params.token}` }));
+app.use('/api/budgets/:id/import', rateLimit({ max: 10 }));
+app.use('/api', rateLimit({ max: 600 }));
 
 // The admin panel's API has its own sign-in and a larger body limit for photos and videos in posts.
 app.use('/admin-api', adminRoutes);
@@ -88,7 +100,8 @@ setUserCacheReset((telegramId) => userCache.delete(telegramId));
 
 app.use((err, req, res, next) => {
   console.error('Unhandled error:', err);
-  res.status(500).json({ error: 'Internal server error' });
+  if (res.headersSent) return next(err);
+  res.status(err.status === 413 ? 413 : 500).json({ error: err.status === 413 ? 'Файл слишком большой' : 'Не получилось, попробуйте ещё раз' });
 });
 
 // Built files have content hashes in their names, so phones may keep them for good.

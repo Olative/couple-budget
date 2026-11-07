@@ -4,6 +4,7 @@ import { api } from '../api/client';
 import { GridLines } from '../components/Art';
 import CategorySheet from '../components/CategorySheet';
 import { money, confirmAction, incomeSource } from '../format';
+import { t } from '../i18n';
 
 const roundUp = (v) => Math.ceil(v / 100) * 100;
 
@@ -27,7 +28,7 @@ export default function Plan({ budget, refreshKey, onAdd }) {
   }, [budget.id]);
 
   const stopRecurring = async (r) => {
-    if (!(await confirmAction('Перестать повторять этот платёж? Уже созданные записи останутся.'))) return;
+    if (!(await confirmAction(t('Перестать повторять этот платёж? Уже созданные записи останутся.')))) return;
     await api.deleteRecurring(r.id);
     load();
   };
@@ -35,7 +36,7 @@ export default function Plan({ budget, refreshKey, onAdd }) {
   useEffect(() => { load(); }, [load, refreshKey]);
 
   const fillFromTypical = async () => {
-    if (!(await confirmAction('Поставить лимиты по вашим средним тратам? Текущие лимиты заменятся.'))) return;
+    if (!(await confirmAction(t('Поставить лимиты по вашим средним тратам? Текущие лимиты заменятся.')))) return;
     setFilling(true);
     for (const c of categories) {
       const avg = typical.byCategory[c.id];
@@ -46,24 +47,24 @@ export default function Plan({ budget, refreshKey, onAdd }) {
   };
 
   const closeSheet = () => { setSheet(null); load(); };
-  if (!categories) return <div className="page"><div className="page-head"><div className="h-title">План на месяц</div></div></div>;
+  if (!categories) return <div className="page"><div className="page-head"><div className="h-title">{t('План на месяц')}</div></div></div>;
   const totalPlanned = categories.reduce((s, c) => s + (c.planned_amount || 0), 0);
   const hasHistory = typical && typical.months > 0;
   const cur = budget.currency;
 
   return (
     <div className="page">
-      <div className="page-head"><div className="h-title">План на месяц</div></div>
+      <div className="page-head"><div className="h-title">{t('План на месяц')}</div></div>
 
       <div className="stamp-wrap">
         <div className="stamp" style={{ padding: '22px 18px', textAlign: 'center' }}>
           <GridLines color="#000" opacity={0.06} />
           <div className="rel">
-            <div className="label muted">· общий план ·</div>
+            <div className="label muted">{t('· общий план ·')}</div>
             <div className="num" style={{ fontSize: 28, margin: '10px 0 4px' }}>{money(totalPlanned, cur)}</div>
             {hasHistory && (
               <div style={{ fontSize: 12, color: 'var(--muted)', fontWeight: 300 }}>
-                обычно вы тратите около {money(typical.total, cur)} в месяц
+                {t('обычно вы тратите около {sum} в месяц', { sum: money(typical.total, cur) })}
               </div>
             )}
           </div>
@@ -72,11 +73,11 @@ export default function Plan({ budget, refreshKey, onAdd }) {
 
       {hasHistory && (
         <button className="btn btn-secondary" onClick={fillFromTypical} disabled={filling}>
-          {filling ? 'Заполняем…' : 'Заполнить по средним тратам'}
+          {filling ? t('Заполняем…') : t('Заполнить по средним тратам')}
         </button>
       )}
 
-      <div className="section-label">Нажмите на категорию, чтобы задать лимит, переименовать или удалить её</div>
+      <div className="section-label">{t('Нажмите на категорию, чтобы задать лимит, переименовать или удалить её')}</div>
       <div className="card">
         {categories.map(cat => {
           const avg = typical?.byCategory?.[cat.id];
@@ -84,8 +85,8 @@ export default function Plan({ budget, refreshKey, onAdd }) {
             <div key={cat.id} className="row" style={{ cursor: 'pointer' }} onClick={() => setSheet(cat)}>
               <span className="row-ic">{cat.icon}</span>
               <div className="row-main">
-                <div className="row-name">{cat.name}</div>
-                {avg > 0 && <div className="row-sub">в среднем {money(avg, cur)}</div>}
+                <div className="row-name">{t(cat.name)}</div>
+                {avg > 0 && <div className="row-sub">{t('в среднем {sum}', { sum: money(avg, cur) })}</div>}
               </div>
               <span className={`row-amt ${cat.planned_amount > 0 ? '' : 'muted'}`}>
                 {cat.planned_amount > 0 ? money(cat.planned_amount, cur) : '—'}
@@ -97,13 +98,13 @@ export default function Plan({ budget, refreshKey, onAdd }) {
       </div>
 
       <button className="btn btn-secondary" onClick={() => setSheet('new')}>
-        <IconPlus size={18} stroke={1.6} /> Новая категория
+        <IconPlus size={18} stroke={1.6} /> {t('Новая категория')}
       </button>
 
-      <div className="section-label" style={{ marginTop: 14 }}>Регулярные платежи</div>
+      <div className="section-label" style={{ marginTop: 14 }}>{t('Регулярные платежи')}</div>
       {recurring.length === 0 ? (
         <div className="card-pad row-sub" style={{ fontSize: 13, lineHeight: 1.45 }}>
-          Траты и доходы, которые повторяются сами: аренда, подписки, зарплата. Укажите сумму, день и категорию — например, аренда 25 000 каждое 5-е число в «Жильё», — и платёж будет записываться туда каждый месяц.
+          {t('Траты и доходы, которые повторяются сами: аренда, подписки, зарплата. Укажите сумму, день и категорию — например, аренда 25 000 каждое 5-е число в «Жильё», — и платёж будет записываться туда каждый месяц.')}
         </div>
       ) : (
         <div className="card">
@@ -114,11 +115,11 @@ export default function Plan({ budget, refreshKey, onAdd }) {
               <div key={r.id} className="row">
                 <span className="row-ic">{income ? s.icon : r.category_icon}</span>
                 <div className="row-main">
-                  <div className="row-name">{r.description || (income ? s.name : r.category_name)}</div>
-                  <div className="row-sub">{r.day_of_month > 28 ? `каждое ${r.day_of_month}-е или последний день` : `каждое ${r.day_of_month}-е`} · {r.user_name}</div>
+                  <div className="row-name">{r.description || (income ? s.name : t(r.category_name))}</div>
+                  <div className="row-sub">{r.day_of_month > 28 ? t('каждое {day}-е или последний день', { day: r.day_of_month }) : t('каждое {day}-е', { day: r.day_of_month })} · {r.user_name}</div>
                 </div>
                 <span className={`row-amt ${income ? 'good' : ''}`}>{income ? '+' : '−'}{money(r.amount, cur)}</span>
-                <button className="icon-btn" style={{ width: 30, height: 30, background: 'var(--surface-2)' }} onClick={() => stopRecurring(r)} aria-label="Отменить повтор">
+                <button className="icon-btn" style={{ width: 30, height: 30, background: 'var(--surface-2)' }} onClick={() => stopRecurring(r)} aria-label={t('Отменить повтор')}>
                   <IconX size={14} />
                 </button>
               </div>
@@ -128,7 +129,7 @@ export default function Plan({ budget, refreshKey, onAdd }) {
       )}
 
       <button className="btn btn-secondary" onClick={() => onAdd('expense', true)}>
-        <IconRepeat size={18} stroke={1.6} /> Добавить регулярный платёж
+        <IconRepeat size={18} stroke={1.6} /> {t('Добавить регулярный платёж')}
       </button>
 
       {sheet && (

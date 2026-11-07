@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { telegramUserFromInitData, devMode } from '../telegramAuth.js';
 import db from '../db.js';
+import { langFromCode } from '../i18n.js';
 
 const router = Router();
 
@@ -24,6 +25,11 @@ router.post('/auth', async (req, res) => {
     ON CONFLICT(telegram_id) DO UPDATE SET first_name = excluded.first_name, last_name = excluded.last_name, username = excluded.username
     RETURNING *
   `).get(userData.id, userData.first_name, userData.last_name || null, userData.username || null);
+  // The first sign-in picks the language from Telegram; after that it's the user's choice in Settings.
+  if (!user.lang) {
+    user.lang = langFromCode(userData.language_code);
+    await db.prepare('UPDATE users SET lang = ? WHERE id = ? AND lang IS NULL').run(user.lang, user.id);
+  }
 
   // The budget picked last comes first, then the newest ones.
   const budgets = await db.prepare(`

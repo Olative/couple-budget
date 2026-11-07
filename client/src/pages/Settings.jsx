@@ -7,6 +7,7 @@ import Sheet from '../components/Sheet';
 import { BankNoticeSheet, StatementSheet } from '../components/BankSheets';
 import { getThemePref, setThemePref } from '../theme';
 import { openDoc } from '../components/Legal';
+import { t, getLang, setLang } from '../i18n';
 
 const DEFAULT_NAME = 'Наш бюджет';
 
@@ -14,6 +15,7 @@ export default function Settings({ budget, user, onBack, onBudgetUpdate, onOpenB
   const [budgetData, setBudgetData] = useState(null);
   const [prefs, setPrefs] = useState(null);
   const [theme, setTheme] = useState(getThemePref);
+  const [lang, setLangState] = useState(getLang);
   const [name, setName] = useState(budget.name);
   const [bankSheet, setBankSheet] = useState(null);
   const [resetOpen, setResetOpen] = useState(false);
@@ -101,6 +103,12 @@ export default function Settings({ budget, user, onBack, onBudgetUpdate, onOpenB
     setPrefs(await api.setNotify({ [key]: next[key] }));
   };
 
+  const changeLang = (next) => {
+    setLangState(next);
+    setLang(next);
+    api.setLang(next).catch(() => {});
+  };
+
   const changeCurrency = async (c) => {
     const updated = await api.updateBudget(budget.id, { currency: c });
     onBudgetUpdate(updated);
@@ -109,14 +117,14 @@ export default function Settings({ budget, user, onBack, onBudgetUpdate, onOpenB
   return (
     <div className="page">
       <div className="page-head" style={{ justifyContent: 'flex-start' }}>
-        <button className="icon-btn" onClick={onBack} aria-label="Назад"><IconChevronLeft size={18} /></button>
-        <div className="h-title">Настройки</div>
+        <button className="icon-btn" onClick={onBack} aria-label={t('Назад')}><IconChevronLeft size={18} /></button>
+        <div className="h-title">{t('Настройки')}</div>
       </div>
 
-      <div className="section-label">Бюджет</div>
+      <div className="section-label">{t('Бюджет')}</div>
       <div className="card">
         <div className="row">
-          <div className="row-main"><div className="row-name">Название</div></div>
+          <div className="row-main"><div className="row-name">{t('Название')}</div></div>
           <input
             className="name-input"
             value={name}
@@ -124,32 +132,32 @@ export default function Settings({ budget, user, onBack, onBudgetUpdate, onOpenB
             onChange={e => setName(e.target.value)}
             onBlur={() => saveName()}
             onKeyDown={e => e.key === 'Enter' && e.currentTarget.blur()}
-            aria-label="Название бюджета"
+            aria-label={t('Название бюджета')}
           />
         </div>
-        {budget.name !== DEFAULT_NAME && (
-          <button className="row row-btn" onClick={() => saveName(DEFAULT_NAME)}>
-            <div className="row-main"><div className="row-sub" style={{ fontSize: 13 }}>Вернуть название «{DEFAULT_NAME}»</div></div>
+        {budget.name !== DEFAULT_NAME && budget.name !== t(DEFAULT_NAME) && (
+          <button className="row row-btn" onClick={() => saveName(t(DEFAULT_NAME))}>
+            <div className="row-main"><div className="row-sub" style={{ fontSize: 13 }}>{t('Вернуть название «{name}»', { name: t(DEFAULT_NAME) })}</div></div>
             <IconRotate size={16} stroke={1.6} color="var(--muted)" />
           </button>
         )}
         <button className="row row-btn" onClick={onOpenBudgets}>
-          <div className="row-main"><div className="row-name">Другие бюджеты</div><div className="row-sub">например, на поездку или с кем-то ещё</div></div>
+          <div className="row-main"><div className="row-name">{t('Другие бюджеты')}</div><div className="row-sub">{t('например, на поездку или с кем-то ещё')}</div></div>
           <IconChevronRight size={16} color="var(--muted)" />
         </button>
       </div>
-      <CurrencyPicker value={budget.currency} onChange={changeCurrency} label="Валюта" />
+      <CurrencyPicker value={budget.currency} onChange={changeCurrency} label={t('Валюта')} />
 
-      <div className="section-label">Траты и доходы без ручного ввода</div>
+      <div className="section-label">{t('Траты и доходы без ручного ввода')}</div>
       <div className="card">
         <button className="row row-btn" onClick={() => setBankSheet('notice')}>
           <span className="row-ic"><IconBuildingBank size={17} stroke={1.6} /></span>
-          <div className="row-main"><div className="row-name">Уведомления банка</div><div className="row-sub">перешлите SMS боту или настройте автоматически</div></div>
+          <div className="row-main"><div className="row-name">{t('Уведомления банка')}</div><div className="row-sub">{t('перешлите SMS боту или настройте автоматически')}</div></div>
           <IconChevronRight size={16} color="var(--muted)" />
         </button>
         <button className="row row-btn" onClick={() => setBankSheet('statement')}>
           <span className="row-ic"><IconFileUpload size={17} stroke={1.6} /></span>
-          <div className="row-main"><div className="row-name">Загрузить выписку</div><div className="row-sub">PDF, Excel или CSV из приложения банка</div></div>
+          <div className="row-main"><div className="row-name">{t('Загрузить выписку')}</div><div className="row-sub">{t('PDF, Excel или CSV из приложения банка')}</div></div>
           <IconChevronRight size={16} color="var(--muted)" />
         </button>
       </div>
@@ -160,22 +168,22 @@ export default function Settings({ budget, user, onBack, onBudgetUpdate, onOpenB
         <StatementSheet budget={budget} onClose={() => setBankSheet(null)} onDone={() => onDataChanged?.()} />
       )}
 
-      <div className="section-label">Участники</div>
+      <div className="section-label">{t('Участники')}</div>
       <div className="card">
         {budgetData?.members?.map(m => (
           <div key={m.id} className="row">
             <span className="row-ic" style={{ fontSize: 14 }}>{m.first_name[0]}</span>
             <div className="row-main">
-              <div className="row-name">{m.first_name}{m.last_name ? ` ${m.last_name}` : ''}{m.id === user.id ? ' (вы)' : ''}</div>
+              <div className="row-name">{m.first_name}{m.last_name ? ` ${m.last_name}` : ''}{m.id === user.id ? ` (${t('вы')})` : ''}</div>
             </div>
-            <span className="row-sub">{m.role === 'owner' ? 'создатель' : 'участник'}</span>
+            <span className="row-sub">{m.role === 'owner' ? t('создатель') : t('участник')}</span>
           </div>
         ))}
       </div>
 
       <InviteCard budget={budget} />
 
-      <div className="section-label">Мои личные деньги в месяц</div>
+      <div className="section-label">{t('Мои личные деньги в месяц')}</div>
       <div style={{ display: 'flex', gap: 8 }}>
         <input
           className="input"
@@ -185,25 +193,25 @@ export default function Settings({ budget, user, onBack, onBudgetUpdate, onOpenB
           value={limit}
           onChange={e => setLimit(e.target.value)}
         />
-        <button className="btn" style={{ width: 'auto', padding: '0 18px' }} onClick={saveLimit}>{limitSaved ? 'Готово' : 'Сохранить'}</button>
+        <button className="btn" style={{ width: 'auto', padding: '0 18px' }} onClick={saveLimit}>{limitSaved ? t('Готово') : t('Сохранить')}</button>
       </div>
-      <div className="row-sub" style={{ margin: '0 4px' }}>Сколько вы хотите тратить на себя в месяц. Личные траты идут из общего бюджета и показываются на главной в вашей карточке</div>
+      <div className="row-sub" style={{ margin: '0 4px' }}>{t('Сколько вы хотите тратить на себя в месяц. Личные траты идут из общего бюджета и показываются на главной в вашей карточке')}</div>
 
-      <div className="section-label">Выгрузка</div>
+      <div className="section-label">{t('Выгрузка')}</div>
       <button className="btn btn-secondary" onClick={exportAll} disabled={exporting === 'sending'}>
         <IconFileSpreadsheet size={18} stroke={1.6} />
-        {exporting === 'sending' ? 'Готовим файл…' : exporting === 'done' ? 'Файл отправлен в чат с ботом' : 'Выгрузить в Excel'}
+        {exporting === 'sending' ? t('Готовим файл…') : exporting === 'done' ? t('Файл отправлен в чат с ботом') : t('Выгрузить в Excel')}
       </button>
       {exportError && <div className="warn" style={{ fontSize: 13, margin: '0 4px' }}>{exportError}</div>}
 
-      <div className="section-label">Уведомления от бота</div>
+      <div className="section-label">{t('Уведомления от бота')}</div>
       {prefs && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           {[
-            ['partner_activity', 'Траты, реакции и комментарии второго'],
-            ['limits', 'Лимит категории почти или полностью потрачен'],
-            ['reminder', 'Напомнить в 20:00, если за день ничего не записано'],
-            ['savings', 'Напомнить после 20-го, если план копилки не выполнен'],
+            ['partner_activity', t('Траты, реакции и комментарии второго')],
+            ['limits', t('Лимит категории почти или полностью потрачен')],
+            ['reminder', t('Напомнить в 20:00, если за день ничего не записано')],
+            ['savings', t('Напомнить после 20-го, если план копилки не выполнен')],
           ].map(([key, label]) => (
             <label key={key} className="switch-row">
               <span>{label}</span>
@@ -213,65 +221,72 @@ export default function Settings({ budget, user, onBack, onBudgetUpdate, onOpenB
         </div>
       )}
 
-      <div className="section-label">Оформление</div>
+      <div className="section-label">{t('Оформление')}</div>
       <div className="segmented">
-        {[['auto', 'Как в Telegram'], ['light', 'Светлая'], ['dark', 'Тёмная']].map(([key, label]) => (
+        {[['auto', t('Как в Telegram')], ['light', t('Светлая')], ['dark', t('Тёмная')]].map(([key, label]) => (
           <button key={key} className={theme === key ? 'on' : ''} onClick={() => { setTheme(key); setThemePref(key); }}>{label}</button>
         ))}
       </div>
 
+      <div className="section-label">Язык / Language</div>
+      <div className="segmented">
+        {[['ru', 'Русский'], ['en', 'English']].map(([key, label]) => (
+          <button key={key} className={lang === key ? 'on' : ''} onClick={() => changeLang(key)}>{label}</button>
+        ))}
+      </div>
+
       <button className="btn btn-secondary" style={{ marginTop: 8 }} onClick={onShowTutorial}>
-        <IconHelpCircle size={18} stroke={1.6} /> Как пользоваться
+        <IconHelpCircle size={18} stroke={1.6} /> {t('Как пользоваться')}
       </button>
 
-      <button className="btn btn-danger" onClick={() => { setRemovePartner(false); setResetOpen(true); }}>Очистить бюджет</button>
+      <button className="btn btn-danger" onClick={() => { setRemovePartner(false); setResetOpen(true); }}>{t('Очистить бюджет')}</button>
 
-      <div className="section-label">О приложении</div>
+      <div className="section-label">{t('О приложении')}</div>
       <div className="card">
-        <button className="row row-btn" onClick={() => openDoc('privacy')}><div className="row-main"><div className="row-name">Политика конфиденциальности</div></div><IconChevronRight size={16} stroke={1.6} className="muted" /></button>
-        <button className="row row-btn" onClick={() => openDoc('terms')}><div className="row-main"><div className="row-name">Пользовательское соглашение</div></div><IconChevronRight size={16} stroke={1.6} className="muted" /></button>
-        {botUser && <button className="row row-btn" onClick={writeUs}><div className="row-main"><div className="row-name">Написать нам</div><div className="row-sub">вопрос, ошибка или идея — ответим в чате с ботом</div></div><IconChevronRight size={16} stroke={1.6} className="muted" /></button>}
-        {contact && <div className="row"><div className="row-main"><div className="row-name">Поддержка</div></div><span className="row-sub" style={{ userSelect: 'text', WebkitUserSelect: 'text' }}>{contact}</span></div>}
+        <button className="row row-btn" onClick={() => openDoc('privacy')}><div className="row-main"><div className="row-name">{t('Политика конфиденциальности')}</div></div><IconChevronRight size={16} stroke={1.6} className="muted" /></button>
+        <button className="row row-btn" onClick={() => openDoc('terms')}><div className="row-main"><div className="row-name">{t('Пользовательское соглашение')}</div></div><IconChevronRight size={16} stroke={1.6} className="muted" /></button>
+        {botUser && <button className="row row-btn" onClick={writeUs}><div className="row-main"><div className="row-name">{t('Написать нам')}</div><div className="row-sub">{t('вопрос, ошибка или идея — ответим в чате с ботом')}</div></div><IconChevronRight size={16} stroke={1.6} className="muted" /></button>}
+        {contact && <div className="row"><div className="row-main"><div className="row-name">{t('Поддержка')}</div></div><span className="row-sub" style={{ userSelect: 'text', WebkitUserSelect: 'text' }}>{contact}</span></div>}
       </div>
-      <button className="btn btn-danger" onClick={() => setDeleteOpen(true)}>Удалить аккаунт и данные</button>
+      <button className="btn btn-danger" onClick={() => setDeleteOpen(true)}>{t('Удалить аккаунт и данные')}</button>
 
       {deleteOpen && (
-        <Sheet title="Удалить аккаунт?" onClose={() => setDeleteOpen(false)}>
+        <Sheet title={t('Удалить аккаунт?')} onClose={() => setDeleteOpen(false)}>
           <div className="card-pad" style={{ fontSize: 14, lineHeight: 1.45, fontWeight: 300 }}>
-            Удалятся ваши доходы, личные траты, комментарии, фото чеков, настройки и личная ссылка для SMS. Бюджеты, где вы одни, удалятся целиком.
-            {partner && <div style={{ marginTop: 8 }}>В общем бюджете у {partner.first_name} останутся общие траты и копилка — без вашего имени.</div>}
-            <div className="warn" style={{ marginTop: 8 }}>Вернуть удалённое не получится. Если нужна копия — сначала «Выгрузить в Excel».</div>
+            {t('Удалятся ваши доходы, личные траты, комментарии, фото чеков, настройки и личная ссылка для SMS. Бюджеты, где вы одни, удалятся целиком.')}
+            {partner && <div style={{ marginTop: 8 }}>{t('В общем бюджете у {name} останутся общие траты и копилка — без вашего имени.', { name: partner.first_name })}</div>}
+            <div className="warn" style={{ marginTop: 8 }}>{t('Вернуть удалённое не получится. Если нужна копия — сначала «Выгрузить в Excel».')}</div>
           </div>
           <div className="sheet-actions">
-            <button className="btn btn-secondary" onClick={() => setDeleteOpen(false)}>Отмена</button>
+            <button className="btn btn-secondary" onClick={() => setDeleteOpen(false)}>{t('Отмена')}</button>
             <button className="btn" style={{ background: 'var(--danger)', color: '#fff' }} disabled={deleting} onClick={deleteAccount}>
-              {deleting ? 'Удаляем…' : 'Удалить'}
+              {deleting ? t('Удаляем…') : t('Удалить')}
             </button>
           </div>
         </Sheet>
       )}
 
       {resetOpen && (
-        <Sheet title="Очистить бюджет?" onClose={() => setResetOpen(false)}>
+        <Sheet title={t('Очистить бюджет?')} onClose={() => setResetOpen(false)}>
           <div className="card-pad" style={{ fontSize: 14, lineHeight: 1.45, fontWeight: 300 }}>
-            Удалятся все траты и доходы, цели копилки, регулярные платежи, личные траты и лимиты. Останутся название, валюта и категории.
-            <div className="warn" style={{ marginTop: 8 }}>Вернуть удалённое не получится.</div>
+            {t('Удалятся все траты и доходы, цели копилки, регулярные платежи, личные траты и лимиты. Останутся название, валюта и категории.')}
+            <div className="warn" style={{ marginTop: 8 }}>{t('Вернуть удалённое не получится.')}</div>
           </div>
           {partner && (
             <label className="switch-row" style={{ marginTop: 8 }}>
               <span>
-                Убрать {partner.first_name} из бюджета
+                {t('Убрать {name} из бюджета', { name: partner.first_name })}
                 <span className="row-sub" style={{ display: 'block', marginTop: 2 }}>
-                  {removePartner ? 'Старая ссылка-приглашение перестанет работать' : `${partner.first_name} останется в бюджете`}
+                  {removePartner ? t('Старая ссылка-приглашение перестанет работать') : t('{name} останется в бюджете', { name: partner.first_name })}
                 </span>
               </span>
               <input type="checkbox" className="switch" checked={removePartner} onChange={e => setRemovePartner(e.target.checked)} />
             </label>
           )}
           <div className="sheet-actions">
-            <button className="btn btn-secondary" onClick={() => setResetOpen(false)}>Отмена</button>
+            <button className="btn btn-secondary" onClick={() => setResetOpen(false)}>{t('Отмена')}</button>
             <button className="btn" style={{ background: 'var(--danger)', color: '#fff' }} disabled={resetting} onClick={reset}>
-              {resetting ? 'Очищаем…' : 'Очистить'}
+              {resetting ? t('Очищаем…') : t('Очистить')}
             </button>
           </div>
         </Sheet>

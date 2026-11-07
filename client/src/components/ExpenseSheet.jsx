@@ -4,19 +4,20 @@ import { api, fetchReceiptUrl } from '../api/client';
 import Sheet from './Sheet';
 import CategorySheet from './CategorySheet';
 import { money, confirmAction, MONTHS_GEN, compressImage } from '../format';
+import { t } from '../i18n';
 
 const REACTIONS = ['😍', '👍', '😱', '🤔', '💸', '🐧'];
 
 function when(date) {
-  return `${Number(date.slice(8, 10))} ${MONTHS_GEN[Number(date.slice(5, 7)) - 1]}`;
+  return t('{day} {month}', { day: Number(date.slice(8, 10)), month: MONTHS_GEN[Number(date.slice(5, 7)) - 1] });
 }
 
 const FIELD = { category: 'категория', amount: 'сумма', description: 'описание', date: 'дата', personal: 'личная' };
 
 // "Оля: категория «Прочее» → «Красота» · 7 ноября"
 function editLine(ed, currency) {
-  const show = (v) => (ed.field === 'amount' ? money(Number(v), currency) : ed.field === 'date' ? when(v) : ed.field === 'personal' ? v : `«${v || '—'}»`);
-  return `${ed.user_name}: ${FIELD[ed.field]} ${show(ed.old_value)} → ${show(ed.new_value)} · ${when(ed.created_at.slice(0, 10))}`;
+  const show = (v) => (ed.field === 'amount' ? money(Number(v), currency) : ed.field === 'date' ? when(v) : ed.field === 'personal' ? t(v) : t('«{value}»', { value: (ed.field === 'category' ? t(v) : v) || '—' }));
+  return `${ed.user_name}: ${t(FIELD[ed.field])} ${show(ed.old_value)} → ${show(ed.new_value)} · ${when(ed.created_at.slice(0, 10))}`;
 }
 
 // Either of the two can fix category, amount, description or date.
@@ -52,11 +53,11 @@ function EditForm({ budget, expense, onSaved, onCancel }) {
       <div className="cat-grid" style={{ marginBottom: 10 }}>
         {categories.map(c => (
           <button key={c.id} className={`cat-btn ${categoryId === c.id ? 'on' : ''}`} onClick={() => setCategoryId(c.id)}>
-            <span className="e">{c.icon}</span><span>{c.name}</span>
+            <span className="e">{c.icon}</span><span>{t(c.name)}</span>
           </button>
         ))}
         <button className="cat-btn" style={{ background: 'transparent', border: '1.5px dashed #c8c8c8' }} onClick={() => setShowNewCat(true)}>
-          <span className="e"><IconPlus size={20} stroke={1.6} /></span><span>Своя</span>
+          <span className="e"><IconPlus size={20} stroke={1.6} /></span><span>{t('Своя')}</span>
         </button>
       </div>
       {showNewCat && (
@@ -67,24 +68,24 @@ function EditForm({ budget, expense, onSaved, onCancel }) {
         />
       )}
       <div className="input-group">
-        <input className="input" placeholder="Описание" value={description} onChange={ev => setDescription(ev.target.value)} />
+        <input className="input" placeholder={t('Описание')} value={description} onChange={ev => setDescription(ev.target.value)} />
       </div>
       <div className="input-group">
         <input className="input" type="date" value={date} onChange={ev => setDate(ev.target.value)} />
       </div>
       <label className="switch-row" style={{ marginBottom: 6 }}>
         <span>
-          Личная трата
+          {t('Личная трата')}
           <span className="row-sub" style={{ display: 'block', marginTop: 2 }}>
-            {personal ? `покупка для себя — идёт из общего бюджета и покажется в карточке ${expense.user_name} на главной` : 'отметить как покупку для себя'}
+            {personal ? t('покупка для себя — идёт из общего бюджета и покажется в карточке {name} на главной', { name: expense.user_name }) : t('отметить как покупку для себя')}
           </span>
         </span>
         <input type="checkbox" className="switch" checked={personal} onChange={ev => setPersonal(ev.target.checked)} />
       </label>
       {error && <div className="warn" style={{ fontSize: 13, margin: '0 4px' }}>{error}</div>}
       <div className="sheet-actions">
-        <button className="btn btn-secondary" onClick={onCancel}>Отмена</button>
-        <button className="btn" onClick={save} disabled={saving || !(Number(amount) > 0)}>{saving ? 'Сохраняем…' : 'Сохранить'}</button>
+        <button className="btn btn-secondary" onClick={onCancel}>{t('Отмена')}</button>
+        <button className="btn" onClick={save} disabled={saving || !(Number(amount) > 0)}>{saving ? t('Сохраняем…') : t('Сохранить')}</button>
       </div>
     </>
   );
@@ -125,7 +126,7 @@ export default function ExpenseSheet({ budget, user, expenseId, onClose, onChang
   };
 
   const removeReceipt = async () => {
-    if (!(await confirmAction('Удалить фото чека?'))) return;
+    if (!(await confirmAction(t('Удалить фото чека?')))) return;
     await api.deleteReceipt(expenseId);
     setShowReceipt(false);
     setReceipt(null);
@@ -138,7 +139,7 @@ export default function ExpenseSheet({ budget, user, expenseId, onClose, onChang
 
   if (editing) {
     return (
-      <Sheet title="Изменить трату" onClose={onClose}>
+      <Sheet title={t('Изменить трату')} onClose={onClose}>
         <EditForm budget={budget} expense={e} onCancel={() => setEditing(false)}
           onSaved={async () => { setEditing(false); await load(); onChanged(); }} />
       </Sheet>
@@ -164,14 +165,14 @@ export default function ExpenseSheet({ budget, user, expenseId, onClose, onChang
   };
 
   const removeComment = async (c) => {
-    if (!(await confirmAction('Удалить комментарий?'))) return;
+    if (!(await confirmAction(t('Удалить комментарий?')))) return;
     await api.deleteComment(c.id);
     await load();
     onChanged();
   };
 
   const removeExpense = async () => {
-    if (!(await confirmAction(`Удалить «${e.description || e.category_name}» на ${money(e.amount, budget.currency)}?`))) return;
+    if (!(await confirmAction(t('Удалить «{name}» на {sum}?', { name: e.description || t(e.category_name), sum: money(e.amount, budget.currency) })))) return;
     await api.deleteExpense(e.id);
     onChanged();
     onClose();
@@ -182,10 +183,10 @@ export default function ExpenseSheet({ budget, user, expenseId, onClose, onChang
       <div className="card-pad" style={{ textAlign: 'center', marginBottom: 10 }}>
         <div style={{ fontSize: 30 }}>{e.category_icon}</div>
         <div className="num" style={{ fontSize: 28, margin: '6px 0 4px' }}>{money(e.amount, budget.currency)}</div>
-        <div style={{ fontSize: 15 }}>{e.description || e.category_name}</div>
+        <div style={{ fontSize: 15 }}>{e.description || t(e.category_name)}</div>
         <div className="row-sub" style={{ marginTop: 4 }}>
-          {e.description ? `${e.category_name} · ` : ''}{e.personal ? <><IconUser size={12} style={{ verticalAlign: -1 }} /> личная · </> : ''}{e.user_name} · {when(e.date)}
-          {e.recurring_id && <> · <IconRepeat size={12} style={{ verticalAlign: -1 }} /> каждый месяц</>}
+          {e.description ? `${t(e.category_name)} · ` : ''}{e.personal ? <><IconUser size={12} style={{ verticalAlign: -1 }} /> {t('личная')} · </> : ''}{e.user_name} · {when(e.date)}
+          {e.recurring_id && <> · <IconRepeat size={12} style={{ verticalAlign: -1 }} /> {t('каждый месяц')}</>}
         </div>
         {edits.length > 0 && (
           <div className="edits">
@@ -193,36 +194,36 @@ export default function ExpenseSheet({ budget, user, expenseId, onClose, onChang
           </div>
         )}
         <button className="btn btn-ghost" style={{ marginTop: 6, padding: 8, fontSize: 14, width: 'auto', margin: '6px auto 0' }} onClick={() => setEditing(true)}>
-          <IconPencil size={16} stroke={1.6} /> Изменить
+          <IconPencil size={16} stroke={1.6} /> {t('Изменить')}
         </button>
       </div>
 
       <input ref={fileInput} type="file" accept="image/*" style={{ display: 'none' }} onChange={attach} />
       {receipt ? (
-        <button className="receipt-thumb" onClick={() => setShowReceipt(true)} aria-label="Открыть фото чека">
-          <img src={receipt} alt="Фото чека" />
-          <span><IconPaperclip size={14} /> Чек</span>
+        <button className="receipt-thumb" onClick={() => setShowReceipt(true)} aria-label={t('Открыть фото чека')}>
+          <img src={receipt} alt={t('Фото чека')} />
+          <span><IconPaperclip size={14} /> {t('Чек')}</span>
         </button>
       ) : (
         <button className="btn btn-secondary" style={{ marginBottom: 10, padding: 12, fontSize: 14 }} onClick={() => fileInput.current.click()} disabled={uploading}>
-          <IconPaperclip size={16} stroke={1.6} /> {uploading ? 'Загружаем…' : 'Фото чека'}
+          <IconPaperclip size={16} stroke={1.6} /> {uploading ? t('Загружаем…') : t('Фото чека')}
         </button>
       )}
 
       {showReceipt && receipt && (
         <div className="receipt-view" onClick={() => setShowReceipt(false)}>
-          <img src={receipt} alt="Фото чека" />
+          <img src={receipt} alt={t('Фото чека')} />
           <div className="receipt-actions" onClick={ev => ev.stopPropagation()}>
-            <button className="btn btn-secondary" onClick={() => fileInput.current.click()}>Заменить</button>
-            <button className="btn btn-secondary" style={{ color: 'var(--danger)' }} onClick={removeReceipt}>Удалить</button>
-            <button className="btn" onClick={() => setShowReceipt(false)}>Закрыть</button>
+            <button className="btn btn-secondary" onClick={() => fileInput.current.click()}>{t('Заменить')}</button>
+            <button className="btn btn-secondary" style={{ color: 'var(--danger)' }} onClick={removeReceipt}>{t('Удалить')}</button>
+            <button className="btn" onClick={() => setShowReceipt(false)}>{t('Закрыть')}</button>
           </div>
         </div>
       )}
 
       <div className="reactions">
         {REACTIONS.map(r => (
-          <button key={r} className={mine === r ? 'on' : ''} onClick={() => react(r)} aria-label={`Реакция ${r}`}>{r}</button>
+          <button key={r} className={mine === r ? 'on' : ''} onClick={() => react(r)} aria-label={t('Реакция {emoji}', { emoji: r })}>{r}</button>
         ))}
       </div>
       {others.length > 0 && (
@@ -243,19 +244,19 @@ export default function ExpenseSheet({ budget, user, expenseId, onClose, onChang
       <div className="comment-input">
         <input
           className="input"
-          placeholder="Комментарий…"
+          placeholder={t('Комментарий…')}
           value={text}
           maxLength={500}
           onChange={ev => setText(ev.target.value)}
           onKeyDown={ev => ev.key === 'Enter' && send()}
         />
-        <button className="icon-btn dark" style={{ width: 46, height: 46 }} onClick={send} disabled={sending || !text.trim()} aria-label="Отправить комментарий">
+        <button className="icon-btn dark" style={{ width: 46, height: 46 }} onClick={send} disabled={sending || !text.trim()} aria-label={t('Отправить комментарий')}>
           <IconSend size={18} />
         </button>
       </div>
 
       {e.user_id === user.id && (
-        <button className="btn btn-danger" style={{ marginTop: 10 }} onClick={removeExpense}>Удалить трату</button>
+        <button className="btn btn-danger" style={{ marginTop: 10 }} onClick={removeExpense}>{t('Удалить трату')}</button>
       )}
     </Sheet>
   );

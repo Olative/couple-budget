@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Consent } from './Legal';
 import SpriteAnim, { ANIMS } from './SpriteAnim';
+import { t } from '../i18n';
 
 // First-run walkthrough: a few slides with dancing penguins, shown once per user.
 function slides(joined) {
@@ -70,18 +71,18 @@ export default function Tutorial({ first = false,  joined, onDone }) {
 
   return createPortal(
     <div className="tutorial" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
-      <button className="tutorial-skip" onClick={onDone}>{last ? '' : 'Пропустить'}</button>
+      <button className="tutorial-skip" onClick={onDone}>{last ? '' : t('Пропустить')}</button>
       <div className="tutorial-body" key={i}>
         <SpriteAnim name={s.anim} width="min(64vw, 260px)" />
-        <div className="celebration-label">· {s.label} ·</div>
-        <div className="celebration-title">{s.title}</div>
-        <div className="tutorial-text">{s.text}</div>
+        <div className="celebration-label">· {t(s.label)} ·</div>
+        <div className="celebration-title">{t(s.title)}</div>
+        <div className="tutorial-text">{t(s.text)}</div>
       </div>
       <div className="dots">
         {list.map((_, n) => <span key={n} className={n === i ? 'on' : ''} onClick={() => setI(n)} />)}
       </div>
       <button className="btn" style={{ maxWidth: 360 }} onClick={() => (last ? onDone() : setI(i + 1))}>
-        {last ? 'Начать' : 'Дальше'}
+        {last ? t('Начать') : t('Дальше')}
       </button>
       {first && <Consent style={{ marginTop: 10 }} />}
     </div>,

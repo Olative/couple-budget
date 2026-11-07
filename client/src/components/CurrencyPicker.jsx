@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { t } from '../i18n';
 
 const CURRENCIES = [
   { code: 'EUR', symbol: '€', name: 'Евро' },
@@ -88,6 +89,7 @@ export default function CurrencyPicker({ value, onChange, label }) {
     return CURRENCIES.filter(c =>
       c.code.toLowerCase().includes(q) ||
       c.name.toLowerCase().includes(q) ||
+      t(c.name).toLowerCase().includes(q) ||
       c.symbol.toLowerCase().includes(q)
     );
   }, [search]);
@@ -116,7 +118,7 @@ export default function CurrencyPicker({ value, onChange, label }) {
           }}
         >
           <span style={{ fontWeight: 400}}>
-            {selected ? `${selected.symbol}  ${selected.name}` : value || 'Выберите валюту'}
+            {selected ? `${selected.symbol}  ${t(selected.name)}` : value || t('Выберите валюту')}
           </span>
           <span style={{ fontSize: 12, color: 'var(--muted)' }}>▼</span>
         </button>
@@ -144,7 +146,7 @@ export default function CurrencyPicker({ value, onChange, label }) {
         </button>
         <input
           autoFocus
-          placeholder="Поиск валюты..."
+          placeholder={t('Поиск валюты...')}
           value={search}
           onChange={e => setSearch(e.target.value)}
           style={{
@@ -160,7 +162,7 @@ export default function CurrencyPicker({ value, onChange, label }) {
           padding: '8px 16px 4px', fontSize: 13, fontWeight: 600,
           color: 'var(--muted)', textTransform: 'uppercase',
         }}>
-          Популярные
+          {t('Популярные')}
         </div>
       )}
 
@@ -184,7 +186,7 @@ export default function CurrencyPicker({ value, onChange, label }) {
               {c.symbol}
             </span>
             <div>
-              <div style={{ fontWeight: 400}}>{c.name}</div>
+              <div style={{ fontWeight: 400}}>{t(c.name)}</div>
               <div style={{ fontSize: 13, color: 'var(--muted)' }}>{c.code}</div>
             </div>
             {selected?.code === c.code && (
@@ -197,7 +199,7 @@ export default function CurrencyPicker({ value, onChange, label }) {
           <div style={{
             padding: 32, textAlign: 'center', color: 'var(--muted)',
           }}>
-            Ничего не найдено
+            {t('Ничего не найдено')}
           </div>
         )}
 
@@ -207,7 +209,7 @@ export default function CurrencyPicker({ value, onChange, label }) {
               padding: '16px 16px 4px', fontSize: 13, fontWeight: 600,
               color: 'var(--muted)', textTransform: 'uppercase',
             }}>
-              Все валюты
+              {t('Все валюты')}
             </div>
             {CURRENCIES.filter(c => !POPULAR_CODES.includes(c.code)).map(c => (
               <button
@@ -228,7 +230,7 @@ export default function CurrencyPicker({ value, onChange, label }) {
                   {c.symbol}
                 </span>
                 <div>
-                  <div style={{ fontWeight: 400}}>{c.name}</div>
+                  <div style={{ fontWeight: 400}}>{t(c.name)}</div>
                   <div style={{ fontSize: 13, color: 'var(--muted)' }}>{c.code}</div>
                 </div>
                 {selected?.code === c.code && (

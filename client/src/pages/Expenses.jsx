@@ -5,15 +5,16 @@ import OperationSheet from '../components/OperationSheet';
 import { api } from '../api/client';
 import { PenguinPair } from '../components/Art';
 import { money, incomeSource, thisMonth } from '../format';
+import { t, locale } from '../i18n';
 
 function dayLabel(dateStr) {
   const d = new Date(dateStr + 'T00:00:00');
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const diff = Math.round((today - d) / 86400000);
-  if (diff === 0) return 'Сегодня';
-  if (diff === 1) return 'Вчера';
-  return d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' });
+  if (diff === 0) return t('Сегодня');
+  if (diff === 1) return t('Вчера');
+  return d.toLocaleDateString(locale(), { day: 'numeric', month: 'long' });
 }
 
 export default function Expenses({ budget, user, refreshKey, onAdd }) {
@@ -32,8 +33,8 @@ export default function Expenses({ budget, user, refreshKey, onAdd }) {
       const carry = Number(sum.carryOver || 0);
       const carried = carry ? [{
         id: 'carry', kind: 'carry', amount: carry, date: `${month}-01`, created_at: '',
-        category_icon: carry > 0 ? '📥' : '📤', description: carry > 0 ? 'Осталось с прошлого месяца' : 'Не хватило в прошлом месяце',
-        category_name: 'перенос остатка',
+        category_icon: carry > 0 ? '📥' : '📤', description: carry > 0 ? t('Осталось с прошлого месяца') : t('Не хватило в прошлом месяце'),
+        category_name: t('перенос остатка'),
       }] : [];
       setExpenses([...ex.map(e => ({ ...e, kind: 'expense' })), ...incomes, ...carried]
         .sort((a, b) => b.date.localeCompare(a.date) || b.created_at.localeCompare(a.created_at)));
@@ -62,13 +63,13 @@ export default function Expenses({ budget, user, refreshKey, onAdd }) {
   return (
     <div className="page">
       <div className="page-head">
-        <div className="h-title">Операции</div>
-        <button className="icon-btn dark" onClick={onAdd} aria-label="Добавить расход"><IconPlus size={18} /></button>
+        <div className="h-title">{t('Операции')}</div>
+        <button className="icon-btn dark" onClick={onAdd} aria-label={t('Добавить расход')}><IconPlus size={18} /></button>
       </div>
 
       {members.length > 1 && (
         <div className="pills">
-          <button className={`pill ${!who ? 'on' : ''}`} onClick={() => setWho(null)}>Все</button>
+          <button className={`pill ${!who ? 'on' : ''}`} onClick={() => setWho(null)}>{t('Все')}</button>
           {members.map(m => (
             <button key={m.id} className={`pill ${who === m.id ? 'on' : ''}`} onClick={() => setWho(m.id)}>{m.first_name}</button>
           ))}
@@ -78,8 +79,8 @@ export default function Expenses({ budget, user, refreshKey, onAdd }) {
       {expenses && groups.length === 0 && (
         <div className="empty">
           <PenguinPair height={70} />
-          <div className="empty-text">Операций пока нет</div>
-          <button className="btn" style={{ maxWidth: 220 }} onClick={onAdd}>Добавить</button>
+          <div className="empty-text">{t('Операций пока нет')}</div>
+          <button className="btn" style={{ maxWidth: 220 }} onClick={onAdd}>{t('Добавить')}</button>
         </div>
       )}
 
@@ -92,13 +93,13 @@ export default function Expenses({ budget, user, refreshKey, onAdd }) {
                 <span className="row-ic">{e.category_icon}</span>
                 <div className="row-main">
                   <div className="row-name">
-                    {e.description || e.category_name}
-                    {e.recurring_id && <IconRepeat size={13} stroke={1.8} color="#9a9a9a" style={{ marginLeft: 5, verticalAlign: -1 }} aria-label="повторяется каждый месяц" />}
-                    {!!e.has_receipt && <IconPaperclip size={13} stroke={1.8} color="#9a9a9a" style={{ marginLeft: 5, verticalAlign: -1 }} aria-label="есть фото чека" />}
-                    {!!e.edited_by_other && <IconPencil size={13} stroke={1.8} color="#9a9a9a" style={{ marginLeft: 5, verticalAlign: -1 }} aria-label="поправил второй участник" />}
+                    {e.description || t(e.category_name)}
+                    {e.recurring_id && <IconRepeat size={13} stroke={1.8} color="#9a9a9a" style={{ marginLeft: 5, verticalAlign: -1 }} aria-label={t('повторяется каждый месяц')} />}
+                    {!!e.has_receipt && <IconPaperclip size={13} stroke={1.8} color="#9a9a9a" style={{ marginLeft: 5, verticalAlign: -1 }} aria-label={t('есть фото чека')} />}
+                    {!!e.edited_by_other && <IconPencil size={13} stroke={1.8} color="#9a9a9a" style={{ marginLeft: 5, verticalAlign: -1 }} aria-label={t('поправил второй участник')} />}
                   </div>
                   <div className="row-sub">
-                    {e.kind === 'carry' ? 'перенос остатка' : <>{e.personal ? 'личная · ' : ''}{e.description ? `${e.category_name} · ` : ''}{e.user_name}</>}
+                    {e.kind === 'carry' ? t('перенос остатка') : <>{e.personal ? `${t('личная')} · ` : ''}{e.description ? `${t(e.category_name)} · ` : ''}{e.user_name}</>}
                     {e.reactions && <span style={{ marginLeft: 6 }}>{e.reactions}</span>}
                     {e.comment_count > 0 && <span style={{ marginLeft: 6 }}><IconMessageCircle size={11} style={{ verticalAlign: -1 }} /> {e.comment_count}</span>}
                   </div>
@@ -114,7 +115,7 @@ export default function Expenses({ budget, user, refreshKey, onAdd }) {
       ))}
 
       {expenses && groups.length > 0 && (
-        <div className="row-sub" style={{ textAlign: 'center', marginTop: 4 }}>Нажмите на трату, чтобы отреагировать или прокомментировать</div>
+        <div className="row-sub" style={{ textAlign: 'center', marginTop: 4 }}>{t('Нажмите на трату, чтобы отреагировать или прокомментировать')}</div>
       )}
 
       {openOp && (

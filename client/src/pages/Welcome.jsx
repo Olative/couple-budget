@@ -5,6 +5,7 @@ import CurrencyPicker from '../components/CurrencyPicker';
 import Sheet from '../components/Sheet';
 import { ArcTitle, GridLines, PenguinPair } from '../components/Art';
 import { Consent } from '../components/Legal';
+import { t } from '../i18n';
 
 export default function Welcome({ onReady }) {
   const [creating, setCreating] = useState(false);
@@ -17,7 +18,7 @@ export default function Welcome({ onReady }) {
     setLoading(true);
     setError('');
     try {
-      onReady(await api.createBudget({ name: name || 'Наш бюджет', currency }));
+      onReady(await api.createBudget({ name: name || t('Наш бюджет'), currency }));
     } catch (e) {
       setError(e.message);
       setLoading(false);
@@ -34,7 +35,7 @@ export default function Welcome({ onReady }) {
         <div className="badge"><IconHeart size={20} stroke={1.6} /></div>
         <div className="ticket-in" style={{ height: 'min(108vw, 420px)' }}>
           <GridLines color="#fff" opacity={0.35} />
-          <ArcTitle title="Lolo & Pepe" subtitle="бюджет для двоих" />
+          <ArcTitle title="Lolo & Pepe" subtitle={t('бюджет для двоих')} />
           <div style={{ position: 'absolute', left: 0, right: 0, bottom: '9%' }}>
             <PenguinPair height={150} />
           </div>
@@ -42,24 +43,24 @@ export default function Welcome({ onReady }) {
       </div>
 
       <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: 10, paddingTop: 24 }}>
-        <button className="btn" onClick={() => setCreating(true)}>Создать бюджет</button>
+        <button className="btn" onClick={() => setCreating(true)}>{t('Создать бюджет')}</button>
         <div className="row-sub" style={{ textAlign: 'center', fontSize: 12, padding: '0 24px' }}>
-          Вас уже позвали в бюджет? Откройте ссылку-приглашение
+          {t('Вас уже позвали в бюджет? Откройте ссылку-приглашение')}
         </div>
         <Consent style={{ marginTop: 4 }} />
       </div>
 
       {creating && (
-        <Sheet title="Новый бюджет" onClose={() => setCreating(false)}>
+        <Sheet title={t('Новый бюджет')} onClose={() => setCreating(false)}>
           <div className="input-group">
-            <label className="input-label">Название</label>
-            <input className="input" placeholder="Наш бюджет" value={name} onChange={e => setName(e.target.value)} />
+            <label className="input-label">{t('Название')}</label>
+            <input className="input" placeholder={t('Наш бюджет')} value={name} onChange={e => setName(e.target.value)} />
           </div>
-          <CurrencyPicker value={currency} onChange={setCurrency} label="Валюта" />
+          <CurrencyPicker value={currency} onChange={setCurrency} label={t('Валюта')} />
           {error && <div className="warn" style={{ fontSize: 13, margin: '0 4px' }}>{error}</div>}
           <div className="sheet-actions">
-            <button className="btn btn-secondary" onClick={() => setCreating(false)}>Назад</button>
-            <button className="btn" disabled={loading} onClick={create}>{loading ? 'Создаём…' : 'Создать'}</button>
+            <button className="btn btn-secondary" onClick={() => setCreating(false)}>{t('Назад')}</button>
+            <button className="btn" disabled={loading} onClick={create}>{loading ? t('Создаём…') : t('Создать')}</button>
           </div>
         </Sheet>
       )}

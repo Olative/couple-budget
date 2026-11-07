@@ -6,20 +6,21 @@ import { buildForecast, buildRecap, currentMonth, shiftMonth, materializeRecurri
 import { inviteLink } from '../bot.js';
 import { textOf } from '../validate.js';
 import { notifyPartners } from '../notify.js';
+import { langOfUser } from '../i18n.js';
 
 const router = Router();
 
 const DEFAULT_CATEGORIES = [
-  { name: 'Продукты', icon: '🛒', color: '#22c55e' },
-  { name: 'Кафе и рестораны', icon: '🍕', color: '#f97316' },
-  { name: 'Транспорт', icon: '🚌', color: '#3b82f6' },
-  { name: 'Жильё', icon: '🏠', color: '#8b5cf6' },
-  { name: 'Коммунальные', icon: '💡', color: '#eab308' },
-  { name: 'Здоровье', icon: '💊', color: '#ef4444' },
-  { name: 'Одежда', icon: '👕', color: '#ec4899' },
-  { name: 'Развлечения', icon: '🎬', color: '#06b6d4' },
-  { name: 'Подписки', icon: '📱', color: '#6366f1' },
-  { name: 'Прочее', icon: '📦', color: '#78716c' },
+  { name: 'Продукты', en: 'Groceries', icon: '🛒', color: '#22c55e' },
+  { name: 'Кафе и рестораны', en: 'Cafes & restaurants', icon: '🍕', color: '#f97316' },
+  { name: 'Транспорт', en: 'Transport', icon: '🚌', color: '#3b82f6' },
+  { name: 'Жильё', en: 'Housing', icon: '🏠', color: '#8b5cf6' },
+  { name: 'Коммунальные', en: 'Utilities', icon: '💡', color: '#eab308' },
+  { name: 'Здоровье', en: 'Health', icon: '💊', color: '#ef4444' },
+  { name: 'Одежда', en: 'Clothes', icon: '👕', color: '#ec4899' },
+  { name: 'Развлечения', en: 'Entertainment', icon: '🎬', color: '#06b6d4' },
+  { name: 'Подписки', en: 'Subscriptions', icon: '📱', color: '#6366f1' },
+  { name: 'Прочее', en: 'Other', icon: '📦', color: '#78716c' },
 ];
 
 router.post('/budgets', async (req, res) => {
@@ -27,17 +28,18 @@ router.post('/budgets', async (req, res) => {
   const userId = req.userId;
   const id = uuidv4();
   const inviteCode = crypto.randomBytes(6).toString('hex');
+  const en = (await langOfUser(userId)) === 'en';
 
   try {
     await db.prepare('INSERT INTO budgets (id, name, currency, created_by, invite_code) VALUES (?, ?, ?, ?, ?)')
-      .run(id, name || 'Наш бюджет', currency || '₽', userId, inviteCode);
+      .run(id, name || (en ? 'Our budget' : 'Наш бюджет'), currency || '₽', userId, inviteCode);
 
     await db.prepare('INSERT INTO budget_members (budget_id, user_id, role) VALUES (?, ?, ?)')
       .run(id, userId, 'owner');
 
     for (const [i, cat] of DEFAULT_CATEGORIES.entries()) {
       await db.prepare('INSERT INTO categories (budget_id, name, icon, color, sort_order) VALUES (?, ?, ?, ?, ?)')
-        .run(id, cat.name, cat.icon, cat.color, i);
+        .run(id, en ? cat.en : cat.name, cat.icon, cat.color, i);
     }
 
     await db.prepare('UPDATE users SET active_budget_id = ? WHERE id = ?').run(id, userId);

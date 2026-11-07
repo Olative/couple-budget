@@ -48,7 +48,22 @@
     </div>
     <script>
       (function () {
-        var PHRASES = [
+        // Same language choice as src/i18n.js: a saved choice first, then the Telegram or browser language.
+        var lang = (function () {
+          try { var saved = localStorage.getItem('lang'); if (saved === 'ru' || saved === 'en') return saved; } catch (e) { /* storage unavailable */ }
+          var code = String((window.Telegram && Telegram.WebApp && Telegram.WebApp.initDataUnsafe && Telegram.WebApp.initDataUnsafe.user && Telegram.WebApp.initDataUnsafe.user.language_code) || navigator.language || '').slice(0, 2).toLowerCase();
+          return ['ru', 'uk', 'be', 'kk', 'ky', 'uz', 'tg', 'hy', 'az', 'ka', 'tk', 'mo'].indexOf(code) !== -1 ? 'ru' : 'en';
+        })();
+        var PHRASES = lang === 'en' ? [
+          'Adding up expenses',
+          'Checking receipts',
+          'Checking limits',
+          'Making a forecast',
+          'Counting what’s left',
+          'Filling the piggy bank',
+          'Splitting it fairly',
+          'Wrapping up the month',
+        ] : [
           'Считаем траты',
           'Сверяем чеки',
           'Проверяем лимиты',

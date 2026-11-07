@@ -9,6 +9,8 @@ import { buildExport } from './routes/files.js';
 import { readFileSync } from 'fs';
 import crypto, { createHash } from 'crypto';
 import { CONTACT_EMAIL } from './legal.js';
+import { userMessage } from './safety.js';
+import { tr, trPl, langOfFrom, langOfTelegram, langOfUser, normLang, locale } from './i18n.js';
 
 // Telegram caches media by URL, so a replaced clip needs a new URL to show up.
 function mediaVersion(file) {
@@ -26,15 +28,16 @@ const BOT_TOKEN = process.env.BOT_TOKEN;
 const WEB_APP_URL = process.env.WEB_APP_URL || 'https://couple-budget-z17f.onrender.com';
 const ADMIN_ID = process.env.ADMIN_TELEGRAM_ID;
 
-const openButton = (text = 'Открыть Lolo & Pepe', url = WEB_APP_URL) => ({
-  reply_markup: { inline_keyboard: [[{ text, web_app: { url } }]] },
+// Button labels are Russian keys, shown in the recipient's language.
+const openButton = (lang = 'ru', text = 'Открыть Lolo & Pepe', url = WEB_APP_URL) => ({
+  reply_markup: { inline_keyboard: [[{ text: tr(lang, text), web_app: { url } }]] },
 });
 
 // A broadcast mentioning /auto also gets a button that sends the setup guide right away.
-const AUTO_BUTTON = { text: '⚙️ Как настроить автоучёт', callback_data: 'auto:show' };
-function broadcastButtons(text) {
-  const rows = [[{ text: 'Открыть Lolo & Pepe', web_app: { url: WEB_APP_URL } }]];
-  if (/\/auto\b/.test(text)) rows.unshift([AUTO_BUTTON]);
+const autoButton = (lang) => ({ text: tr(lang, '⚙️ Как настроить автоучёт'), callback_data: 'auto:show' });
+function broadcastButtons(text, lang = 'ru') {
+  const rows = [[{ text: tr(lang, 'Открыть Lolo & Pepe'), web_app: { url: WEB_APP_URL } }]];
+  if (/\/auto\b/.test(text)) rows.unshift([autoButton(lang)]);
   return { reply_markup: { inline_keyboard: rows } };
 }
 
@@ -53,10 +56,13 @@ let bot;
 let botUsername = process.env.BOT_USERNAME || null;
 const pendingBroadcasts = new Map();
 
-export async function sendToUser(telegramId, text) {
+export async function sendToUser(telegramId, text, lang = 'ru') {
   if (!bot) return;
-  await bot.sendMessage(telegramId, text, openButton('Открыть Lolo & Pepe'));
+  await bot.sendMessage(telegramId, text, openButton(lang));
 }
+
+export const exportCaption = (count, lang) => tr(lang, '📊 Все траты и доходы — {records}. Файл открывается в Excel и Google Таблицах.',
+  { records: trPl(lang, count, '{n} запись', '{n} записи', '{n} записей', '{n} record', '{n} records') });
 
 export async function sendDocumentToUser(telegramId, file, caption) {
   if (!bot) throw new Error('Bot is disabled');
@@ -74,11 +80,11 @@ function requireBot() {
 }
 
 // Buttons under a post: open the app, the auto-recording guide, and an optional link.
-function postMarkup(buttons = {}) {
+function postMarkup(buttons = {}, lang = 'ru') {
   const rows = [];
-  if (buttons.auto) rows.push([AUTO_BUTTON]);
+  if (buttons.auto) rows.push([autoButton(lang)]);
   if (buttons.link?.text && /^https:\/\//.test(buttons.link.url || '')) rows.push([{ text: buttons.link.text.slice(0, 40), url: buttons.link.url }]);
-  if (buttons.open !== false) rows.push([{ text: 'Открыть Lolo & Pepe', web_app: { url: WEB_APP_URL } }]);
+  if (buttons.open !== false) rows.push([{ text: tr(lang, 'Открыть Lolo & Pepe'), web_app: { url: WEB_APP_URL } }]);
   return { reply_markup: { inline_keyboard: rows } };
 }
 
@@ -86,7 +92,8 @@ function postMarkup(buttons = {}) {
 // so the same upload can be reused for every recipient.
 export async function deliverPost(chatId, post) {
   const b = requireBot();
-  const extra = { ...postMarkup(post.buttons), ...(post.html ? { parse_mode: 'HTML' } : {}) };
+  // The post text is the admin's; only the fixed buttons follow the recipient's language.
+  const extra = { ...postMarkup(post.buttons, await langOfTelegram(chatId)), ...(post.html ? { parse_mode: 'HTML' } : {}) };
   const m = post.media;
   if (!m) {
     await b.sendMessage(chatId, post.text, extra);
@@ -105,19 +112,19 @@ export async function deliverPost(chatId, post) {
   return res?.photo?.at(-1)?.file_id || res?.video?.file_id || res?.animation?.file_id || null;
 }
 
-const REPLY_BUTTON = { reply_markup: { inline_keyboard: [[{ text: '✍️ Ответить', callback_data: 'sup:reply' }]] } };
+const replyButton = (lang) => ({ reply_markup: { inline_keyboard: [[{ text: tr(lang, '✍️ Ответить'), callback_data: 'sup:reply' }]] } });
 // While a support chat is open, text goes to the team instead of being recorded as an expense; this button closes it.
-const DONE_BUTTON = { reply_markup: { inline_keyboard: [[{ text: '✅ Готово — снова записывать траты', callback_data: 'sup:done' }]] } };
+const doneButton = (lang) => ({ reply_markup: { inline_keyboard: [[{ text: tr(lang, '✅ Готово — снова записывать траты'), callback_data: 'sup:done' }]] } });
 
 // A message from the team to one user; they can answer with the button underneath.
 export async function sendSupportReply(user, text) {
-  await requireBot().sendMessage(user.telegram_id, `💬 Lolo & Pepe:\n${text}`, REPLY_BUTTON);
+  await requireBot().sendMessage(user.telegram_id, `💬 Lolo & Pepe:\n${text}`, replyButton(normLang(user.lang)));
   return db.prepare("INSERT INTO messages (user_id, direction, text, read) VALUES (?, 'out', ?, 1) RETURNING *").get(user.id, text);
 }
 
-async function startSupport(chatId, telegramId) {
+async function startSupport(chatId, telegramId, lang) {
   await db.prepare("UPDATE users SET support_until = datetime('now', '+15 minutes') WHERE telegram_id = ?").run(telegramId);
-  await bot.sendMessage(chatId, '✍️ Напишите, что случилось или что хотите предложить, — передам команде Lolo & Pepe. Ответ придёт сюда же.\n\nПока открыт этот разговор, сообщения не записываются как траты.', DONE_BUTTON);
+  await bot.sendMessage(chatId, tr(lang, '✍️ Напишите, что случилось или что хотите предложить, — передам команде Lolo & Pepe. Ответ придёт сюда же.\n\nПока открыт этот разговор, сообщения не записываются как траты.'), doneButton(lang));
 }
 
 // A user's message in support mode: saved, copied to the admin, and acknowledged.
@@ -129,7 +136,8 @@ async function handleSupportMessage(msg, user) {
     const copy = await bot.sendMessage(ADMIN_ID, `💬 ${who}:\n${msg.text}\n\n↩️ Ответьте на это сообщение — ответ уйдёт пользователю.`).catch(() => null);
     if (copy) await db.prepare('UPDATE messages SET admin_msg_id = ? WHERE id = ?').run(copy.message_id, rec.id);
   }
-  await bot.sendMessage(msg.chat.id, 'Передала команде ✉️ Ответ придёт сюда. Можно дописать ещё — я всё передам.', DONE_BUTTON);
+  const lang = user.lang ? normLang(user.lang) : await langOfFrom(msg.from);
+  await bot.sendMessage(msg.chat.id, tr(lang, 'Передала команде ✉️ Ответ придёт сюда. Можно дописать ещё — я всё передам.'), doneButton(lang));
 }
 
 // The admin answered a copied support message in Telegram: forward the answer to that user.
@@ -171,12 +179,15 @@ async function firstTime(key) {
 const msgKey = (msg) => `m:${msg.chat.id}:${msg.message_id}`;
 
 const BOT_NAME = 'Lolo & Pepe: бюджет на двоих';
+const BOT_NAME_EN = 'Lolo & Pepe: budget for two';
 
 async function setupProfile() {
   // Telegram rate-limits name changes, so only set it when it differs.
+  let current = null;
   try {
-    const current = await bot._request('getMyName', { form: {} });
+    current = await bot._request('getMyName', { form: {} });
     if (current.name !== BOT_NAME) await bot._request('setMyName', { form: { name: BOT_NAME } });
+    current.name_en = (await bot._request('getMyName', { form: { language_code: 'en' } }).catch(() => ({}))).name;
   } catch (e) {
     console.error('Bot name update failed:', e.message);
   }
@@ -185,6 +196,24 @@ async function setupProfile() {
       'Видно, кто сколько потратил, сколько осталось до конца месяца и сколько уже отложено на мечту.',
   });
   await bot.setMyShortDescription({ short_description: 'Бюджет для двоих: общие траты, лимиты, копилка и итоги месяца 🐧' });
+  // English profile for people whose Telegram is not in Russian; each call is independent.
+  if (!current || current.name_en !== BOT_NAME_EN) {
+    await bot.setMyName({ name: BOT_NAME_EN, language_code: 'en' }).catch(e => console.error('Bot English name failed:', e.message));
+  }
+  await bot.setMyDescription({
+    description: 'Track money together — no spreadsheets 🐧\n\n' +
+      'See who spent what, how much is left until the end of the month and how much is already saved for a dream.',
+    language_code: 'en',
+  }).catch(e => console.error('Bot English description failed:', e.message));
+  await bot.setMyShortDescription({ short_description: 'A budget for two: shared expenses, limits, savings and monthly recaps 🐧', language_code: 'en' })
+    .catch(e => console.error('Bot English short description failed:', e.message));
+  await bot.setMyCommands([
+    { command: 'start', description: 'Open the app' },
+    { command: 'auto', description: 'How to record expenses and income automatically' },
+    { command: 'export', description: 'Export expenses to Excel' },
+    { command: 'support', description: 'Message the team' },
+    { command: 'help', description: 'Help' },
+  ], { language_code: 'en' }).catch(e => console.error('Bot English commands failed:', e.message));
   await bot.setChatMenuButton({ menu_button: JSON.stringify({ type: 'web_app', text: 'Открыть', web_app: { url: WEB_APP_URL } }) });
   await bot.setMyCommands([
     { command: 'start', description: 'Открыть приложение' },
@@ -221,9 +250,15 @@ export function startBot() {
     if (!(await firstTime(msgKey(msg)))) return;
     const chatId = msg.chat.id;
     const param = (match[1] || '').trim();
+    const lang = await langOfFrom(msg.from);
     if (param === 'support') {
-      await startSupport(chatId, msg.from.id);
+      await startSupport(chatId, msg.from.id, lang);
       return;
+    }
+    // The menu button label is set once for everyone in Russian; English speakers get their own in their chat.
+    if (lang === 'en') {
+      bot.setChatMenuButton({ chat_id: chatId, menu_button: JSON.stringify({ type: 'web_app', text: 'Open', web_app: { url: WEB_APP_URL } }) })
+        .catch(e => console.error('Menu button failed:', e.message));
     }
     const animation = `${WEB_APP_URL}/bot/welcome.mp4?v=${WELCOME_VERSION}`;
 
@@ -237,18 +272,16 @@ export function startBot() {
 
     const [caption, button] = param
       ? [
-        `${inviter ? `${inviter} приглашает вас` : 'Вас пригласили'} в общий бюджет Lolo & Pepe 🐧\n\n` +
-        'Нажмите кнопку ниже — и вы сразу окажетесь в нём. Траты, лимиты и копилка станут общими.',
-        openButton('Присоединиться', `${WEB_APP_URL}?join=${encodeURIComponent(param)}`),
+        (inviter
+          ? tr(lang, '{name} приглашает вас в общий бюджет Lolo & Pepe 🐧', { name: inviter })
+          : tr(lang, 'Вас пригласили в общий бюджет Lolo & Pepe 🐧')) + '\n\n' +
+        tr(lang, 'Нажмите кнопку ниже — и вы сразу окажетесь в нём. Траты, лимиты и копилка станут общими.'),
+        openButton(lang, 'Присоединиться', `${WEB_APP_URL}?join=${encodeURIComponent(param)}`),
       ]
       : [
-        `Привет, ${msg.from.first_name}! 🐧\n\n` +
-        'Рады, что вы здесь. Приступим:\n\n' +
-        '1. Создайте общий бюджет\n' +
-        '2. Позовите второго пингвина по ссылке\n' +
-        '3. Добавьте первую трату\n\n' +
-        'Остальное посчитают пингвины.',
-        openButton(),
+        tr(lang, 'Привет, {name}! 🐧', { name: msg.from.first_name }) + '\n\n' +
+        tr(lang, 'Рады, что вы здесь. Приступим:\n\n1. Создайте общий бюджет\n2. Позовите второго пингвина по ссылке\n3. Добавьте первую трату\n\nОстальное посчитают пингвины.'),
+        openButton(lang),
       ];
 
     try {
@@ -265,45 +298,47 @@ export function startBot() {
 
   bot.onText(/^\/help/, async (msg) => {
     if (!(await firstTime(msgKey(msg)))) return;
-    let text = 'Всё самое важное — в приложении: нажмите кнопку «Открыть» внизу или кнопку под этим сообщением.\n\n' +
+    const lang = await langOfFrom(msg.from);
+    let text = tr(lang, 'Всё самое важное — в приложении: нажмите кнопку «Открыть» внизу или кнопку под этим сообщением.\n\n' +
       'А траты можно записывать прямо здесь — просто напишите:\n«кофе 250», «такси 300 вчера», «+5000 подработка»\n\n' +
       'Или перешлите SMS/уведомление банка — запишу сама. А выписку из банка (PDF, Excel или CSV) просто пришлите файлом.\n\n' +
-      '/start — открыть приложение\n/auto — как настроить автоматический учёт трат и доходов\n/export — выгрузить все траты в Excel\n/support — написать команде: вопрос или идея\n/myid — узнать свой Telegram ID';
+      '/start — открыть приложение\n/auto — как настроить автоматический учёт трат и доходов\n/export — выгрузить все траты в Excel\n/support — написать команде: вопрос или идея\n/myid — узнать свой Telegram ID');
     if (isAdmin(msg)) {
       text += '\n\nДля администратора:\n/admin — CRM\n/stats — статистика\n/broadcast текст — рассылка всем пользователям';
     }
-    bot.sendMessage(msg.chat.id, text, openButton());
+    bot.sendMessage(msg.chat.id, text, openButton(lang));
   });
 
   bot.onText(/^\/auto/, async (msg) => {
     if (msg.chat.type !== 'private') return;
     if (!(await firstTime(msgKey(msg)))) return;
-    await sendAutoGuide(msg.chat.id, msg.from.id);
+    await sendAutoGuide(msg.chat.id, msg.from.id, await langOfFrom(msg.from));
   });
 
   bot.on('callback_query', async (q) => {
     if (q.data !== 'auto:show') return;
     if (!(await firstTime(`cb:${q.id}`))) return;
     await bot.answerCallbackQuery(q.id).catch(() => {});
-    sendAutoGuide(q.from.id, q.from.id).catch(e => console.error('Auto guide failed:', e));
+    langOfFrom(q.from).then(lang => sendAutoGuide(q.from.id, q.from.id, lang)).catch(e => console.error('Auto guide failed:', e));
   });
 
   bot.onText(/^\/export/, async (msg) => {
     if (msg.chat.type !== 'private' || !(await firstTime(msgKey(msg)))) return;
     const { user, budget } = await quickAddContext(msg.from.id);
+    const lang = await langOfFrom(msg.from);
     if (!user || !budget) {
-      await bot.sendMessage(msg.chat.id, 'Пока нечего выгружать — сначала создайте бюджет в приложении.', openButton());
+      await bot.sendMessage(msg.chat.id, tr(lang, 'Пока нечего выгружать — сначала создайте бюджет в приложении.'), openButton(lang));
       return;
     }
-    const file = await buildExport(budget.id, user.id);
-    await sendDocumentToUser(msg.chat.id, file, `📊 Все траты и доходы — ${file.count} записей. Файл открывается в Excel и Google Таблицах.`);
+    const file = await buildExport(budget.id, user.id, lang);
+    await sendDocumentToUser(msg.chat.id, file, exportCaption(file.count, lang));
   });
 
   bot.onText(/^\/admin\b/, async (msg) => {
     if (msg.chat.type !== 'private' || !(await firstTime(msgKey(msg)))) return;
     if (!isAdmin(msg)) {
       console.log(`/admin from ${msg.from.id}: not the admin (ADMIN_TELEGRAM_ID ${ADMIN_ID ? 'is set' : 'is not set'})`);
-      await bot.sendMessage(msg.chat.id, 'Эта команда только для администратора бота.');
+      await bot.sendMessage(msg.chat.id, tr(await langOfFrom(msg.from), 'Эта команда только для администратора бота.'));
       return;
     }
     try {
@@ -316,23 +351,32 @@ export function startBot() {
 
   bot.onText(/^\/support\b/, async (msg) => {
     if (msg.chat.type !== 'private' || !(await firstTime(msgKey(msg)))) return;
-    await startSupport(msg.chat.id, msg.from.id);
+    await startSupport(msg.chat.id, msg.from.id, await langOfFrom(msg.from));
   });
 
   bot.on('callback_query', async (q) => {
     if (!['sup:reply', 'sup:done'].includes(q.data) || !(await firstTime(`cb:${q.id}`))) return;
     await bot.answerCallbackQuery(q.id).catch(() => {});
+    const lang = await langOfFrom(q.from);
     if (q.data === 'sup:reply') {
-      await startSupport(q.from.id, q.from.id);
+      await startSupport(q.from.id, q.from.id, lang);
       return;
     }
     await db.prepare('UPDATE users SET support_until = NULL WHERE telegram_id = ?').run(q.from.id);
     await bot.editMessageReplyMarkup({ inline_keyboard: [] }, { chat_id: q.message.chat.id, message_id: q.message.message_id }).catch(() => {});
-    await bot.sendMessage(q.from.id, 'Готово 🐧 Теперь сообщения снова записываются как траты. Написать нам — /support.');
+    await bot.sendMessage(q.from.id, tr(lang, 'Готово 🐧 Теперь сообщения снова записываются как траты. Написать нам — /support.'));
   });
 
   // Telegram shows /privacy in the bot profile; the answer links to the documents.
   bot.onText(/^\/(privacy|terms)/, async (msg) => {
+    if ((await langOfFrom(msg.from)) === 'en') {
+      await bot.sendMessage(msg.chat.id,
+        `Privacy Policy: ${WEB_APP_URL}/privacy?lang=en\nTerms of Use: ${WEB_APP_URL}/terms?lang=en\n\n` +
+        `Questions and data deletion: ${CONTACT_EMAIL}\n` +
+        'You can also delete your account in the app: Settings → Delete account and data.',
+        { disable_web_page_preview: true });
+      return;
+    }
     await bot.sendMessage(msg.chat.id,
       `Политика конфиденциальности: ${WEB_APP_URL}/privacy\nПользовательское соглашение: ${WEB_APP_URL}/terms\n\n` +
       `Privacy Policy: ${WEB_APP_URL}/privacy?lang=en\nTerms of Use: ${WEB_APP_URL}/terms?lang=en\n\n` +
@@ -343,7 +387,7 @@ export function startBot() {
 
   bot.onText(/^\/myid/, async (msg) => {
     if (!(await firstTime(msgKey(msg)))) return;
-    bot.sendMessage(msg.chat.id, `Ваш Telegram ID: ${msg.from.id}`);
+    bot.sendMessage(msg.chat.id, tr(await langOfFrom(msg.from), 'Ваш Telegram ID: {id}', { id: msg.from.id }));
   });
 
   bot.onText(/^\/stats/, async (msg) => {
@@ -411,20 +455,21 @@ export function startBot() {
       return;
     }
 
-    const users = await db.prepare('SELECT telegram_id FROM users').all();
+    const users = await db.prepare('SELECT telegram_id, lang FROM users').all();
     let sent = 0;
     let failed = 0;
     for (const u of users) {
+      const buttons = broadcastButtons(text, normLang(u.lang));
       try {
         if (withAutoVideo(text)) {
           try {
-            await sendAutoVideo(u.telegram_id, text, broadcastButtons(text));
+            await sendAutoVideo(u.telegram_id, text, buttons);
           } catch (e) {
             if (e.response?.statusCode === 403) throw e;
-            await bot.sendMessage(u.telegram_id, text, broadcastButtons(text));
+            await bot.sendMessage(u.telegram_id, text, buttons);
           }
         } else {
-          await bot.sendMessage(u.telegram_id, text, broadcastButtons(text));
+          await bot.sendMessage(u.telegram_id, text, buttons);
         }
         sent++;
       } catch {
@@ -478,8 +523,9 @@ export function startBot() {
   setInterval(() => sendSavingsReminders().catch(e => console.error('Savings reminder error:', e)), 60 * 60 * 1000);
 }
 
-const money = (n, cur) => `${new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 2 }).format(n)} ${cur}`;
+const money = (n, cur, lang = 'ru') => `${new Intl.NumberFormat(locale(lang), { maximumFractionDigits: 2 }).format(n)} ${cur}`;
 const SOURCE_NAMES = { salary: '💼 Зарплата', side: '💻 Подработка', gift: '🎁 Подарок', refund: '↩️ Возврат, кешбэк', other: '💰 Другое' };
+const sourceName = (source, lang) => tr(lang, SOURCE_NAMES[source] || SOURCE_NAMES.other);
 
 async function quickAddContext(telegramId) {
   const user = await db.prepare('SELECT * FROM users WHERE telegram_id = ?').get(telegramId);
@@ -491,42 +537,43 @@ async function quickAddContext(telegramId) {
   return { user, budget };
 }
 
-function quickAddReply(kind, rec, budget, categoryLabel) {
+function quickAddReply(kind, rec, budget, categoryLabel, lang = 'ru') {
   const title = rec.description ? `${rec.description} — ` : '';
-  const text = `✅ Записано: ${title}${kind === 'income' ? '+' : ''}${money(Number(rec.amount), budget.currency)}\n` +
-    `${kind === 'income' ? 'Доход' : 'Категория'}: ${categoryLabel}` +
-    (rec.date !== new Date().toISOString().slice(0, 10) ? `\nДата: ${Number(rec.date.slice(8, 10))}.${rec.date.slice(5, 7)}` : '');
+  const text = `${tr(lang, '✅ Записано:')} ${title}${kind === 'income' ? '+' : ''}${money(Number(rec.amount), budget.currency, lang)}\n` +
+    `${kind === 'income' ? tr(lang, 'Доход') : tr(lang, 'Категория')}: ${categoryLabel}` +
+    (rec.date !== new Date().toISOString().slice(0, 10) ? `\n${tr(lang, 'Дата')}: ${lang === 'en' ? shortDate(rec.date, lang) : `${Number(rec.date.slice(8, 10))}.${rec.date.slice(5, 7)}`}` : '');
   const t = kind === 'income' ? 'i' : 'e';
-  const row = [{ text: 'Отменить', callback_data: `qa:undo:${t}:${rec.id}` }];
-  if (kind === 'expense') row.unshift({ text: 'Другая категория', callback_data: `qa:cats:${rec.id}` });
+  const row = [{ text: tr(lang, 'Отменить'), callback_data: `qa:undo:${t}:${rec.id}` }];
+  if (kind === 'expense') row.unshift({ text: tr(lang, 'Другая категория'), callback_data: `qa:cats:${rec.id}` });
   return { text, extra: { reply_markup: { inline_keyboard: [row] } } };
 }
 
 async function handleQuickAdd(msg) {
   const { user, budget } = await quickAddContext(msg.from.id);
+  const lang = await langOfFrom(msg.from);
   if (!user || !budget) {
-    await bot.sendMessage(msg.chat.id, 'Сначала откройте приложение и создайте бюджет — тогда траты можно будет записывать прямо здесь.', openButton());
+    await bot.sendMessage(msg.chat.id, tr(lang, 'Сначала откройте приложение и создайте бюджет — тогда траты можно будет записывать прямо здесь.'), openButton(lang));
     return;
   }
   const prefs = await db.prepare('SELECT tz_offset FROM notify_prefs WHERE user_id = ?').get(user.id);
   const categories = await db.prepare('SELECT * FROM categories WHERE budget_id = ? ORDER BY sort_order').all(budget.id);
   const parsed = parseMessage(msg.text, categories, Number(prefs?.tz_offset || 0));
   if (!parsed) {
-    await bot.sendMessage(msg.chat.id, 'Чтобы записать трату, напишите сумму и на что, например:\n«кофе 250», «такси 300 вчера»\n\nДоход — с плюсом: «+5000 подработка»');
+    await bot.sendMessage(msg.chat.id, tr(lang, 'Чтобы записать трату, напишите сумму и на что, например:\n«кофе 250», «такси 300 вчера»\n\nДоход — с плюсом: «+5000 подработка»'));
     return;
   }
 
   if (parsed.kind === 'income') {
     const rec = await db.prepare('INSERT INTO incomes (budget_id, user_id, amount, source, description, date) VALUES (?, ?, ?, ?, ?, ?) RETURNING *')
       .get(budget.id, user.id, parsed.amount, parsed.source, parsed.description, parsed.date);
-    const r = quickAddReply('income', rec, budget, SOURCE_NAMES[parsed.source]);
+    const r = quickAddReply('income', rec, budget, sourceName(parsed.source, lang), lang);
     await bot.sendMessage(msg.chat.id, r.text, r.extra);
     return;
   }
 
   const rec = await db.prepare('INSERT INTO expenses (budget_id, category_id, user_id, amount, description, date) VALUES (?, ?, ?, ?, ?, ?) RETURNING *')
     .get(budget.id, parsed.category.id, user.id, parsed.amount, parsed.description, parsed.date);
-  const r = quickAddReply('expense', rec, budget, `${parsed.category.icon} ${parsed.category.name}`);
+  const r = quickAddReply('expense', rec, budget, `${parsed.category.icon} ${parsed.category.name}`, lang);
   await bot.sendMessage(msg.chat.id, r.text, r.extra);
   await onExpenseAdded(rec, user);
 }
@@ -537,6 +584,7 @@ async function handleQuickAddCallback(q) {
   const { user, budget } = await quickAddContext(q.from.id);
   await bot.answerCallbackQuery(q.id).catch(() => {});
   if (!user || !budget) return;
+  const lang = await langOfFrom(q.from);
 
   if (action === 'undo') {
     const table = a === 'i' ? 'incomes' : 'expenses';
@@ -547,7 +595,7 @@ async function handleQuickAddCallback(q) {
       await db.prepare('DELETE FROM comments WHERE expense_id = ?').run(rec.id);
     }
     await db.prepare(`DELETE FROM ${table} WHERE id = ?`).run(rec.id);
-    await bot.editMessageText(`❌ Отменено: ${rec.description ? `${rec.description} — ` : ''}${money(Number(rec.amount), budget.currency)}`, chat);
+    await bot.editMessageText(`${tr(lang, '❌ Отменено:')} ${rec.description ? `${rec.description} — ` : ''}${money(Number(rec.amount), budget.currency, lang)}`, chat);
     return;
   }
 
@@ -569,7 +617,7 @@ async function handleQuickAddCallback(q) {
     if (!cat) return;
     await db.prepare('UPDATE expenses SET category_id = ? WHERE id = ?').run(cat.id, rec.id);
     if (rec.description) await learnMerchant(rec.budget_id, rec.description, cat.id);
-    const r = quickAddReply('expense', rec, budget, `${cat.icon} ${cat.name}`);
+    const r = quickAddReply('expense', rec, budget, `${cat.icon} ${cat.name}`, lang);
     await bot.editMessageText(r.text, { ...chat, ...r.extra });
   }
 }
@@ -577,14 +625,14 @@ async function handleQuickAddCallback(q) {
 // ---------- bank notifications and statements ----------
 
 // How to record spending without typing: forwarding, iPhone Shortcuts with the personal link, Android, statements.
-async function sendAutoGuide(chatId, telegramId) {
+async function sendAutoGuide(chatId, telegramId, lang = 'ru') {
   const user = await db.prepare('SELECT id FROM users WHERE telegram_id = ?').get(telegramId);
   if (!user) {
-    await bot.sendMessage(chatId, 'Сначала откройте приложение и создайте бюджет.', openButton());
+    await bot.sendMessage(chatId, tr(lang, 'Сначала откройте приложение и создайте бюджет.'), openButton(lang));
     return;
   }
   const link = `${WEB_APP_URL}/hook/${await hookToken(user.id)}`;
-  await bot.sendMessage(chatId,
+  await bot.sendMessage(chatId, lang === 'en' ? autoGuideEn(link) :
     '🐧 Как записывать траты и доходы без ручного ввода\n\n' +
     '1️⃣ Перешлите сюда SMS или уведомление банка — о покупке или о зачислении. Сама найду сумму и магазин и запишу трату в нужную категорию, а зарплату или перевод — в доходы. ' +
     'Поменяете категорию — запомню для этого магазина.\n\n' +
@@ -596,8 +644,22 @@ async function sendAutoGuide(chatId, telegramId) {
     `Ваша личная ссылка (никому не отправляйте):\n${link}\n\n` +
     '3️⃣ На Android то же настраивается в приложении MacroDroid — оно умеет ловить и SMS, и пуш-уведомления банка.\n\n' +
     '4️⃣ Выписка: скачайте в банке выписку в PDF, Excel или CSV и пришлите файлом сюда — запишу все операции разом, повторы пропущу.',
-    { disable_web_page_preview: true, ...openButton('Открыть приложение') });
+    { disable_web_page_preview: true, ...openButton(lang, 'Открыть приложение') });
 }
+
+// The English guide names the iPhone and Android menus as they appear in English.
+const autoGuideEn = (link) =>
+  '🐧 How to record expenses and income without typing\n\n' +
+  '1️⃣ Forward a bank SMS or notification here — about a purchase or a deposit. I\'ll find the amount and the shop and record the expense in the right category, and a salary or transfer as income. ' +
+  'Change the category once and I\'ll remember it for that shop.\n\n' +
+  '2️⃣ Automatically on iPhone (for bank SMS):\n' +
+  '• Shortcuts app → Automation → «+»\n' +
+  '• Message → in Sender pick your bank → Run Immediately\n' +
+  '• New Blank Automation → action "Get Contents of URL" → paste the link below\n' +
+  '• Show More: Method POST, Request Body JSON, key text, value "Shortcut Input"\n\n' +
+  `Your personal link (don't share it with anyone):\n${link}\n\n` +
+  '3️⃣ On Android, set up the same in the MacroDroid app — it can catch both SMS and bank push notifications.\n\n' +
+  '4️⃣ Statement: download a statement from your bank as PDF, Excel or CSV and send the file here — I\'ll record all operations at once and skip duplicates.';
 
 
 // Records a bank SMS / push text for a Telegram user and tells them in the chat. Used by the bot and the iPhone shortcut.
@@ -610,10 +672,11 @@ export async function recordBankText(telegramId, text) {
   const result = await recordNotice(user, budget, parsed, text);
   if (result.duplicate) return { ok: true, duplicate: true };
   if (bot) {
+    const lang = normLang(user.lang);
     const r = result.kind === 'income'
-      ? quickAddReply('income', result.rec, budget, SOURCE_NAMES[result.rec.source] || SOURCE_NAMES.other)
-      : quickAddReply('expense', result.rec, budget, `${result.category.icon} ${result.category.name}`);
-    await bot.sendMessage(telegramId, `🏦 Из уведомления банка\n${r.text}`, r.extra);
+      ? quickAddReply('income', result.rec, budget, sourceName(result.rec.source, lang), lang)
+      : quickAddReply('expense', result.rec, budget, `${result.category.icon} ${result.category.name}`, lang);
+    await bot.sendMessage(telegramId, `${tr(lang, '🏦 Из уведомления банка')}\n${r.text}`, r.extra);
   }
   if (result.kind === 'expense') await onExpenseAdded(result.rec, user);
   return { ok: true, kind: result.kind, amount: result.rec.amount };
@@ -621,19 +684,20 @@ export async function recordBankText(telegramId, text) {
 
 async function handleBankText(msg) {
   const res = await recordBankText(msg.from.id, msg.text);
-  if (res.duplicate) await bot.sendMessage(msg.chat.id, 'Эта операция уже записана 👌');
+  if (res.duplicate) await bot.sendMessage(msg.chat.id, tr(await langOfFrom(msg.from), 'Эта операция уже записана 👌'));
   else if (!res.ok) await handleQuickAdd(msg);
 }
 
 async function handleStatement(msg) {
   const { user, budget } = await quickAddContext(msg.from.id);
+  const lang = await langOfFrom(msg.from);
   if (!user || !budget) {
-    await bot.sendMessage(msg.chat.id, 'Сначала откройте приложение и создайте бюджет.', openButton());
+    await bot.sendMessage(msg.chat.id, tr(lang, 'Сначала откройте приложение и создайте бюджет.'), openButton(lang));
     return;
   }
   const doc = msg.document;
   if (doc.file_size > 10 * 1024 * 1024) {
-    await bot.sendMessage(msg.chat.id, 'Файл слишком большой. Выгрузите выписку за месяц-два.');
+    await bot.sendMessage(msg.chat.id, tr(lang, 'Файл слишком большой. Выгрузите выписку за месяц-два.'));
     return;
   }
   try {
@@ -641,19 +705,29 @@ async function handleStatement(msg) {
     const buf = Buffer.from(await (await fetch(url)).arrayBuffer());
     const ops = await parseStatement(buf, doc.file_name || (doc.mime_type === 'application/pdf' ? 'statement.pdf' : 'statement.csv'));
     const s = await prepareImport(user, budget, ops);
-    await bot.sendMessage(msg.chat.id, importSummary(s), {
-      reply_markup: { inline_keyboard: [[{ text: `Записать ${s.count}`, callback_data: `imp:ok:${s.id}` }, { text: 'Отмена', callback_data: `imp:no:${s.id}` }]] },
+    await bot.sendMessage(msg.chat.id, importSummary(s, lang), {
+      reply_markup: { inline_keyboard: [[
+        { text: tr(lang, 'Записать {n}', { n: s.count }), callback_data: `imp:ok:${s.id}` },
+        { text: tr(lang, 'Отмена'), callback_data: `imp:no:${s.id}` },
+      ]] },
     });
   } catch (e) {
-    await bot.sendMessage(msg.chat.id, `Не получилось прочитать выписку: ${e.message}`);
+    // Parser errors are Russian texts; English has them in the dictionary.
+    await bot.sendMessage(msg.chat.id, tr(lang, 'Не получилось прочитать выписку: {error}', { error: tr(lang, userMessage(e, 'проверьте, что это выписка из банка')) }));
   }
 }
 
-const shortDate = (d) => `${d.slice(8, 10)}.${d.slice(5, 7)}`;
-export function importSummary(s) {
-  return `📄 Нашла ${s.count} операций с ${shortDate(s.from)} по ${shortDate(s.to)}\n` +
-    `Расходы: ${s.expenses} на ${money(s.spent, s.currency)}\nДоходы: ${s.incomes} на ${money(s.earned, s.currency)}\n\n` +
-    `Запишу в бюджет «${s.budgetName}». То, что уже есть в бюджете (тот же день и сумма), пропущу.`;
+const MONTHS_SHORT_EN = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+// 07.03 in Russian, Mar 7 in English.
+function shortDate(d, lang = 'ru') {
+  return lang === 'en' ? `${MONTHS_SHORT_EN[Number(d.slice(5, 7)) - 1]} ${Number(d.slice(8, 10))}` : `${d.slice(8, 10)}.${d.slice(5, 7)}`;
+}
+export function importSummary(s, lang = 'ru') {
+  const ops = trPl(lang, s.count, '{n} операцию', '{n} операции', '{n} операций', '{n} operation', '{n} operations');
+  return tr(lang, '📄 Нашла {ops} с {from} по {to}', { ops, from: shortDate(s.from, lang), to: shortDate(s.to, lang) }) + '\n' +
+    tr(lang, 'Расходы: {n} на {sum}', { n: s.expenses, sum: money(s.spent, s.currency, lang) }) + '\n' +
+    tr(lang, 'Доходы: {n} на {sum}', { n: s.incomes, sum: money(s.earned, s.currency, lang) }) + '\n\n' +
+    tr(lang, 'Запишу в бюджет «{name}». То, что уже есть в бюджете (тот же день и сумма), пропущу.', { name: s.budgetName });
 }
 
 async function handleImportCallback(q) {
@@ -662,22 +736,27 @@ async function handleImportCallback(q) {
   await bot.answerCallbackQuery(q.id).catch(() => {});
   const user = await db.prepare('SELECT * FROM users WHERE telegram_id = ?').get(q.from.id);
   if (!user) return;
+  const lang = user.lang ? normLang(user.lang) : await langOfFrom(q.from);
   if (action === 'no') {
     await db.prepare('DELETE FROM imports WHERE id = ? AND user_id = ? AND done = 0').run(id, user.id);
-    await bot.editMessageText('Загрузка отменена.', chat);
+    await bot.editMessageText(tr(lang, 'Загрузка отменена.'), chat);
     return;
   }
-  await bot.editMessageText('⏳ Записываю…', chat);
+  await bot.editMessageText(tr(lang, '⏳ Записываю…'), chat);
   try {
     const r = await commitImport(id, user.id);
-    await bot.editMessageText(r.already ? 'Эта выписка уже записана.' :
-      `✅ Записала ${r.added} операций${r.skipped ? `, пропустила ${r.skipped} — они уже были в бюджете` : ''}.`, { ...chat, ...openButton('Открыть бюджет') });
+    const added = trPl(lang, r.added, '{n} операцию', '{n} операции', '{n} операций', '{n} operation', '{n} operations');
+    await bot.editMessageText(r.already ? tr(lang, 'Эта выписка уже записана.') :
+      (r.skipped
+        ? tr(lang, '✅ Записала {added}, пропустила {skipped} — они уже были в бюджете.', { added, skipped: r.skipped })
+        : tr(lang, '✅ Записала {added}.', { added })), { ...chat, ...openButton(lang, 'Открыть бюджет') });
   } catch (e) {
-    await bot.editMessageText(`Не получилось: ${e.message}`, chat);
+    await bot.editMessageText(tr(lang, 'Не получилось: {error}', { error: tr(lang, userMessage(e, 'попробуйте ещё раз')) }), chat);
   }
 }
 
 const MONTHS_GEN = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
+const MONTHS_EN = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
 // Render's free tier sleeps, so instead of firing exactly on the 1st we catch up during the first week.
 async function sendMonthlyRecaps() {
@@ -692,12 +771,14 @@ async function sendMonthlyRecaps() {
   for (const { id } of budgets) {
     await db.prepare('INSERT OR IGNORE INTO recap_sent (budget_id, month) VALUES (?, ?)').run(id, month);
     const members = await db.prepare(
-      'SELECT u.telegram_id FROM users u JOIN budget_members bm ON u.id = bm.user_id WHERE bm.budget_id = ?'
+      'SELECT u.telegram_id, u.lang FROM users u JOIN budget_members bm ON u.id = bm.user_id WHERE bm.budget_id = ?'
     ).all(id);
-    const label = MONTHS_GEN[Number(month.slice(5, 7)) - 1];
-    const text = `Итоги ${label} готовы!\n\nСколько потратили, на что ушло больше всего и что ждёт в новом месяце.`;
-    const button = openButton('Смотреть итоги', `${WEB_APP_URL}?recap=${month}`);
     for (const m of members) {
+      const lang = normLang(m.lang);
+      const monthIdx = Number(month.slice(5, 7)) - 1;
+      const text = tr(lang, 'Итоги {month} готовы!\n\nСколько потратили, на что ушло больше всего и что ждёт в новом месяце.',
+        { month: lang === 'en' ? MONTHS_EN[monthIdx] : MONTHS_GEN[monthIdx] });
+      const button = openButton(lang, 'Смотреть итоги', `${WEB_APP_URL}?recap=${month}`);
       try {
         try {
           await bot.sendAnimation(m.telegram_id, `${WEB_APP_URL}/bot/recap.mp4?v=${RECAP_VERSION}`, { caption: text, ...button });

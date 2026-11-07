@@ -5,17 +5,18 @@ import { GridLines, PenguinPair, Ring } from '../components/Art';
 import Sheet from '../components/Sheet';
 import Celebration from '../components/Celebration';
 import { money, byMonth, confirmAction } from '../format';
+import { t } from '../i18n';
 
 function etaText(goal) {
   const left = goal.target_amount - goal.current_amount;
-  if (left <= 0) return { text: 'Цель достигнута!', tone: 'good' };
-  if (!goal.eta_month) return { text: 'Пополняйте копилку, и мы покажем, когда накопите', tone: '' };
-  let text = `При вашем темпе накопите к ${byMonth(goal.eta_month)}`;
+  if (left <= 0) return { text: t('Цель достигнута!'), tone: 'good' };
+  if (!goal.eta_month) return { text: t('Пополняйте копилку, и мы покажем, когда накопите'), tone: '' };
+  let text = t('При вашем темпе накопите к {month}', { month: byMonth(goal.eta_month) });
   let tone = '';
   if (goal.deadline) {
     const deadlineMonth = goal.deadline.slice(0, 7);
-    if (goal.eta_month > deadlineMonth) { text += ' — позже срока'; tone = 'warn'; }
-    else { text += ' — успеваете'; tone = 'good'; }
+    if (goal.eta_month > deadlineMonth) { text += t(' — позже срока'); tone = 'warn'; }
+    else { text += t(' — успеваете'); tone = 'good'; }
   }
   return { text, tone };
 }
@@ -71,7 +72,7 @@ export default function Savings({ budget }) {
   };
 
   const remove = async (goal) => {
-    if (!(await confirmAction(`Удалить цель «${goal.name}»?`))) return;
+    if (!(await confirmAction(t('Удалить цель «{name}»?', { name: goal.name })))) return;
     await api.deleteSavingsGoal(goal.id);
     load();
   };
@@ -81,15 +82,15 @@ export default function Savings({ budget }) {
   return (
     <div className="page">
       <div className="page-head">
-        <div className="h-title">Копилка</div>
-        <button className="icon-btn dark" onClick={() => openForm(null)} aria-label="Новая цель"><IconPlus size={18} /></button>
+        <div className="h-title">{t('Копилка')}</div>
+        <button className="icon-btn dark" onClick={() => openForm(null)} aria-label={t('Новая цель')}><IconPlus size={18} /></button>
       </div>
 
       {goals && goals.length === 0 && (
         <div className="empty">
           <PenguinPair height={70} />
-          <div className="empty-text">На что копим вместе?</div>
-          <button className="btn" style={{ maxWidth: 220 }} onClick={() => openForm(null)}>Создать цель</button>
+          <div className="empty-text">{t('На что копим вместе?')}</div>
+          <button className="btn" style={{ maxWidth: 220 }} onClick={() => openForm(null)}>{t('Создать цель')}</button>
         </div>
       )}
 
@@ -111,14 +112,14 @@ export default function Savings({ budget }) {
                 </div>
                 <div className="num" style={{ fontSize: 22 }}>{money(current, cur)}</div>
                 <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 4, fontWeight: 300 }}>
-                  из {money(targetAmount, cur)} · {Math.round(percent)}%
+                  {t('из {sum}', { sum: money(targetAmount, cur) })} · {Math.round(percent)}%
                 </div>
                 <div className={eta.tone} style={{ fontSize: 12, marginTop: 8, color: eta.tone ? undefined : 'var(--ink-2)' }}>{eta.text}</div>
                 {monthPlan > 0 && current < targetAmount && (
                   <div className="envelope">
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
-                      <span>В этом месяце</span>
-                      <span className="num" style={{ fontSize: 12 }}>{money(monthSaved, cur)} <span className="muted">из {money(monthPlan, cur)}</span></span>
+                      <span>{t('В этом месяце')}</span>
+                      <span className="num" style={{ fontSize: 12 }}>{money(monthSaved, cur)} <span className="muted">{t('из {sum}', { sum: money(monthPlan, cur) })}</span></span>
                     </div>
                     <div className="progress">
                       <div className="progress-fill" style={{ width: `${Math.min(100, (monthSaved / monthPlan) * 100)}%`, background: monthSaved >= monthPlan ? 'var(--ok)' : 'var(--ink)' }} />
@@ -126,11 +127,11 @@ export default function Savings({ budget }) {
                   </div>
                 )}
                 <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
-                  <button className="btn" onClick={() => { setContributeTo(goal); setContributeAmount(''); }}>Пополнить</button>
-                  <button className="icon-btn" style={{ width: 50, height: 50, background: 'var(--surface-2)' }} onClick={() => openForm(goal)} aria-label="Изменить цель">
+                  <button className="btn" onClick={() => { setContributeTo(goal); setContributeAmount(''); }}>{t('Пополнить')}</button>
+                  <button className="icon-btn" style={{ width: 50, height: 50, background: 'var(--surface-2)' }} onClick={() => openForm(goal)} aria-label={t('Изменить цель')}>
                     <IconPencil size={18} stroke={1.5} />
                   </button>
-                  <button className="icon-btn" style={{ width: 50, height: 50, background: 'var(--surface-2)' }} onClick={() => remove(goal)} aria-label="Удалить цель">
+                  <button className="icon-btn" style={{ width: 50, height: 50, background: 'var(--surface-2)' }} onClick={() => remove(goal)} aria-label={t('Удалить цель')}>
                     <IconTrash size={18} stroke={1.5} />
                   </button>
                 </div>
@@ -141,42 +142,42 @@ export default function Savings({ budget }) {
       })}
 
       {showAdd && (
-        <Sheet title={editing ? 'Цель' : 'Новая цель'} onClose={() => setShowAdd(false)}>
+        <Sheet title={editing ? t('Цель') : t('Новая цель')} onClose={() => setShowAdd(false)}>
           <div className="input-group">
-            <label className="input-label">На что копим?</label>
-            <input className="input" placeholder="Поездка в Японию" value={name} onChange={e => setName(e.target.value)} />
+            <label className="input-label">{t('На что копим?')}</label>
+            <input className="input" placeholder={t('Поездка в Японию')} value={name} onChange={e => setName(e.target.value)} />
           </div>
           <div className="input-group">
-            <label className="input-label">Сколько нужно</label>
+            <label className="input-label">{t('Сколько нужно')}</label>
             <input className="input" type="number" inputMode="numeric" placeholder={`150 000 ${cur}`} value={target} onChange={e => setTarget(e.target.value)} />
           </div>
           <div className="input-group">
-            <label className="input-label">К какому сроку (необязательно)</label>
+            <label className="input-label">{t('К какому сроку (необязательно)')}</label>
             <div className="date-field">
               <input className={`input ${deadline ? "" : "date-empty"}`} type="date" value={deadline} onChange={e => setDeadline(e.target.value)} />
-              {!deadline && <span className="date-placeholder">Выбрать дату</span>}
+              {!deadline && <span className="date-placeholder">{t('Выбрать дату')}</span>}
             </div>
           </div>
           <div className="input-group">
-            <label className="input-label">Откладывать каждый месяц (необязательно)</label>
+            <label className="input-label">{t('Откладывать каждый месяц (необязательно)')}</label>
             <input className="input" type="number" inputMode="numeric" placeholder={`10 000 ${cur}`} value={plan} onChange={e => setPlan(e.target.value)} />
-            <div className="row-sub" style={{ margin: '6px 4px 0' }}>Покажем, сколько отложено в этом месяце, а бот напомнит после 20-го, если план не выполнен</div>
+            <div className="row-sub" style={{ margin: '6px 4px 0' }}>{t('Покажем, сколько отложено в этом месяце, а бот напомнит после 20-го, если план не выполнен')}</div>
           </div>
           <div className="sheet-actions">
-            <button className="btn btn-secondary" onClick={() => setShowAdd(false)}>Отмена</button>
-            <button className="btn" onClick={saveGoal} disabled={saving || !name || !target}>{saving ? 'Сохраняем…' : editing ? 'Сохранить' : 'Создать'}</button>
+            <button className="btn btn-secondary" onClick={() => setShowAdd(false)}>{t('Отмена')}</button>
+            <button className="btn" onClick={saveGoal} disabled={saving || !name || !target}>{saving ? t('Сохраняем…') : editing ? t('Сохранить') : t('Создать')}</button>
           </div>
         </Sheet>
       )}
 
       {contributeTo && (
-        <Sheet title={`Пополнить «${contributeTo.name}»`} onClose={() => setContributeTo(null)}>
+        <Sheet title={t('Пополнить «{name}»', { name: contributeTo.name })} onClose={() => setContributeTo(null)}>
           <div className="card-pad">
             <input className="amount-input" type="number" inputMode="decimal" placeholder={`0 ${cur}`} value={contributeAmount} onChange={e => setContributeAmount(e.target.value)} autoFocus />
           </div>
           <div className="sheet-actions">
-            <button className="btn btn-secondary" onClick={() => setContributeTo(null)}>Отмена</button>
-            <button className="btn" onClick={contribute} disabled={saving || !contributeAmount}>{saving ? 'Сохраняем…' : 'Пополнить'}</button>
+            <button className="btn btn-secondary" onClick={() => setContributeTo(null)}>{t('Отмена')}</button>
+            <button className="btn" onClick={contribute} disabled={saving || !contributeAmount}>{saving ? t('Сохраняем…') : t('Пополнить')}</button>
           </div>
         </Sheet>
       )}
@@ -184,9 +185,9 @@ export default function Savings({ budget }) {
       {reached && (
         <Celebration
           anim="celebrate"
-          label="цель достигнута"
+          label={t('цель достигнута')}
           title={reached.name}
-          subtitle={`Накопили ${money(reached.target_amount, cur)}. Можно тратить с удовольствием`}
+          subtitle={t('Накопили {sum}. Можно тратить с удовольствием', { sum: money(reached.target_amount, cur) })}
           onClose={() => setReached(null)}
         />
       )}

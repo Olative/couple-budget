@@ -4,6 +4,7 @@ import { api } from '../api/client';
 import { GridLines, Penguin, PenguinPair, Ring } from './Art';
 import SpriteAnim from './SpriteAnim';
 import { money, num, monthIndex, shiftMonth, byMonth, MONTHS, MONTHS_GEN, MONTHS_PREP } from '../format';
+import { t } from '../i18n';
 
 const BLUE = { bg: 'var(--blue-grad)', fg: '#fff', mut: 'rgba(255,255,255,.75)', back: '#7fb7ee' };
 const BLACK = { bg: '#111', fg: '#fff', mut: 'rgba(255,255,255,.45)', back: '#3a3a3a', cls: 'scallop' };
@@ -14,7 +15,7 @@ const SAND = { bg: 'var(--sand)', fg: '#2b2418', mut: 'rgba(43,36,24,.55)', back
 function buildCards(r, cur) {
   const mi = monthIndex(r.month);
   if (!r.hasData) {
-    return [{ ...BLUE, body: <SpriteAnim name="idle" width={170} fixedInk />, title: `Итоги ${MONTHS_GEN[mi]}`, sub: `В ${MONTHS_PREP[mi]} трат не было. Пингвины отдыхали` }];
+    return [{ ...BLUE, body: <SpriteAnim name="idle" width={170} fixedInk />, title: t('Итоги {month}', { month: MONTHS_GEN[mi] }), sub: t('В {month} трат не было. Пингвины отдыхали', { month: MONTHS_PREP[mi] }) }];
   }
 
   // Within plan — they bump bellies; over plan — they just shuffle.
@@ -23,8 +24,8 @@ function buildCards(r, cur) {
     ...BLUE,
     grid: true,
     body: <SpriteAnim name={onPlan ? 'bump' : 'idle'} width={180} fixedInk />,
-    title: `Итоги ${MONTHS_GEN[mi]}`,
-    sub: 'Листайте, чтобы узнать, как прошёл месяц',
+    title: t('Итоги {month}', { month: MONTHS_GEN[mi] }),
+    sub: t('Листайте, чтобы узнать, как прошёл месяц'),
   }];
 
   const diff = r.totalPlanned - r.totalSpent;
@@ -36,7 +37,7 @@ function buildCards(r, cur) {
         <div className="big">{money(r.totalSpent, cur)}</div>
         {r.totalPlanned > 0 && (
           <>
-            <div style={{ fontSize: 12, opacity: 0.5, marginTop: 6, fontWeight: 300 }}>из {money(r.totalPlanned, cur)}</div>
+            <div style={{ fontSize: 12, opacity: 0.5, marginTop: 6, fontWeight: 300 }}>{t('из {sum}', { sum: money(r.totalPlanned, cur) })}</div>
             <div className="progress" style={{ background: 'rgba(255,255,255,.12)', margin: '14px 8px 0' }}>
               <div className="progress-fill" style={{ width: `${Math.min(100, (r.totalSpent / r.totalPlanned) * 100)}%`, background: diff < 0 ? '#ff8c7e' : '#fff' }} />
             </div>
@@ -44,10 +45,10 @@ function buildCards(r, cur) {
         )}
       </div>
     ),
-    title: 'Потратили вместе',
+    title: t('Потратили вместе'),
     sub: r.totalPlanned === 0
-      ? 'Задайте лимиты, и в следующий раз сравним с планом'
-      : diff >= 0 ? `Уложились в план и сэкономили ${money(diff, cur)}` : `Вышли за план на ${money(-diff, cur)}`,
+      ? t('Задайте лимиты, и в следующий раз сравним с планом')
+      : diff >= 0 ? t('Уложились в план и сэкономили {sum}', { sum: money(diff, cur) }) : t('Вышли за план на {sum}', { sum: money(-diff, cur) }),
   });
 
   if (r.totalIncome > 0) {
@@ -62,38 +63,39 @@ function buildCards(r, cur) {
             <div style={{ width: `${Math.min(100, (r.totalSpent / r.totalIncome) * 100)}%`, background: '#2b2418' }} />
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, margin: '0 10px', opacity: 0.7 }}>
-            <span>потратили {num(r.totalSpent)}</span>
-            <span>{left >= 0 ? `осталось ${num(left)}` : `минус ${num(-left)}`}</span>
+            <span>{t('потратили {sum}', { sum: num(r.totalSpent) })}</span>
+            <span>{left >= 0 ? t('осталось {sum}', { sum: num(left) }) : t('минус {sum}', { sum: num(-left) })}</span>
           </div>
         </div>
       ),
-      title: 'Заработали вместе',
-      sub: left >= 0 ? `Осталось ${money(left, cur)} — это ${pct}% дохода` : `Траты превысили доход на ${money(-left, cur)}`,
+      title: t('Заработали вместе'),
+      sub: left >= 0 ? t('Осталось {sum} — это {pct}% дохода', { sum: money(left, cur), pct }) : t('Траты превысили доход на {sum}', { sum: money(-left, cur) }),
     });
   }
 
-  const t = r.top;
+  const top = r.top;
   let topSub = '';
-  if (t.prevSpent > 0) {
-    const pct = Math.round(((t.spent - t.prevSpent) / t.prevSpent) * 100);
+  if (top.prevSpent > 0) {
+    const pct = Math.round(((top.spent - top.prevSpent) / top.prevSpent) * 100);
     const prevName = MONTHS_PREP[monthIndex(shiftMonth(r.month, -1))];
-    topSub = pct === 0 ? `Столько же, сколько в ${prevName}` : `На ${Math.abs(pct)}% ${pct > 0 ? 'больше' : 'меньше'}, чем в ${prevName}`;
+    topSub = pct === 0 ? t('Столько же, сколько в {month}', { month: prevName })
+      : t(pct > 0 ? 'На {pct}% больше, чем в {month}' : 'На {pct}% меньше, чем в {month}', { pct: Math.abs(pct), month: prevName });
   } else {
-    topSub = `${Math.round((t.spent / r.totalSpent) * 100)}% всех трат месяца`;
+    topSub = t('{pct}% всех трат месяца', { pct: Math.round((top.spent / r.totalSpent) * 100) });
   }
-  if (t.limitRunOutDay) topSub += `. Лимит закончился ${t.limitRunOutDay}-го`;
+  if (top.limitRunOutDay) topSub += t('. Лимит закончился {day}-го', { day: top.limitRunOutDay });
   cards.push({
     ...SAGE,
     body: (
       <>
         <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-          <div style={{ width: 66, height: 66, borderRadius: '50%', border: '1.2px solid rgba(255,255,255,.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 30 }}>{t.icon}</div>
+          <div style={{ width: 66, height: 66, borderRadius: '50%', border: '1.2px solid rgba(255,255,255,.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 30 }}>{top.icon}</div>
           <Penguin height={90} mirror />
         </div>
-        <div className="big" style={{ marginTop: 6 }}>{money(t.spent, cur)}</div>
+        <div className="big" style={{ marginTop: 6 }}>{money(top.spent, cur)}</div>
       </>
     ),
-    title: `Больше всего ушло на «${t.name}»`,
+    title: t('Больше всего ушло на «{name}»', { name: t(top.name) }),
     sub: topSub,
   });
 
@@ -114,8 +116,8 @@ function buildCards(r, cur) {
       ...WHITE,
       grid: true,
       body: <div style={{ display: 'flex', alignItems: 'flex-end', gap: 30 }}>{[a, b].map(bar)}</div>,
-      title: 'Кто сколько потратил',
-      sub: `${a.first_name} — ${pa}%, ${b.first_name} — ${100 - pa}%.${Math.abs(pa - 50) <= 5 ? ' Почти поровну' : ''}`,
+      title: t('Кто сколько потратил'),
+      sub: `${a.first_name} — ${pa}%, ${b.first_name} — ${100 - pa}%.${Math.abs(pa - 50) <= 5 ? ` ${t('Почти поровну')}` : ''}`,
     });
   }
 
@@ -128,21 +130,21 @@ function buildCards(r, cur) {
           <div style={{ fontSize: 40 }}>{r.biggest.category_icon}</div>
           <div className="big">{money(r.biggest.amount, cur)}</div>
           <div style={{ fontSize: 12, opacity: 0.6, fontWeight: 300 }}>
-            {Number(d.slice(8, 10))} {MONTHS_GEN[monthIndex(d)]} · {r.biggest.category_name} · {r.biggest.user_name}
+            {t('{day} {month}', { day: Number(d.slice(8, 10)), month: MONTHS_GEN[monthIndex(d)] })} · {t(r.biggest.category_name)} · {r.biggest.user_name}
           </div>
         </>
       ),
-      title: 'Самая большая трата',
-      sub: r.biggest.description || r.biggest.category_name,
+      title: t('Самая большая трата'),
+      sub: r.biggest.description || t(r.biggest.category_name),
     });
   }
 
   if (r.goal) {
     const g = r.goal;
     const pct = g.target > 0 ? (g.current / g.target) * 100 : 0;
-    let sub = `${g.name}: ${num(g.current)} из ${num(g.target)}.`;
-    if (g.current >= g.target) sub += ' Цель достигнута!';
-    else if (g.etaMonth) sub += ` При таком темпе накопите к ${byMonth(g.etaMonth)}`;
+    let sub = t('{name}: {current} из {target}.', { name: g.name, current: num(g.current), target: num(g.target) });
+    if (g.current >= g.target) sub += ` ${t('Цель достигнута!')}`;
+    else if (g.etaMonth) sub += ` ${t('При таком темпе накопите к {month}', { month: byMonth(g.etaMonth) })}`;
     cards.push({
       ...BLUE,
       grid: true,
@@ -152,7 +154,7 @@ function buildCards(r, cur) {
           <div className="big" style={{ fontSize: 22 }}>{r.saved > 0 ? `+ ${money(r.saved, cur)}` : money(g.current, cur)}</div>
         </>
       ),
-      title: r.saved > 0 ? 'Отложили в копилку' : 'Копилка',
+      title: r.saved > 0 ? t('Отложили в копилку') : t('Копилка'),
       sub,
     });
   }
@@ -170,18 +172,18 @@ function buildCards(r, cur) {
       ...BLACK,
       body: (
         <div style={{ width: '100%', fontSize: 12, fontWeight: 300 }}>
-          {line('Обычно за месяц', `~ ${num(n.total)}`, 'total')}
-          {n.top.map((c, i) => line(c.name, `~ ${num(c.avg)}`, i))}
+          {line(t('Обычно за месяц'), `~ ${num(n.total)}`, 'total')}
+          {n.top.map((c, i) => line(t(c.name), `~ ${num(c.avg)}`, i))}
           {n.warnings.map((w, i) => (
             <div key={`w${i}`} style={{ display: 'flex', gap: 8, alignItems: 'flex-start', paddingTop: 10, color: '#ffb4a8', textAlign: 'left' }}>
               <IconAlertCircle size={15} style={{ flexShrink: 0, marginTop: 1 }} />
-              <span>{w.name}: в среднем {num(w.avg)} при лимите {num(w.planned)}</span>
+              <span>{t('{name}: в среднем {avg} при лимите {limit}', { name: t(w.name), avg: num(w.avg), limit: num(w.planned) })}</span>
             </div>
           ))}
         </div>
       ),
-      title: `Что ждёт в ${nextName}`,
-      sub: n.months > 1 ? 'Прогноз по вашим тратам за последние месяцы' : 'Прогноз по тратам этого месяца',
+      title: t('Что ждёт в {month}', { month: nextName }),
+      sub: n.months > 1 ? t('Прогноз по вашим тратам за последние месяцы') : t('Прогноз по тратам этого месяца'),
     });
   }
 
@@ -227,7 +229,7 @@ export default function Recap({ budget, month, onClose }) {
     <div className="recap">
       <div className="recap-top">
         <div className="h-title">{MONTHS[monthIndex(month)]} {month.slice(0, 4)}</div>
-        <button className="icon-btn" onClick={onClose} aria-label="Закрыть"><IconX size={18} /></button>
+        <button className="icon-btn" onClick={onClose} aria-label={t('Закрыть')}><IconX size={18} /></button>
       </div>
 
       <div
@@ -240,25 +242,25 @@ export default function Recap({ budget, month, onClose }) {
           if (Math.abs(dx) > 40) go(dx < 0 ? 1 : -1);
         }}
       >
-        {i > 0 && <button className="recap-arrow prev" onClick={() => go(-1)} aria-label="Назад"><IconArrowLeft size={18} /></button>}
+        {i > 0 && <button className="recap-arrow prev" onClick={() => go(-1)} aria-label={t('Назад')}><IconArrowLeft size={18} /></button>}
         <div className="deck">
           {back2 && <div className="deck-back" style={{ background: back2.back, transform: 'rotate(-3deg) translate(-6px, 8px)' }} />}
           {back1 && <div className="deck-back" style={{ background: back1.back, transform: 'rotate(4deg) translate(8px, 4px)' }} />}
           <div className="deck-front" style={frontStyle}>
             <div className={`rcard ${c.cls || ''}`} style={{ background: c.bg, color: c.fg }}>
               {c.grid && <GridLines color={c.fg} opacity={c.fg === '#111' ? 0.06 : c.cls ? 0.08 : 0.3} />}
-              <div className="rcard-top"><span>{i + 1} из {n}</span><span className="label" style={{ fontSize: 7 }}>lolo &amp; pepe</span></div>
+              <div className="rcard-top"><span>{t('{i} из {n}', { i: i + 1, n })}</span><span className="label" style={{ fontSize: 7 }}>lolo &amp; pepe</span></div>
               <div className="rcard-body">{c.body}</div>
               <div className="rcard-title">{c.title}</div>
               <div className="rcard-sub" style={{ color: c.mut }}>{c.sub}</div>
             </div>
           </div>
         </div>
-        {i < n - 1 && <button className="recap-arrow next" onClick={() => go(1)} aria-label="Дальше"><IconArrowRight size={18} /></button>}
+        {i < n - 1 && <button className="recap-arrow next" onClick={() => go(1)} aria-label={t('Дальше')}><IconArrowRight size={18} /></button>}
       </div>
 
       <div className="dots">{cards.map((_, k) => <span key={k} className={k === i ? 'on' : ''} />)}</div>
-      {i === n - 1 && <button className="btn" style={{ maxWidth: 320, marginTop: 16 }} onClick={onClose}>Готово</button>}
+      {i === n - 1 && <button className="btn" style={{ maxWidth: 320, marginTop: 16 }} onClick={onClose}>{t('Готово')}</button>}
     </div>
   );
 }

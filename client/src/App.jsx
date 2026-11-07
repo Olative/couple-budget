@@ -13,6 +13,7 @@ import BudgetSheet, { prefetchBudgets } from './components/BudgetSheet';
 import Tutorial from './components/Tutorial';
 import Tour from './components/Tour';
 import { paintTelegram } from './theme';
+import { t, setLang } from './i18n';
 
 // The splash lives in index.html so it shows before the bundle loads.
 // It stays until the short belly-bump loop has played once; the timer covers a video that never starts.
@@ -84,6 +85,10 @@ export default function App() {
     }));
 
     api.auth(initData).then(async ({ user, budgets }) => {
+      // The server remembers the language; a choice saved on this device wins.
+      let savedLang = null;
+      try { savedLang = localStorage.getItem('lang'); } catch { /* storage unavailable */ }
+      if (!savedLang && (user.lang === 'ru' || user.lang === 'en')) setLang(user.lang, { remember: false });
       setUser(user);
       setTelegramUserId(user.telegram_id);
       api.setNotify({ tz_offset: -new Date().getTimezoneOffset() }).catch(() => {});
@@ -155,7 +160,7 @@ export default function App() {
           <button
             key={id}
             data-tour={id}
-            aria-label={label}
+            aria-label={t(label)}
             className={`tab ${id === 'add' ? 'add' : ''} ${activeTab === id ? 'active' : ''}`}
             onClick={() => (id === 'add' ? (setAddRepeat(false), setShowAdd('expense')) : setActiveTab(id))}
           >
