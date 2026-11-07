@@ -1,0 +1,407 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>CRM · Lolo & Pepe</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@300;400;500&display=swap">
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+:root { --bg:#ececec; --surface:#fff; --surface-2:#f4f4f2; --ink:#111; --ink-2:#444; --muted:#8f8f8f; --line:#ebebeb; --blue:#5fa9ee; --blue-soft:#e8f3ff; --ok:#3f9b6e; --danger:#e05a4f; color-scheme:light; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0e0e0e; --surface:#1b1b1b; --surface-2:#242424; --ink:#f1f1f1; --ink-2:#c6c6c6; --muted:#8a8a8a; --line:#2a2a2a; --blue-soft:#17283a; --ok:#5cc48f; --danger:#ff7b6e; color-scheme:dark; } }
+* { box-sizing:border-box; }
+body { margin:0; background:var(--bg); color:var(--ink); font:15px/1.45 -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; -webkit-font-smoothing:antialiased; }
+.disp { font-family:'Unbounded', system-ui, sans-serif; font-weight:300; letter-spacing:-.01em; }
+.wrap { max-width:1100px; margin:0 auto; padding:20px max(16px, env(safe-area-inset-left)) 60px; }
+header { display:flex; align-items:center; gap:14px; flex-wrap:wrap; margin-bottom:18px; }
+header h1 { font-size:20px; margin:0; flex:1; }
+header h1 small { font-family:-apple-system, system-ui, sans-serif; font-size:12px; color:var(--muted); margin-left:8px; letter-spacing:.08em; text-transform:uppercase; }
+nav { display:flex; gap:4px; background:var(--surface); border-radius:100px; padding:4px; overflow-x:auto; max-width:100%; }
+nav button { border:0; background:none; color:var(--ink); font:inherit; font-size:14px; padding:8px 16px; border-radius:100px; cursor:pointer; white-space:nowrap; display:flex; gap:6px; align-items:center; }
+nav button.on { background:var(--ink); color:var(--surface); }
+.badge { background:var(--danger); color:#fff; border-radius:100px; font-size:11px; padding:1px 7px; font-weight:600; }
+.ghost { border:0; background:none; color:var(--muted); font:inherit; font-size:13px; cursor:pointer; }
+.card { background:var(--surface); border-radius:18px; padding:18px; }
+.grid { display:grid; gap:12px; }
+.kpis { grid-template-columns:repeat(auto-fill, minmax(150px, 1fr)); }
+.kpi .v { font-family:'Unbounded'; font-weight:300; font-size:30px; margin-top:4px; }
+.kpi .l { font-size:11px; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); }
+.kpi .s { font-size:12px; color:var(--muted); }
+.charts { grid-template-columns:repeat(auto-fit, minmax(300px, 1fr)); margin-top:12px; }
+.chart h3, .section h3 { font-size:13px; font-weight:600; margin:0 0 12px; }
+.chart svg { width:100%; height:140px; display:block; }
+.chart .axis { display:flex; justify-content:space-between; font-size:11px; color:var(--muted); margin-top:6px; }
+.toolbar { display:flex; gap:10px; margin-bottom:12px; flex-wrap:wrap; align-items:center; }
+input[type=text], input[type=url], input[type=search], textarea, select { font:inherit; color:var(--ink); background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:10px 14px; outline:none; }
+input:focus, textarea:focus, select:focus { border-color:var(--blue); }
+.toolbar input[type=search] { flex:1; min-width:200px; }
+.chips { display:flex; gap:6px; flex-wrap:wrap; }
+.chip { border:1px solid var(--line); background:var(--surface); color:var(--ink); border-radius:100px; padding:6px 12px; font:inherit; font-size:13px; cursor:pointer; }
+.chip.on { background:var(--ink); color:var(--surface); border-color:var(--ink); }
+.list { background:var(--surface); border-radius:18px; overflow:hidden; }
+.row { display:grid; grid-template-columns: 1.6fr 1fr 1fr 1fr .7fr; gap:12px; padding:14px 18px; border-top:1px solid var(--line); align-items:center; cursor:pointer; }
+.row:first-child { border-top:0; }
+.row:hover { background:var(--surface-2); }
+.row.head { cursor:default; font-size:11px; text-transform:uppercase; letter-spacing:.1em; color:var(--muted); background:none; }
+.name { font-weight:500; display:flex; gap:8px; align-items:center; min-width:0; }
+.name span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.sub { font-size:12px; color:var(--muted); }
+.tag { font-size:11px; padding:2px 8px; border-radius:100px; background:var(--surface-2); color:var(--ink-2); white-space:nowrap; }
+.tag.ok { background:#e3f3ea; color:#2f7a55; } .tag.blue { background:var(--blue-soft); color:#2b7fd0; }
+@media (prefers-color-scheme: dark) { .tag.ok { background:#16301f; color:#7ed3a5; } .tag.blue { color:#7dbaf5; } }
+@media (max-width:720px) { .row { grid-template-columns:1fr auto; } .row > .hide-m { display:none; } }
+.empty { padding:40px; text-align:center; color:var(--muted); }
+/* drawer */
+.overlay { position:fixed; inset:0; background:rgba(0,0,0,.35); display:flex; justify-content:flex-end; z-index:20; }
+.drawer { width:min(520px, 100%); height:100%; background:var(--bg); display:flex; flex-direction:column; }
+.drawer .top { padding:18px 20px 10px; display:flex; align-items:flex-start; gap:12px; }
+.drawer .top h2 { margin:0; font-size:20px; flex:1; }
+.drawer .body { flex:1; overflow-y:auto; padding:0 20px 12px; display:flex; flex-direction:column; gap:12px; }
+.thread { display:flex; flex-direction:column; gap:8px; }
+.msg { max-width:85%; padding:10px 14px; border-radius:18px; white-space:pre-wrap; word-wrap:break-word; font-size:14px; }
+.msg.in { background:var(--surface); align-self:flex-start; border-bottom-left-radius:6px; }
+.msg.out { background:var(--ink); color:var(--surface); align-self:flex-end; border-bottom-right-radius:6px; }
+.msg time { display:block; font-size:11px; opacity:.55; margin-top:3px; }
+.composer { display:flex; gap:8px; padding:12px 20px calc(12px + env(safe-area-inset-bottom)); background:var(--bg); border-top:1px solid var(--line); }
+.composer textarea { flex:1; resize:none; height:46px; }
+.btn { border:0; border-radius:14px; padding:11px 18px; font:inherit; font-weight:500; cursor:pointer; background:var(--ink); color:var(--surface); white-space:nowrap; }
+.btn.secondary { background:var(--surface); color:var(--ink); border:1px solid var(--line); }
+.btn.blue { background:var(--blue); color:#fff; }
+.btn:disabled { opacity:.45; cursor:default; }
+.kv { display:grid; grid-template-columns:auto 1fr; gap:6px 14px; font-size:14px; }
+.kv dt { color:var(--muted); } .kv dd { margin:0; }
+/* broadcasts */
+.bc { display:grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap:14px; align-items:start; }
+@media (max-width:860px) { .bc { grid-template-columns:1fr; } }
+.field { display:flex; flex-direction:column; gap:6px; margin-bottom:14px; }
+.field > label:not(.check) { font-size:12px; color:var(--muted); text-transform:uppercase; letter-spacing:.08em; }
+.field textarea { min-height:180px; resize:vertical; }
+.count { font-size:12px; color:var(--muted); text-align:right; }
+.count.bad { color:var(--danger); }
+.check { display:flex; gap:10px; align-items:center; font-size:14px; padding:4px 0; cursor:pointer; }
+.check input { width:18px; height:18px; accent-color:var(--ink); }
+.phone { background:radial-gradient(120% 100% at 30% 10%, #eaf4ff, #a9d0f8 65%, #6fb1ef); border-radius:28px; padding:22px 18px; min-height:300px; position:sticky; top:16px; }
+.phone .bubble { background:#fff; color:#111; border-radius:18px 18px 18px 6px; overflow:hidden; max-width:100%; box-shadow:0 4px 14px rgba(30,70,120,.12); }
+.phone .bubble .media { background:#dbe9f7; aspect-ratio:1; display:grid; place-items:center; color:#4a7aa8; font-size:13px; }
+.phone .bubble .media img, .phone .bubble .media video { width:100%; height:100%; object-fit:cover; display:block; }
+.phone .bubble .txt { padding:10px 14px 12px; white-space:pre-wrap; font-size:14px; word-wrap:break-word; }
+.phone .kb { display:flex; flex-direction:column; gap:5px; margin-top:6px; }
+.phone .kb div { background:rgba(255,255,255,.7); color:#1d5f9c; text-align:center; padding:9px; border-radius:12px; font-size:13px; font-weight:600; }
+.note { font-size:13px; color:var(--muted); margin:8px 0 0; }
+.err { color:var(--danger); font-size:13px; margin-top:8px; }
+.okmsg { color:var(--ok); font-size:13px; margin-top:8px; }
+.bar { height:6px; background:var(--surface-2); border-radius:3px; overflow:hidden; margin-top:6px; }
+.bar i { display:block; height:100%; background:var(--blue); }
+.confirm { background:var(--blue-soft); border-radius:14px; padding:14px; margin-top:10px; }
+.center { min-height:80vh; display:grid; place-items:center; text-align:center; }
+.center .card { max-width:420px; }
+</style>
+</head>
+<body>
+<div class="wrap" id="app"><div class="center"><div class="sub">Загрузка…</div></div></div>
+
+<script>
+const tg = window.Telegram?.WebApp;
+if (tg?.initData) { tg.ready(); tg.expand(); }
+const $ = (sel, root = document) => root.querySelector(sel);
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const store = { get: (k) => { try { return localStorage.getItem(k); } catch { return null; } }, set: (k, v) => { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch {} } };
+let session = store.get('crm-session');
+
+async function api(path, opts = {}) {
+  const res = await fetch('/admin-api' + path, { ...opts, headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + session, ...(opts.headers || {}) } });
+  const data = await res.json().catch(() => ({}));
+  if (res.status === 401 && path !== '/login') { session = null; store.set('crm-session', null); renderLogin(data.error); throw new Error(data.error); }
+  if (!res.ok) throw new Error(data.error || 'Ошибка');
+  return data;
+}
+
+const MONTHS = ['янв', 'фев', 'мар', 'апр', 'мая', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'];
+const utc = (s) => (s ? new Date(s.replace(' ', 'T') + (s.length > 10 && !s.endsWith('Z') ? 'Z' : '')) : null);
+function fmtDate(s, time = false) {
+  const d = utc(s); if (!d) return '—';
+  const base = `${d.getDate()} ${MONTHS[d.getMonth()]}${d.getFullYear() !== new Date().getFullYear() ? ' ' + d.getFullYear() : ''}`;
+  return time ? `${base}, ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}` : base;
+}
+function ago(s) {
+  const d = utc(s); if (!d) return 'ещё не было';
+  const days = Math.floor((Date.now() - d) / 864e5);
+  return days <= 0 ? 'сегодня' : days === 1 ? 'вчера' : days < 30 ? `${days} дн. назад` : fmtDate(s);
+}
+
+// ---------- sign-in ----------
+async function login() {
+  const t = new URLSearchParams(location.search).get('t');
+  if (t) history.replaceState(null, '', location.pathname);
+  if (!session && (t || tg?.initData)) {
+    try {
+      const r = await api('/login', { method: 'POST', body: JSON.stringify(t ? { token: t } : { initData: tg.initData }) });
+      session = r.session; store.set('crm-session', session);
+    } catch (e) { return renderLogin(e.message); }
+  }
+  if (!session) return renderLogin();
+  start();
+}
+function renderLogin(error) {
+  $('#app').innerHTML = `<div class="center"><div class="card">
+    <div class="disp" style="font-size:22px;margin-bottom:10px">CRM Lolo &amp; Pepe</div>
+    <p class="sub" style="font-size:14px">Чтобы войти, отправьте боту команду <b>/admin</b> и нажмите «Открыть CRM» (в Telegram) или «Открыть в браузере» (на компьютере). Ссылка одноразовая и работает 15 минут.</p>
+    ${error ? `<div class="err">${esc(error)}</div>` : ''}
+  </div></div>`;
+}
+
+// ---------- layout ----------
+const state = { tab: location.hash.slice(1) || 'overview', unread: 0 };
+const TABS = [['overview', 'Обзор'], ['users', 'Пользователи'], ['dialogs', 'Диалоги'], ['broadcasts', 'Рассылки']];
+function start() {
+  $('#app').innerHTML = `<header><h1 class="disp">Lolo &amp; Pepe<small>CRM</small></h1><nav id="nav"></nav><button class="ghost" id="logout">Выйти</button></header><main id="main"></main><div id="drawer"></div>`;
+  $('#logout').onclick = async () => { await api('/logout', { method: 'POST' }).catch(() => {}); session = null; store.set('crm-session', null); renderLogin(); };
+  go(TABS.some(t => t[0] === state.tab) ? state.tab : 'overview');
+  setInterval(refreshUnread, 30000);
+}
+function renderNav() {
+  $('#nav').innerHTML = TABS.map(([k, l]) => `<button data-k="${k}" class="${state.tab === k ? 'on' : ''}">${l}${k === 'dialogs' && state.unread ? ` <span class="badge">${state.unread}</span>` : ''}</button>`).join('');
+  $('#nav').querySelectorAll('button').forEach(b => b.onclick = () => go(b.dataset.k));
+}
+async function refreshUnread() {
+  try { const s = await api('/stats'); state.unread = s.unread; renderNav(); } catch {}
+}
+function go(tab) {
+  state.tab = tab; history.replaceState(null, '', '#' + tab); renderNav();
+  $('#main').innerHTML = '<div class="empty">Загрузка…</div>';
+  ({ overview, users, dialogs, broadcasts })[tab]().catch(e => { $('#main').innerHTML = `<div class="empty err">${esc(e.message)}</div>`; });
+}
+
+// ---------- overview ----------
+function barChart(data, key, color) {
+  const max = Math.max(1, ...data.map(d => d[key]));
+  const w = 100 / data.length;
+  return `<svg viewBox="0 0 100 50" preserveAspectRatio="none" role="img">${data.map((d, i) => {
+    const h = (d[key] / max) * 46;
+    return `<rect x="${i * w + w * 0.15}" y="${50 - h}" width="${w * 0.7}" height="${Math.max(h, d[key] ? 0.8 : 0.3)}" rx="0.6" fill="${d[key] ? color : 'var(--line)'}"><title>${fmtDate(d.d)}: ${d[key]}</title></rect>`;
+  }).join('')}</svg><div class="axis"><span>${fmtDate(data[0].d)}</span><span>макс. ${max}</span><span>${fmtDate(data[data.length - 1].d)}</span></div>`;
+}
+async function overview() {
+  const s = await api('/stats');
+  if (state.tab !== 'overview') return;
+  state.unread = s.unread; renderNav();
+  const k = (l, v, sub = '') => `<div class="card kpi"><div class="l">${l}</div><div class="v">${v}</div><div class="s">${sub}</div></div>`;
+  $('#main').innerHTML = `
+    <div class="grid kpis">
+      ${k('Пользователи', s.users, `+${s.new7} за 7 дней · +${s.new30} за 30`)}
+      ${k('Активны за 7 дней', s.active7, 'что-то записали')}
+      ${k('Активны за 30 дней', s.active30, s.users ? Math.round(s.active30 / s.users * 100) + '% от всех' : '')}
+      ${k('Пары', s.pairs, `из ${s.budgets} бюджетов`)}
+      ${k('Автоучёт', s.auto, 'присылали SMS банка')}
+      ${k('Записей', s.records, 'трат и доходов всего')}
+    </div>
+    <div class="grid charts">
+      <div class="card chart"><h3>Новые пользователи по дням</h3>${barChart(s.daily, 'new', 'var(--blue)')}</div>
+      <div class="card chart"><h3>Активные пользователи по дням</h3>${barChart(s.daily, 'active', 'var(--ink)')}</div>
+    </div>
+    <p class="note">Суммы и траты пользователей здесь не показываются — только количество и даты.</p>`;
+}
+
+// ---------- users ----------
+let usersCache = [];
+const FILTERS = [['all', 'Все'], ['active', 'Активные'], ['sleeping', 'Не заходят 30 дней'], ['nopair', 'Без пары'], ['auto', 'С автоучётом']];
+async function users() {
+  usersCache = await api('/users');
+  if (state.tab !== 'users') return;
+  state.filter ||= 'all';
+  $('#main').innerHTML = `<div class="toolbar"><input type="search" id="q" placeholder="Поиск по имени или @username"><div class="chips" id="filters"></div></div><div class="list" id="ulist"></div>`;
+  $('#q').oninput = drawUsers;
+  drawUsers();
+}
+function drawUsers() {
+  const q = ($('#q')?.value || '').toLowerCase().trim();
+  const month = Date.now() - 30 * 864e5;
+  const test = {
+    all: () => true,
+    active: u => u.last_active && utc(u.last_active) > month,
+    sleeping: u => !u.last_active || utc(u.last_active) <= month,
+    nopair: u => !u.paired,
+    auto: u => u.auto,
+  };
+  $('#filters').innerHTML = FILTERS.map(([k, l]) => `<button class="chip ${state.filter === k ? 'on' : ''}" data-k="${k}">${l} · ${usersCache.filter(test[k]).length}</button>`).join('');
+  $('#filters').querySelectorAll('button').forEach(b => b.onclick = () => { state.filter = b.dataset.k; drawUsers(); });
+  const list = usersCache.filter(test[state.filter]).filter(u => !q || `${u.first_name} ${u.last_name || ''} ${u.username || ''}`.toLowerCase().includes(q));
+  $('#ulist').innerHTML = `<div class="row head"><div>Пользователь</div><div class="hide-m">Первый вход</div><div class="hide-m">Активность</div><div class="hide-m">Бюджет</div><div>Записей</div></div>` +
+    (list.length ? list.map(u => `<div class="row" data-id="${u.id}">
+      <div class="name"><span>${esc(u.first_name)} ${esc(u.last_name || '')}</span>${u.unread ? `<span class="badge">${u.unread}</span>` : ''}<div class="sub" style="font-weight:400">${u.username ? '@' + esc(u.username) : ''}</div></div>
+      <div class="hide-m sub">${fmtDate(u.created_at)}</div>
+      <div class="hide-m sub">${ago(u.last_active)}</div>
+      <div class="hide-m">${u.paired ? '<span class="tag ok">пара</span>' : u.budgets ? '<span class="tag">один</span>' : '<span class="tag">нет бюджета</span>'} ${u.auto ? '<span class="tag blue">автоучёт</span>' : ''}</div>
+      <div>${u.records}</div></div>`).join('') : '<div class="empty">Никого не нашлось</div>');
+  $('#ulist').querySelectorAll('.row[data-id]').forEach(r => r.onclick = () => openUser(r.dataset.id));
+}
+
+// ---------- user card + dialog ----------
+async function openUser(id) {
+  const box = $('#drawer');
+  box.innerHTML = `<div class="overlay"><div class="drawer"><div class="top"><h2 class="disp">…</h2><button class="ghost" id="close" style="font-size:22px">×</button></div><div class="body"></div></div></div>`;
+  const close = () => { box.innerHTML = ''; if (state.tab !== 'overview') go(state.tab); };
+  $('.overlay', box).onclick = (e) => { if (e.target.classList.contains('overlay')) close(); };
+  $('#close', box).onclick = close;
+  const { user, budgets, messages } = await api('/users/' + id);
+  api(`/users/${id}/read`, { method: 'POST' }).then(refreshUnread).catch(() => {});
+  $('.top h2', box).textContent = `${user.first_name} ${user.last_name || ''}`;
+  $('.drawer', box).innerHTML = `
+    <div class="top"><h2 class="disp">${esc(user.first_name)} ${esc(user.last_name || '')}</h2><button class="ghost" id="close" style="font-size:22px">×</button></div>
+    <div class="body">
+      <div class="card"><dl class="kv">
+        <dt>Username</dt><dd>${user.username ? '@' + esc(user.username) : '—'}</dd>
+        <dt>Первый вход</dt><dd>${fmtDate(user.created_at, true)}</dd>
+        <dt>Обучение</dt><dd>${user.tutorial_done ? 'пройдено' : 'не пройдено'}</dd>
+        <dt>Ссылка для SMS</dt><dd>${user.has_link ? 'получена' : 'нет'}</dd>
+      </dl></div>
+      <div class="card section"><h3>Бюджеты</h3>${budgets.length ? budgets.map(b => `<div style="padding:6px 0;border-top:1px solid var(--line)"><b>${esc(b.name)}</b> <span class="sub">· ${esc(b.currency)} · ${b.expenses} общих трат</span><div class="sub">${esc(b.people)}</div></div>`).join('') : '<div class="sub">Пока нет</div>'}</div>
+      <div class="section"><h3>Диалог</h3><div class="thread" id="thread">${messages.length ? messages.map(msgHtml).join('') : '<div class="sub">Сообщений ещё не было. Можно начать диалог — у человека появится кнопка «Ответить».</div>'}</div></div>
+    </div>
+    <div class="composer"><textarea id="reply" placeholder="Сообщение от имени бота…"></textarea><button class="btn" id="send">Отправить</button></div>`;
+  $('#close', box).onclick = close;
+  const body = $('.body', box); body.scrollTop = body.scrollHeight;
+  const send = async () => {
+    const text = $('#reply', box).value.trim(); if (!text) return;
+    $('#send', box).disabled = true;
+    try {
+      const m = await api(`/users/${id}/messages`, { method: 'POST', body: JSON.stringify({ text }) });
+      const th = $('#thread', box); if (!th.querySelector('.msg')) th.innerHTML = '';
+      th.insertAdjacentHTML('beforeend', msgHtml(m)); $('#reply', box).value = ''; body.scrollTop = body.scrollHeight;
+    } catch (e) { alertInline(box, e.message); }
+    $('#send', box).disabled = false;
+  };
+  $('#send', box).onclick = send;
+  $('#reply', box).onkeydown = (e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) send(); };
+}
+const msgHtml = (m) => `<div class="msg ${m.direction}">${esc(m.text)}<time>${fmtDate(m.created_at, true)}</time></div>`;
+function alertInline(box, text) { const el = document.createElement('div'); el.className = 'err'; el.style.padding = '0 20px'; el.textContent = text; $('.composer', box).before(el); setTimeout(() => el.remove(), 5000); }
+
+// ---------- dialogs ----------
+async function dialogs() {
+  const list = await api('/dialogs');
+  if (state.tab !== 'dialogs') return;
+  $('#main').innerHTML = `<div class="list">${list.length ? list.map(d => `<div class="row" data-id="${d.id}" style="grid-template-columns:1fr auto">
+    <div style="min-width:0"><div class="name"><span>${esc(d.first_name)}</span>${d.username ? `<span class="sub" style="font-weight:400">@${esc(d.username)}</span>` : ''}${d.unread ? `<span class="badge">${d.unread}</span>` : ''}</div>
+    <div class="sub" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${d.last_direction === 'out' ? 'Вы: ' : ''}${esc(d.last_text)}</div></div>
+    <div class="sub">${fmtDate(d.last_at, true)}</div></div>`).join('') : '<div class="empty">Пока никто не писал. Пользователи пишут командой /support или кнопкой «Написать нам» в настройках приложения.</div>'}</div>
+    <p class="note">Новые сообщения также приходят вам в Telegram — на них можно ответить свайпом «Ответить».</p>`;
+  $('#main').querySelectorAll('.row[data-id]').forEach(r => r.onclick = () => openUser(r.dataset.id));
+}
+
+// ---------- broadcasts ----------
+const SEGMENTS = [['all', 'Все пользователи'], ['active30', 'Активные за 30 дней'], ['inactive30', 'Не заходили 30 дней'], ['nopair', 'Без пары'], ['new7', 'Новые за 7 дней']];
+const post = { text: '', media: null, buttons: { open: true, auto: false, link: null }, segment: 'all', tested: null };
+let historyTimer = null;
+async function broadcasts() {
+  $('#main').innerHTML = `<div class="bc">
+    <div class="card">
+      <div class="field"><label>Текст поста</label><textarea id="ptext" placeholder="Например: 🐧 Теперь выписку можно прислать в PDF…">${esc(post.text)}</textarea><div class="count" id="pcount"></div></div>
+      <div class="field"><label>Медиа</label>
+        <label class="check"><input type="radio" name="media" value="none"> Без фото и видео</label>
+        <label class="check"><input type="radio" name="media" value="guide"> Видеоинструкция по автоучёту</label>
+        <label class="check"><input type="radio" name="media" value="file"> Своё фото или видео</label>
+        <input type="file" id="pfile" accept="image/jpeg,image/png,video/mp4" style="display:none">
+        <div class="sub" id="pfilename"></div>
+      </div>
+      <div class="field"><label>Кнопки под постом</label>
+        <label class="check"><input type="checkbox" id="bopen"> Открыть Lolo &amp; Pepe</label>
+        <label class="check"><input type="checkbox" id="bauto"> ⚙️ Как настроить автоучёт</label>
+        <label class="check"><input type="checkbox" id="blink"> Своя кнопка-ссылка</label>
+        <div id="linkf" style="display:none;gap:8px;flex-wrap:wrap"><input type="text" id="ltext" placeholder="Текст кнопки" style="flex:1;min-width:140px"><input type="url" id="lurl" placeholder="https://…" style="flex:2;min-width:180px"></div>
+      </div>
+      <div class="field"><label>Кому</label><select id="pseg">${SEGMENTS.map(([k, l]) => `<option value="${k}">${l}</option>`).join('')}</select><div class="sub" id="pcountseg"></div></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn secondary" id="ptest">Отправить себе на проверку</button><button class="btn" id="psend" disabled>Разослать</button></div>
+      <div id="pmsg"></div>
+    </div>
+    <div><div class="phone"><div class="bubble" id="pv"></div><div class="kb" id="pkb"></div></div><p class="note">Так пост примерно будет выглядеть в Telegram.</p></div>
+  </div>
+  <div class="section" style="margin-top:22px"><h3>История рассылок</h3><div class="list" id="hist"></div></div>`;
+
+  const sync = () => { post.tested = null; $('#psend').disabled = true; draw(); };
+  $('#ptext').oninput = (e) => { post.text = e.target.value; sync(); };
+  document.querySelectorAll('input[name=media]').forEach(r => {
+    r.checked = (post.media?.type === 'guide' ? 'guide' : post.media ? 'file' : 'none') === r.value;
+    r.onchange = () => { if (r.value === 'none') post.media = null; if (r.value === 'guide') post.media = { type: 'guide' }; if (r.value === 'file') $('#pfile').click(); sync(); };
+  });
+  $('#pfile').onchange = async (e) => {
+    const f = e.target.files[0]; if (!f) return;
+    if (f.size > 20 * 1024 * 1024) { showMsg('Файл больше 20 МБ — Telegram такой не примет', true); return; }
+    const data = await new Promise(r => { const fr = new FileReader(); fr.onload = () => r(String(fr.result).split(',')[1]); fr.readAsDataURL(f); });
+    post.media = { type: f.type.startsWith('video') ? 'video' : 'photo', data, filename: f.name, mime: f.type, preview: URL.createObjectURL(f) };
+    $('#pfilename').textContent = f.name; sync();
+  };
+  $('#bopen').checked = post.buttons.open; $('#bauto').checked = post.buttons.auto; $('#blink').checked = !!post.buttons.link;
+  $('#bopen').onchange = (e) => { post.buttons.open = e.target.checked; sync(); };
+  $('#bauto').onchange = (e) => { post.buttons.auto = e.target.checked; sync(); };
+  $('#blink').onchange = (e) => { post.buttons.link = e.target.checked ? { text: $('#ltext').value, url: $('#lurl').value } : null; sync(); };
+  ['ltext', 'lurl'].forEach(id => $('#' + id).oninput = () => { if (post.buttons.link) post.buttons.link = { text: $('#ltext').value, url: $('#lurl').value }; sync(); });
+  $('#pseg').value = post.segment;
+  $('#pseg').onchange = (e) => { post.segment = e.target.value; countSegment(); };
+  $('#ptest').onclick = testPost;
+  $('#psend').onclick = confirmSend;
+  draw(); countSegment(); history_();
+}
+function draw() {
+  const limit = post.media ? 1024 : 4096;
+  const c = $('#pcount'); c.textContent = `${post.text.length} / ${limit}`; c.className = 'count' + (post.text.length > limit ? ' bad' : '');
+  $('#linkf').style.display = post.buttons.link ? 'flex' : 'none';
+  const m = post.media;
+  const media = !m ? '' : m.type === 'guide' ? `<div class="media"><video src="/bot/auto-guide.mp4#t=21" muted playsinline preload="metadata"></video></div>`
+    : m.preview ? `<div class="media">${m.type === 'video' ? `<video src="${m.preview}" muted playsinline preload="metadata"></video>` : `<img src="${m.preview}" alt="">`}</div>` : `<div class="media">${m.type === 'video' ? 'видео' : 'фото'}</div>`;
+  $('#pv').innerHTML = media + `<div class="txt">${esc(post.text) || '<span style="color:#999">Текст поста</span>'}</div>`;
+  const kb = [];
+  if (post.buttons.auto) kb.push('⚙️ Как настроить автоучёт');
+  if (post.buttons.link?.text) kb.push(esc(post.buttons.link.text));
+  if (post.buttons.open) kb.push('Открыть Lolo &amp; Pepe');
+  $('#pkb').innerHTML = kb.map(t => `<div>${t}</div>`).join('');
+}
+async function countSegment() {
+  const { count } = await api('/audience?segment=' + post.segment);
+  post.count = count; $('#pcountseg').textContent = `Получат: ${count}`;
+  $('#psend').textContent = `Разослать (${count})`;
+}
+function showMsg(text, bad) { $('#pmsg').innerHTML = `<div class="${bad ? 'err' : 'okmsg'}">${esc(text)}</div>`; }
+const payload = () => ({ text: post.text, buttons: post.buttons, segment: post.segment, media: post.tested?.media ?? (post.media && { type: post.media.type, data: post.media.data, filename: post.media.filename, mime: post.media.mime, file_id: post.media.file_id }) });
+async function testPost() {
+  $('#ptest').disabled = true; showMsg('Отправляю вам…');
+  try {
+    const r = await api('/broadcasts/test', { method: 'POST', body: JSON.stringify(payload()) });
+    post.tested = { media: r.media };
+    showMsg('Пост пришёл вам в Telegram. Если всё нравится — нажмите «Разослать».');
+    $('#psend').disabled = false;
+  } catch (e) { showMsg(e.message, true); }
+  $('#ptest').disabled = false;
+}
+function confirmSend() {
+  $('#pmsg').innerHTML = `<div class="confirm">Разослать пост <b>${post.count}</b> пользователям (${SEGMENTS.find(s => s[0] === post.segment)[1].toLowerCase()})? Отменить отправку будет нельзя.
+    <div style="display:flex;gap:8px;margin-top:10px"><button class="btn blue" id="yes">Да, разослать</button><button class="btn secondary" id="no">Отмена</button></div></div>`;
+  $('#no').onclick = () => { $('#pmsg').innerHTML = ''; };
+  $('#yes').onclick = async () => {
+    $('#yes').disabled = true;
+    try {
+      await api('/broadcasts', { method: 'POST', body: JSON.stringify(payload()) });
+      Object.assign(post, { text: '', media: null, tested: null, buttons: { open: true, auto: false, link: null } });
+      await broadcasts(); showMsg('Рассылка началась — прогресс в истории ниже.');
+    } catch (e) { showMsg(e.message, true); }
+  };
+}
+const SEG_NAME = Object.fromEntries(SEGMENTS);
+async function history_() {
+  clearTimeout(historyTimer);
+  const list = await api('/broadcasts');
+  const el = $('#hist'); if (!el) return;
+  el.innerHTML = list.length ? list.map(b => `<div class="row" style="grid-template-columns:1fr auto;cursor:default">
+    <div style="min-width:0"><div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${b.media_type ? (b.media_type === 'photo' ? '🖼 ' : '🎬 ') : ''}${esc(b.text)}</div>
+    <div class="sub">${fmtDate(b.created_at, true)} · ${SEG_NAME[b.audience] || b.audience}</div>
+    ${b.status === 'sending' ? `<div class="bar"><i style="width:${b.total ? Math.round((b.sent + b.failed) / b.total * 100) : 0}%"></i></div>` : ''}</div>
+    <div style="text-align:right"><div>${b.sent} из ${b.total}</div><div class="sub">${b.status === 'sending' ? 'отправляется…' : b.failed ? `не дошло: ${b.failed}` : 'доставлено'}</div></div></div>`).join('')
+    : '<div class="empty">Рассылок ещё не было</div>';
+  if (list.some(b => b.status === 'sending')) historyTimer = setTimeout(history_, 3000);
+}
+
+login();
+</script>
+</body>
+</html>

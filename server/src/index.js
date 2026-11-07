@@ -14,11 +14,12 @@ import socialRoutes from './routes/social.js';
 import splitRoutes from './routes/split.js';
 import fileRoutes from './routes/files.js';
 import bankRoutes from './routes/bank.js';
-import { startBot, recordBankText } from './bot.js';
+import { startBot, recordBankText, botName } from './bot.js';
 import { telegramUserFromInitData, devMode } from './telegramAuth.js';
 import { legalPage, CONTACT_EMAIL } from './legal.js';
 import { accessGuard } from './access.js';
 import accountRoutes, { setUserCacheReset } from './routes/account.js';
+import adminRoutes from './routes/admin.js';
 
 // Bot handlers are async; a failure in one must not take the whole server down.
 process.on('unhandledRejection', (e) => console.error('Unhandled rejection:', e));
@@ -28,6 +29,8 @@ const app = express();
 app.disable('x-powered-by');
 const PORT = process.env.PORT || 3001;
 
+// The admin panel's API has its own sign-in and a larger body limit for photos and videos in posts.
+app.use('/admin-api', adminRoutes);
 // Statement files (PDF, Excel) come as base64 and can be bigger than other requests.
 app.use('/api/budgets/:id/import', express.json({ limit: '14mb' }));
 app.use(express.json({ limit: '3mb' }));
@@ -91,7 +94,9 @@ app.use((err, req, res, next) => {
 // Built files have content hashes in their names, so phones may keep them for good.
 // Legal pages, readable without opening the app.
 app.get(['/privacy', '/terms'], (req, res) => res.type('html').send(legalPage(req.path.slice(1), req.query.lang)));
-app.get('/api/legal', (req, res) => res.json({ email: CONTACT_EMAIL.includes('@') ? CONTACT_EMAIL : '' }));
+app.get('/api/legal', (req, res) => res.json({ email: CONTACT_EMAIL.includes('@') ? CONTACT_EMAIL : '', bot: botName() }));
+// The landing page's "Open in Telegram" button.
+app.get('/open', (req, res) => res.redirect(302, botName() ? `https://t.me/${botName()}` : '/landing/'));
 app.use('/assets', express.static(join(__dirname, '..', 'public', 'assets'), { immutable: true, maxAge: '1y' }));
 app.use(express.static(join(__dirname, '..', 'public')));
 app.get('*', (req, res) => {

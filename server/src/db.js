@@ -200,6 +200,34 @@ await client.batch([
     last_month TEXT,
     created_at TEXT DEFAULT (datetime('now'))
   )`,
+  // Support dialogs between users and the team; admin_msg_id links the copy in the admin's chat for replies.
+  `CREATE TABLE IF NOT EXISTS messages (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    direction TEXT NOT NULL,
+    text TEXT NOT NULL,
+    admin_msg_id INTEGER,
+    read INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT DEFAULT (datetime('now'))
+  )`,
+  `CREATE TABLE IF NOT EXISTS broadcasts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    text TEXT NOT NULL,
+    media_type TEXT,
+    media_file TEXT,
+    buttons TEXT,
+    audience TEXT NOT NULL DEFAULT 'all',
+    total INTEGER NOT NULL DEFAULT 0,
+    sent INTEGER NOT NULL DEFAULT 0,
+    failed INTEGER NOT NULL DEFAULT 0,
+    status TEXT NOT NULL DEFAULT 'sending',
+    created_at TEXT DEFAULT (datetime('now'))
+  )`,
+  `CREATE TABLE IF NOT EXISTS admin_tokens (
+    token TEXT PRIMARY KEY,
+    kind TEXT NOT NULL,
+    expires_at TEXT NOT NULL
+  )`,
 ]);
 
 // Columns added after launch; ALTER fails harmlessly once they exist.
@@ -214,6 +242,7 @@ for (const sql of [
   'ALTER TABLE notify_prefs ADD COLUMN savings INTEGER NOT NULL DEFAULT 1',
   'ALTER TABLE users ADD COLUMN hook_token TEXT',
   "ALTER TABLE expense_edits ADD COLUMN kind TEXT NOT NULL DEFAULT 'expense'",
+  'ALTER TABLE users ADD COLUMN support_until TEXT',
 ]) {
   await client.execute(sql).catch(() => {});
 }

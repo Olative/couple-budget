@@ -22,7 +22,13 @@ export default function Settings({ budget, user, onBack, onBudgetUpdate, onOpenB
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [contact, setContact] = useState('');
-  useEffect(() => { api.getLegal().then(l => setContact(l.email)).catch(() => {}); }, []);
+  const [botUser, setBotUser] = useState('');
+  useEffect(() => { api.getLegal().then(l => { setContact(l.email); setBotUser(l.bot || ''); }).catch(() => {}); }, []);
+  const writeUs = () => {
+    const url = `https://t.me/${botUser}?start=support`;
+    const tg = window.Telegram?.WebApp;
+    if (tg?.openTelegramLink && tg.platform !== 'unknown') tg.openTelegramLink(url); else window.open(url, '_blank');
+  };
 
   const deleteAccount = async () => {
     setDeleting(true);
@@ -224,6 +230,7 @@ export default function Settings({ budget, user, onBack, onBudgetUpdate, onOpenB
       <div className="card">
         <button className="row row-btn" onClick={() => openDoc('privacy')}><div className="row-main"><div className="row-name">Политика конфиденциальности</div></div><IconChevronRight size={16} stroke={1.6} className="muted" /></button>
         <button className="row row-btn" onClick={() => openDoc('terms')}><div className="row-main"><div className="row-name">Пользовательское соглашение</div></div><IconChevronRight size={16} stroke={1.6} className="muted" /></button>
+        {botUser && <button className="row row-btn" onClick={writeUs}><div className="row-main"><div className="row-name">Написать нам</div><div className="row-sub">вопрос, ошибка или идея — ответим в чате с ботом</div></div><IconChevronRight size={16} stroke={1.6} className="muted" /></button>}
         {contact && <div className="row"><div className="row-main"><div className="row-name">Поддержка</div></div><span className="row-sub" style={{ userSelect: 'text', WebkitUserSelect: 'text' }}>{contact}</span></div>}
       </div>
       <button className="btn btn-danger" onClick={() => setDeleteOpen(true)}>Удалить аккаунт и данные</button>
