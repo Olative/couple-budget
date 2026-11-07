@@ -28,6 +28,14 @@ const openButton = (text = 'Открыть Lolo & Pepe', url = WEB_APP_URL) => (
   reply_markup: { inline_keyboard: [[{ text, web_app: { url } }]] },
 });
 
+// A broadcast mentioning /auto also gets a button that sends the setup guide right away.
+const AUTO_BUTTON = { text: '⚙️ Как настроить автоучёт', callback_data: 'auto:show' };
+function broadcastButtons(text) {
+  const rows = [[{ text: 'Открыть Lolo & Pepe', web_app: { url: WEB_APP_URL } }]];
+  if (/\/auto\b/.test(text)) rows.unshift([AUTO_BUTTON]);
+  return { reply_markup: { inline_keyboard: rows } };
+}
+
 let bot;
 let botUsername = process.env.BOT_USERNAME || null;
 const pendingBroadcasts = new Map();
@@ -74,14 +82,14 @@ async function setupProfile() {
   await bot.setChatMenuButton({ menu_button: JSON.stringify({ type: 'web_app', text: 'Открыть', web_app: { url: WEB_APP_URL } }) });
   await bot.setMyCommands([
     { command: 'start', description: 'Открыть приложение' },
-    { command: 'auto', description: 'Как настроить автоматический учёт трат' },
+    { command: 'auto', description: 'Как настроить автоматический учёт трат и доходов' },
     { command: 'export', description: 'Выгрузить траты в Excel' },
     { command: 'help', description: 'Помощь' },
   ]);
   if (ADMIN_ID) {
     await bot.setMyCommands([
       { command: 'start', description: 'Открыть приложение' },
-      { command: 'auto', description: 'Как настроить автоматический учёт трат' },
+      { command: 'auto', description: 'Как настроить автоматический учёт трат и доходов' },
       { command: 'export', description: 'Выгрузить траты в Excel' },
       { command: 'stats', description: 'Статистика' },
       { command: 'broadcast', description: 'Рассылка всем пользователям' },
@@ -147,7 +155,7 @@ export function startBot() {
     let text = 'Всё самое важное — в приложении: нажмите кнопку «Открыть» внизу или кнопку под этим сообщением.\n\n' +
       'А траты можно записывать прямо здесь — просто напишите:\n«кофе 250», «такси 300 вчера», «+5000 подработка»\n\n' +
       'Или перешлите SMS/уведомление банка — запишу сама. А выписку из банка (CSV или Excel) просто пришлите файлом.\n\n' +
-      '/start — открыть приложение\n/auto — как настроить автоматический учёт трат\n/export — выгрузить все траты в Excel\n/myid — узнать свой Telegram ID';
+      '/start — открыть приложение\n/auto — как настроить автоматический учёт трат и доходов\n/export — выгрузить все траты в Excel\n/myid — узнать свой Telegram ID';
     if (isAdmin(msg)) {
       text += '\n\nДля администратора:\n/stats — статистика\n/broadcast текст — рассылка всем пользователям';
     }
@@ -156,25 +164,14 @@ export function startBot() {
 
   bot.onText(/^\/auto/, async (msg) => {
     if (!(await firstTime(msgKey(msg)))) return;
-    const user = await db.prepare('SELECT id FROM users WHERE telegram_id = ?').get(msg.from.id);
-    if (!user) {
-      await bot.sendMessage(msg.chat.id, 'Сначала откройте приложение и создайте бюджет.', openButton());
-      return;
-    }
-    const link = `${WEB_APP_URL}/hook/${await hookToken(user.id)}`;
-    await bot.sendMessage(msg.chat.id,
-      '🐧 Как записывать траты без ручного ввода\n\n' +
-      '1️⃣ Перешлите сюда SMS или уведомление банка о покупке — сама найду сумму и магазин и запишу в нужную категорию. ' +
-      'Поменяете категорию — запомню для этого магазина.\n\n' +
-      '2️⃣ Автоматически на iPhone (для SMS от банка):\n' +
-      '• приложение «Команды» → «Автоматизация» → «+»\n' +
-      '• «Сообщение» → в «Отправитель» укажите банк (например, 900) → «Запускать сразу»\n' +
-      '• «Новая пустая команда» → действие «Получить содержимое URL» → вставьте ссылку ниже\n' +
-      '• «Показать больше»: метод POST, тело запроса JSON, поле text, значение «Ввод команды»\n\n' +
-      `Ваша личная ссылка (никому не отправляйте):\n${link}\n\n` +
-      '3️⃣ На Android то же настраивается в приложении MacroDroid — оно умеет ловить и SMS, и пуш-уведомления банка.\n\n' +
-      '4️⃣ Выписка: скачайте в банке выписку в CSV или Excel и пришлите файлом сюда — запишу все операции разом, повторы пропущу.',
-      { disable_web_page_preview: true, ...openButton('Открыть приложение') });
+    await sendAutoGuide(msg.chat.id, msg.from.id);
+  });
+
+  bot.on('callback_query', async (q) => {
+    if (q.data !== 'auto:show') return;
+    if (!(await firstTime(`cb:${q.id}`))) return;
+    await bot.answerCallbackQuery(q.id).catch(() => {});
+    sendAutoGuide(q.message.chat.id, q.from.id).catch(e => console.error('Auto guide failed:', e));
   });
 
   bot.onText(/^\/export/, async (msg) => {
@@ -219,7 +216,8 @@ export function startBot() {
     }
     const { n } = await db.prepare('SELECT COUNT(*) as n FROM users').get();
     pendingBroadcasts.set(msg.chat.id, text);
-    await bot.sendMessage(msg.chat.id, `Так сообщение увидят пользователи (${n}):\n\n———\n${text}\n———`, {
+    const buttons = /\/auto\b/.test(text) ? '[⚙️ Как настроить автоучёт]\n[Открыть Lolo & Pepe]' : '[Открыть Lolo & Pepe]';
+    await bot.sendMessage(msg.chat.id, `Так сообщение увидят пользователи (${n}):\n\n———\n${text}\n\nКнопки: ${buttons}\n———`, {
       reply_markup: {
         inline_keyboard: [[
           { text: `Отправить всем (${n})`, callback_data: 'bc:send' },
@@ -251,7 +249,7 @@ export function startBot() {
     let failed = 0;
     for (const u of users) {
       try {
-        await bot.sendMessage(u.telegram_id, text, openButton());
+        await bot.sendMessage(u.telegram_id, text, broadcastButtons(text));
         sent++;
       } catch {
         failed++;
@@ -395,6 +393,30 @@ async function handleQuickAddCallback(q) {
 }
 
 // ---------- bank notifications and statements ----------
+
+// How to record spending without typing: forwarding, iPhone Shortcuts with the personal link, Android, statements.
+async function sendAutoGuide(chatId, telegramId) {
+  const user = await db.prepare('SELECT id FROM users WHERE telegram_id = ?').get(telegramId);
+  if (!user) {
+    await bot.sendMessage(chatId, 'Сначала откройте приложение и создайте бюджет.', openButton());
+    return;
+  }
+  const link = `${WEB_APP_URL}/hook/${await hookToken(user.id)}`;
+  await bot.sendMessage(chatId,
+    '🐧 Как записывать траты и доходы без ручного ввода\n\n' +
+    '1️⃣ Перешлите сюда SMS или уведомление банка — о покупке или о зачислении. Сама найду сумму и магазин и запишу трату в нужную категорию, а зарплату или перевод — в доходы. ' +
+    'Поменяете категорию — запомню для этого магазина.\n\n' +
+    '2️⃣ Автоматически на iPhone (для SMS от банка):\n' +
+    '• приложение «Команды» → «Автоматизация» → «+»\n' +
+    '• «Сообщение» → в «Отправитель» укажите банк (например, 900) → «Запускать сразу»\n' +
+    '• «Новая пустая команда» → действие «Получить содержимое URL» → вставьте ссылку ниже\n' +
+    '• «Показать больше»: метод POST, тело запроса JSON, поле text, значение «Ввод команды»\n\n' +
+    `Ваша личная ссылка (никому не отправляйте):\n${link}\n\n` +
+    '3️⃣ На Android то же настраивается в приложении MacroDroid — оно умеет ловить и SMS, и пуш-уведомления банка.\n\n' +
+    '4️⃣ Выписка: скачайте в банке выписку в CSV или Excel и пришлите файлом сюда — запишу все операции разом, повторы пропущу.',
+    { disable_web_page_preview: true, ...openButton('Открыть приложение') });
+}
+
 
 // Records a bank SMS / push text for a Telegram user and tells them in the chat. Used by the bot and the iPhone shortcut.
 export async function recordBankText(telegramId, text) {

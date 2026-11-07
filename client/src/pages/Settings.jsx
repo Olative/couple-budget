@@ -117,7 +117,7 @@ export default function Settings({ budget, user, onBack, onBudgetUpdate, onOpenB
       </div>
       <CurrencyPicker value={budget.currency} onChange={changeCurrency} label="Валюта" />
 
-      <div className="section-label">Траты без ручного ввода</div>
+      <div className="section-label">Траты и доходы без ручного ввода</div>
       <div className="card">
         <button className="row row-btn" onClick={() => setBankSheet('notice')}>
           <span className="row-ic"><IconBuildingBank size={17} stroke={1.6} /></span>
