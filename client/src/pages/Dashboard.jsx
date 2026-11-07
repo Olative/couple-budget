@@ -68,7 +68,9 @@ export default function Dashboard({ budget, user, refreshKey, onAdd, onOpenRecap
   if (!summary || !forecast) return <div className="page">{header}</div>;
 
   const spent = Number(summary.totalSpent);
-  const income = Number(summary.totalIncome || 0);
+  const carry = Number(summary.carryOver || 0);
+  // Money left from previous months counts as this month's income (and a shortfall as a minus).
+  const income = Number(summary.totalIncome || 0) + carry;
   const planned = Number(summary.totalPlanned);
   const remaining = planned - spent;
   const forecastById = Object.fromEntries(forecast.categories.map(c => [c.id, c]));
@@ -118,10 +120,11 @@ export default function Dashboard({ budget, user, refreshKey, onAdd, onOpenRecap
         </div>
       </div>
 
-      {income > 0 ? (
-        <div className="card-pad" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 6, padding: '14px 12px' }}>
+      {income !== 0 || carry !== 0 ? (
+        <div className="card-pad" style={{ padding: '14px 12px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 6 }}>
           {[
-            ['Пришло', `+${money(income, cur)}`, 'var(--ok)'],
+            ['Пришло', `${income < 0 ? '−' : '+'}${money(Math.abs(income), cur)}`, income < 0 ? 'var(--danger)' : 'var(--ok)'],
             ['Ушло', money(spent, cur), 'var(--ink)'],
             [income - spent >= 0 ? 'Осталось' : 'Минус', money(Math.abs(income - spent), cur), income - spent >= 0 ? 'var(--ink)' : 'var(--danger)'],
           ].map(([label, value, color]) => (
@@ -130,6 +133,12 @@ export default function Dashboard({ budget, user, refreshKey, onAdd, onOpenRecap
               <div className="num" style={{ fontSize: 13, marginTop: 6, color, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{value}</div>
             </div>
           ))}
+        </div>
+        {carry !== 0 && (
+          <div className="row-sub" style={{ textAlign: 'center', marginTop: 8 }}>
+            {carry > 0 ? `в том числе ${money(carry, cur)} осталось с прошлого месяца` : `с учётом ${money(-carry, cur)}, которых не хватило в прошлом месяце`}
+          </div>
+        )}
         </div>
       ) : month === thisMonth() && (
         <button className="btn btn-secondary" style={{ padding: 12, fontSize: 14 }} onClick={() => onAdd('income')}>

@@ -173,8 +173,21 @@ router.get('/budgets/:id/summary', async (req, res) => {
 
   const totalPlanned = byCategory.reduce((sum, c) => sum + (c.planned_amount || 0), 0);
 
-  res.json({ totalSpent: totalRow.total, totalIncome: Number(incomeRow.total), totalPlanned, byCategory, byMember, month: currentMonth });
+  const carryOver = await carryOverInto(id, currentMonth);
+  res.json({ totalSpent: totalRow.total, totalIncome: Number(incomeRow.total), carryOver, totalPlanned, byCategory, byMember, month: currentMonth });
 });
+
+// What is left from earlier months: incomes minus shared spending, counted from the first month
+// that has any income (budgets that never record income have nothing to carry).
+async function carryOverInto(budgetId, month) {
+  const first = await db.prepare("SELECT MIN(substr(date, 1, 7)) as m FROM incomes WHERE budget_id = ?").get(budgetId);
+  if (!first?.m || first.m >= month) return 0;
+  const [inc, exp] = await Promise.all([
+    db.prepare('SELECT COALESCE(SUM(amount), 0) as s FROM incomes WHERE budget_id = ? AND date >= ? AND date < ?').get(budgetId, `${first.m}-01`, `${month}-01`),
+    db.prepare('SELECT COALESCE(SUM(amount), 0) as s FROM expenses WHERE budget_id = ? AND date >= ? AND date < ?').get(budgetId, `${first.m}-01`, `${month}-01`),
+  ]);
+  return Math.round((Number(inc.s) - Number(exp.s)) * 100) / 100;
+}
 
 const MONTH_RE = /^\d{4}-\d{2}$/;
 

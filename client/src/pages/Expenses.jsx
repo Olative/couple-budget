@@ -3,7 +3,7 @@ import { IconPlus, IconRepeat, IconMessageCircle, IconLock, IconPaperclip } from
 import ExpenseSheet from '../components/ExpenseSheet';
 import { api } from '../api/client';
 import { PenguinPair } from '../components/Art';
-import { money, confirmAction, incomeSource } from '../format';
+import { money, confirmAction, incomeSource, thisMonth } from '../format';
 
 function dayLabel(dateStr) {
   const d = new Date(dateStr + 'T00:00:00');
@@ -21,7 +21,8 @@ export default function Expenses({ budget, user, refreshKey, onAdd }) {
   const [who, setWho] = useState(null);
 
   const load = useCallback(() => {
-    Promise.all([api.getExpenses(budget.id), api.getIncomes(budget.id), api.getPersonal(budget.id)]).then(([ex, inc, pers]) => {
+    const month = thisMonth();
+    Promise.all([api.getExpenses(budget.id), api.getIncomes(budget.id), api.getPersonal(budget.id), api.getSummary(budget.id, month)]).then(([ex, inc, pers, sum]) => {
       const incomes = inc.map(i => {
         const s = incomeSource(i.source);
         return { ...i, kind: 'income', category_icon: s.icon, category_name: s.name };
@@ -29,7 +30,14 @@ export default function Expenses({ budget, user, refreshKey, onAdd }) {
       const personal = pers.items.map(p => ({
         ...p, kind: 'personal', category_icon: p.category_icon || '🔒', category_name: 'Личная', user_name: user.first_name,
       }));
-      setExpenses([...ex.map(e => ({ ...e, kind: 'expense' })), ...incomes, ...personal]
+      // What was left at the end of last month opens this month, on the 1st.
+      const carry = Number(sum.carryOver || 0);
+      const carried = carry ? [{
+        id: 'carry', kind: 'carry', amount: carry, date: `${month}-01`, created_at: '',
+        category_icon: carry > 0 ? '📥' : '📤', description: carry > 0 ? 'Осталось с прошлого месяца' : 'Не хватило в прошлом месяце',
+        category_name: 'перенос остатка',
+      }] : [];
+      setExpenses([...ex.map(e => ({ ...e, kind: 'expense' })), ...incomes, ...personal, ...carried]
         .sort((a, b) => b.date.localeCompare(a.date) || b.created_at.localeCompare(a.created_at)));
     });
   }, [budget.id]);
@@ -40,6 +48,7 @@ export default function Expenses({ budget, user, refreshKey, onAdd }) {
   const [openId, setOpenId] = useState(null);
 
   const open = async (e) => {
+    if (e.kind === 'carry') return;
     if (e.kind === 'expense') { setOpenId(e.id); return; }
     if (e.user_id !== user.id) return;
     if (!(await confirmAction(`Удалить «${e.description || e.category_name}» на ${money(e.amount, budget.currency)}?`))) return;
@@ -92,13 +101,14 @@ export default function Expenses({ budget, user, refreshKey, onAdd }) {
                   </div>
                   <div className="row-sub">
                     {e.kind === 'personal' && <IconLock size={11} style={{ verticalAlign: -1, marginRight: 3 }} />}
-                    {e.kind === 'personal' ? 'личная · видите только вы' : <>{e.description ? `${e.category_name} · ` : ''}{e.user_name}</>}
+                    {e.kind === 'personal' ? 'личная · видите только вы' : e.kind === 'carry' ? 'перенос остатка' : <>{e.description ? `${e.category_name} · ` : ''}{e.user_name}</>}
                     {e.reactions && <span style={{ marginLeft: 6 }}>{e.reactions}</span>}
                     {e.comment_count > 0 && <span style={{ marginLeft: 6 }}><IconMessageCircle size={11} style={{ verticalAlign: -1 }} /> {e.comment_count}</span>}
                   </div>
                 </div>
-                {e.kind === 'income'
-                  ? <span className="row-amt good">+{money(e.amount, budget.currency)}</span>
+                {e.kind === 'income' || (e.kind === 'carry' && e.amount > 0)
+                  ? <span className="row-amt good">+{money(Math.abs(e.amount), budget.currency)}</span>
+                  : e.kind === 'carry' ? <span className="row-amt warn">−{money(Math.abs(e.amount), budget.currency)}</span>
                   : <span className="row-amt">−{money(e.amount, budget.currency)}</span>}
               </div>
             ))}
