@@ -167,7 +167,7 @@ export function startBot() {
     if (!(await firstTime(msgKey(msg)))) return;
     let text = 'Всё самое важное — в приложении: нажмите кнопку «Открыть» внизу или кнопку под этим сообщением.\n\n' +
       'А траты можно записывать прямо здесь — просто напишите:\n«кофе 250», «такси 300 вчера», «+5000 подработка»\n\n' +
-      'Или перешлите SMS/уведомление банка — запишу сама. А выписку из банка (CSV или Excel) просто пришлите файлом.\n\n' +
+      'Или перешлите SMS/уведомление банка — запишу сама. А выписку из банка (PDF, Excel или CSV) просто пришлите файлом.\n\n' +
       '/start — открыть приложение\n/auto — как настроить автоматический учёт трат и доходов\n/export — выгрузить все траты в Excel\n/myid — узнать свой Telegram ID';
     if (isAdmin(msg)) {
       text += '\n\nДля администратора:\n/stats — статистика\n/broadcast текст — рассылка всем пользователям';
@@ -458,7 +458,7 @@ async function sendAutoGuide(chatId, telegramId) {
     '• «Показать больше»: метод POST, тело запроса JSON, поле text, значение «Ввод команды»\n\n' +
     `Ваша личная ссылка (никому не отправляйте):\n${link}\n\n` +
     '3️⃣ На Android то же настраивается в приложении MacroDroid — оно умеет ловить и SMS, и пуш-уведомления банка.\n\n' +
-    '4️⃣ Выписка: скачайте в банке выписку в CSV или Excel и пришлите файлом сюда — запишу все операции разом, повторы пропущу.',
+    '4️⃣ Выписка: скачайте в банке выписку в PDF, Excel или CSV и пришлите файлом сюда — запишу все операции разом, повторы пропущу.',
     { disable_web_page_preview: true, ...openButton('Открыть приложение') });
 }
 
@@ -502,7 +502,7 @@ async function handleStatement(msg) {
   try {
     const url = await bot.getFileLink(doc.file_id);
     const buf = Buffer.from(await (await fetch(url)).arrayBuffer());
-    const ops = await parseStatement(buf, doc.file_name || 'statement.csv');
+    const ops = await parseStatement(buf, doc.file_name || (doc.mime_type === 'application/pdf' ? 'statement.pdf' : 'statement.csv'));
     const s = await prepareImport(user, budget, ops);
     await bot.sendMessage(msg.chat.id, importSummary(s), {
       reply_markup: { inline_keyboard: [[{ text: `Записать ${s.count}`, callback_data: `imp:ok:${s.id}` }, { text: 'Отмена', callback_data: `imp:no:${s.id}` }]] },

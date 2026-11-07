@@ -19,7 +19,8 @@ function editLine(ed, currency) {
 }
 
 // Either of the two can fix category, amount, description or date.
-function EditForm({ budget, expense, onSaved, onCancel }) {
+function EditForm({ budget, expense, onSaved, onMoved, onCancel }) {
+  const [personal, setPersonal] = useState(false);
   const [categories, setCategories] = useState([]);
   const [categoryId, setCategoryId] = useState(expense.category_id);
   const [amount, setAmount] = useState(String(expense.amount));
@@ -33,7 +34,13 @@ function EditForm({ budget, expense, onSaved, onCancel }) {
     setSaving(true);
     setError('');
     try {
-      await api.updateExpense(expense.id, { category_id: categoryId, amount: Number(amount), description, date });
+      const data = { category_id: categoryId, amount: Number(amount), description, date };
+      if (personal) {
+        await api.expenseToPersonal(expense.id, data);
+        onMoved();
+        return;
+      }
+      await api.updateExpense(expense.id, data);
       onSaved();
     } catch (e) {
       setError(e.message);
@@ -59,6 +66,15 @@ function EditForm({ budget, expense, onSaved, onCancel }) {
       <div className="input-group">
         <input className="input" type="date" value={date} onChange={ev => setDate(ev.target.value)} />
       </div>
+      <label className="switch-row" style={{ marginBottom: 6 }}>
+        <span>
+          Личная трата
+          <span className="row-sub" style={{ display: 'block', marginTop: 2 }}>
+            {personal ? `уйдёт из общего бюджета в личные траты ${expense.user_name}; комментарии и чек не сохранятся` : 'перенести из общего бюджета в личные'}
+          </span>
+        </span>
+        <input type="checkbox" className="switch" checked={personal} onChange={ev => setPersonal(ev.target.checked)} />
+      </label>
       {error && <div className="warn" style={{ fontSize: 13, margin: '0 4px' }}>{error}</div>}
       <div className="sheet-actions">
         <button className="btn btn-secondary" onClick={onCancel}>Отмена</button>
@@ -118,7 +134,8 @@ export default function ExpenseSheet({ budget, user, expenseId, onClose, onChang
     return (
       <Sheet title="Изменить трату" onClose={onClose}>
         <EditForm budget={budget} expense={e} onCancel={() => setEditing(false)}
-          onSaved={async () => { setEditing(false); await load(); onChanged(); }} />
+          onSaved={async () => { setEditing(false); await load(); onChanged(); }}
+          onMoved={() => { onChanged(); onClose(); }} />
       </Sheet>
     );
   }

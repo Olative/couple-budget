@@ -202,11 +202,98 @@ async function readRows(buf, filename) {
     const sep = [';', ',', '\t'].sort((a, b) => sample.split(b).length - sample.split(a).length)[0];
     return lines.map(l => splitCsvLine(l, sep));
   }
-  throw new Error('Пришлите выписку в CSV или Excel (.xlsx). PDF пока не читаем');
+  throw new Error('Пришлите выписку в PDF, Excel (.xlsx) или CSV');
 }
 
 // Returns operations from a bank statement: [{ kind, amount, date, description, bankCategory }]
+// ---------- PDF statements ----------
+// A PDF has no table, only text placed on the page. Text pieces at the same height make a line; a line that
+// starts with a date and has an amount is an operation. Other lines (wrapped descriptions, merchant details)
+// belong to the nearest operation line above or below on the same page, since banks align cells differently.
+// The user sees the totals and confirms before anything is saved.
+const PDF_INCOME = /зачислен|пополнен|поступлен|возврат|кешб[эе]к|cashback|перевод от|входящ|заработн|зарплат|refund/i;
+const PDF_SKIP = /остаток|баланс на|итого|всего|оборот|дата операции|дата списания|сумма операции|^\s*(?:пополнения|расходы|списания|поступления)\s*:/i;
+const DATE_RE = /\b\d{2}\.\d{2}\.(?:\d{4}|\d{2})\b/g;
+const TIME_RE = /\b\d{1,2}:\d{2}(?::\d{2})?\b/g;
+const AMOUNT_RE = /([+\-−–]?)\s?((?:\d{1,3}(?:[ \u00a0\u202f]\d{3})+|\d+)[.,]\d{2})(?!\d)/g;
+
+async function pdfLines(buf) {
+  const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs');
+  const doc = await pdfjs.getDocument({ data: new Uint8Array(buf), isEvalSupported: false, disableFontFace: true, verbosity: 0 }).promise;
+  if (doc.numPages > 100) throw new Error('Слишком длинная выписка. Выгрузите её за месяц-два');
+  const lines = [];
+  for (let n = 1; n <= doc.numPages; n++) {
+    const page = await doc.getPage(n);
+    const rows = [];
+    for (const it of (await page.getTextContent()).items) {
+      if (!it.str?.trim()) continue;
+      const y = it.transform[5], x = it.transform[4];
+      let row = rows.find(r => Math.abs(r.y - y) < 3);
+      if (!row) rows.push(row = { y, parts: [] });
+      row.parts.push({ x, s: it.str });
+    }
+    rows.sort((a, b) => b.y - a.y);
+    for (const r of rows) lines.push({ page: n, y: r.y, text: r.parts.sort((a, b) => a.x - b.x).map(p => p.s.trim()).join('  ') });
+  }
+  await doc.destroy();
+  return lines;
+}
+
+const cleanPdfText = (text) => text
+  .replace(DATE_RE, ' ').replace(TIME_RE, ' ').replace(AMOUNT_RE, ' ')
+  .replace(/\+?\d[\d ()-]{9,}\d/g, ' ')
+  .replace(/[₽$€]|\bRUB\b|\bRUR\b|руб\.?/gi, ' ')
+  .replace(/операция по (?:карте|сч[её]ту)|\*{0,4}\d{4,}\b/gi, ' ')
+  .replace(/\b(?:RUS|RU|Moskva|Moscow|Москва)\b\.?/gi, ' ')
+  .replace(/^\s*(?:оплата в|оплата|покупка в|покупка)\s+/i, '')
+  .replace(/\s+/g, ' ').replace(/^[\s.,;:-]+|[\s.,;:-]+$/g, '').slice(0, 80);
+
+async function parsePdfStatement(buf) {
+  const lines = await pdfLines(buf);
+  if (!lines.length) throw new Error('В PDF нет текста — похоже, это скан. Скачайте выписку в банке заново или в CSV/Excel');
+  const ops = [];
+  for (const line of lines) {
+    if (PDF_SKIP.test(line.text)) { line.skip = true; continue; }
+    const date = line.text.match(/^\s*(\d{2}\.\d{2}\.(?:\d{4}|\d{2}))\b/);
+    const amounts = date ? [...line.text.replace(DATE_RE, ' ').replace(TIME_RE, ' ').matchAll(AMOUNT_RE)] : [];
+    const amount = amounts.length ? Math.abs(parseNumber(amounts[0][2])) : 0;
+    if (amount > 0) {
+      const sign = amounts[0][1];
+      line.op = { date: parseDate(date[1]), amount: Math.round(amount * 100) / 100, sign: sign === '+' ? '+' : sign ? '-' : '', parts: [line] };
+      ops.push(line.op);
+    }
+  }
+  if (!ops.length) throw new Error('Не нашла в PDF операций с датой и суммой. Попробуйте выписку в CSV или Excel');
+
+  // Attach every other line to the closest operation line on its page. A line closest to a header or totals
+  // line is a wrapped part of it and is dropped.
+  const anchors = lines.filter(l => l.op || l.skip);
+  // Above a page's first operation there are only the title and the table header, apart from a cell's first
+  // line sitting just above its own row.
+  const top = {};
+  for (const a of anchors) if (a.op && !(top[a.page] > a.y)) top[a.page] = a.y;
+  for (const line of lines) {
+    if (line.op || line.skip) continue;
+    if (top[line.page] != null && line.y > top[line.page] + 10) continue;
+    let best = null;
+    for (const a of anchors) {
+      if (a.page !== line.page) continue;
+      const d = Math.abs(a.y - line.y);
+      if (d < 28 && (!best || d < best.d)) best = { a, d };
+    }
+    if (best?.a.op) best.a.op.parts.push(line);
+  }
+
+  return ops.flatMap(op => {
+    const text = op.parts.sort((a, b) => b.y - a.y).map(l => l.text).join(' ');
+    if (/между своими|своих счетов|собственн|перевод себе/i.test(text)) return [];
+    const kind = op.sign === '+' ? 'income' : op.sign ? 'expense' : (PDF_INCOME.test(text) ? 'income' : 'expense');
+    return [{ kind, amount: op.amount, date: op.date, description: cleanPdfText(text) || null, bankCategory: null }];
+  });
+}
+
 export async function parseStatement(buf, filename) {
+  if (/\.pdf$/i.test(filename)) return parsePdfStatement(buf);
   const rows = await readRows(buf, filename);
   const headerIdx = rows.slice(0, 30).findIndex(r => {
     const h = r.map(c => norm(String(c ?? '')));

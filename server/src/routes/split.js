@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import db from '../db.js';
 import { currentMonth } from '../insights.js';
-import { textOf } from '../validate.js';
+import { amountOf, dateOf, textOf } from '../validate.js';
 import { notifyPartners, notifyUser } from '../notify.js';
 
 const router = Router();
@@ -159,6 +159,54 @@ router.put('/budgets/:id/personal-limit', async (req, res) => {
   const amount = Math.max(0, Number(req.body.amount) || 0);
   await db.prepare('UPDATE budget_members SET personal_limit = ? WHERE budget_id = ? AND user_id = ?').run(amount, req.params.id, req.userId);
   res.json({ ok: true, limit: amount });
+});
+
+// Move a shared expense into its author's personal spending, or back. Either member may do it (like editing);
+// the record keeps its author, and the author hears about it when the other member made the move.
+router.post('/expenses/:id/to-personal', async (req, res) => {
+  const e = await db.prepare('SELECT e.*, c.name as category_name FROM expenses e JOIN categories c ON c.id = e.category_id WHERE e.id = ?').get(req.params.id);
+  if (!e) return res.status(404).json({ error: 'Трата не найдена' });
+  const amount = req.body.amount != null ? amountOf(req.body.amount) : Number(e.amount);
+  if (!amount) return res.status(400).json({ error: 'Сумма должна быть больше нуля' });
+  const cat = req.body.category_id ? await db.prepare('SELECT id FROM categories WHERE id = ? AND budget_id = ?').get(req.body.category_id, e.budget_id) : null;
+  const description = req.body.description !== undefined ? textOf(req.body.description) : e.description;
+  const date = dateOf(req.body.date, e.date);
+
+  const item = await db.prepare('INSERT INTO personal_expenses (budget_id, user_id, category_id, amount, description, date) VALUES (?, ?, ?, ?, ?, ?) RETURNING id')
+    .get(e.budget_id, e.user_id, cat?.id ?? e.category_id, amount, description, date);
+  await db.batch([
+    { sql: 'DELETE FROM reactions WHERE expense_id = ?', args: [e.id] },
+    { sql: 'DELETE FROM comments WHERE expense_id = ?', args: [e.id] },
+    { sql: 'DELETE FROM receipts WHERE expense_id = ?', args: [e.id] },
+    { sql: "DELETE FROM expense_edits WHERE kind = 'expense' AND expense_id = ?", args: [e.id] },
+    { sql: 'DELETE FROM expenses WHERE id = ?', args: [e.id] },
+  ]);
+  if (e.user_id !== req.userId) {
+    notifyUser(e.user_id, `✏️ ${req.user.first_name}: трата «${e.description || e.category_name}» перенесена в ваши личные траты`).catch(() => {});
+  }
+  res.json({ ok: true, id: item.id });
+});
+
+router.post('/personal/:id/to-shared', async (req, res) => {
+  const p = await db.prepare('SELECT * FROM personal_expenses WHERE id = ?').get(req.params.id);
+  if (!p) return res.status(404).json({ error: 'Трата не найдена' });
+  const cat = await db.prepare('SELECT id, name FROM categories WHERE id = ? AND budget_id = ?').get(req.body.category_id ?? p.category_id ?? 0, p.budget_id);
+  if (!cat) return res.status(400).json({ error: 'Выберите категорию' });
+  const amount = req.body.amount != null ? amountOf(req.body.amount) : Number(p.amount);
+  if (!amount) return res.status(400).json({ error: 'Сумма должна быть больше нуля' });
+  const description = req.body.description !== undefined ? textOf(req.body.description) : p.description;
+  const date = dateOf(req.body.date, p.date);
+
+  const created = await db.prepare('INSERT INTO expenses (budget_id, category_id, user_id, amount, description, date) VALUES (?, ?, ?, ?, ?, ?) RETURNING id')
+    .get(p.budget_id, cat.id, p.user_id, amount, description, date);
+  await db.batch([
+    { sql: "DELETE FROM expense_edits WHERE kind = 'personal' AND expense_id = ?", args: [p.id] },
+    { sql: 'DELETE FROM personal_expenses WHERE id = ?', args: [p.id] },
+  ]);
+  if (p.user_id !== req.userId) {
+    notifyUser(p.user_id, `✏️ ${req.user.first_name}: ваша личная трата «${description || cat.name}» перенесена в общие`).catch(() => {});
+  }
+  res.json({ ok: true, id: created.id });
 });
 
 export default router;

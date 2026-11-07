@@ -62,7 +62,7 @@ const readAsBase64 = (file) => new Promise((resolve, reject) => {
 });
 const short = (d) => `${d.slice(8, 10)}.${d.slice(5, 7)}`;
 
-// Pick a CSV/Excel statement, see what's in it, then confirm.
+// Pick a PDF/Excel/CSV statement, see what's in it, then confirm.
 export function StatementSheet({ budget, onClose, onDone }) {
   const input = useRef(null);
   const [state, setState] = useState({ step: 'pick' });
@@ -70,6 +70,7 @@ export function StatementSheet({ budget, onClose, onDone }) {
   const pick = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (file.size > 10 * 1024 * 1024) { setState({ step: 'pick', error: 'Файл больше 10 МБ. Выгрузите выписку за месяц-два' }); return; }
     setState({ step: 'reading' });
     try {
       const summary = await api.importStatement(budget.id, { filename: file.name, data: await readAsBase64(file) });
@@ -92,10 +93,10 @@ export function StatementSheet({ budget, onClose, onDone }) {
 
   return (
     <Sheet title="Выписка из банка" onClose={onClose}>
-      <input ref={input} type="file" accept=".csv,.xlsx,text/csv" style={{ display: 'none' }} onChange={pick} />
+      <input ref={input} type="file" accept=".pdf,.csv,.xlsx,application/pdf,text/csv" style={{ display: 'none' }} onChange={pick} />
       {(state.step === 'pick' || state.step === 'reading') && (
         <div className="card-pad" style={{ fontSize: 14, lineHeight: 1.5 }}>
-          Скачайте в приложении банка выписку за нужный период в формате CSV или Excel и загрузите её сюда — все операции запишутся разом. Можно и просто отправить файл боту.
+          Скачайте в приложении банка выписку за нужный период в PDF, Excel или CSV и загрузите её сюда — все операции запишутся разом. Можно и просто отправить файл боту.
           <div className="row-sub" style={{ marginTop: 8 }}>Переводы между своими счетами и операции, которые уже есть в бюджете, пропустим. PDF пока не читаем.</div>
           {state.error && <div className="warn" style={{ fontSize: 13, marginTop: 10 }}>{state.error}</div>}
           <button className="btn" style={{ marginTop: 14 }} disabled={state.step === 'reading'} onClick={() => input.current.click()}>

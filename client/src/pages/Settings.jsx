@@ -143,7 +143,7 @@ export default function Settings({ budget, user, onBack, onBudgetUpdate, onOpenB
         </button>
         <button className="row row-btn" onClick={() => setBankSheet('statement')}>
           <span className="row-ic"><IconFileUpload size={17} stroke={1.6} /></span>
-          <div className="row-main"><div className="row-name">Загрузить выписку</div><div className="row-sub">CSV или Excel из приложения банка</div></div>
+          <div className="row-main"><div className="row-name">Загрузить выписку</div><div className="row-sub">PDF, Excel или CSV из приложения банка</div></div>
           <IconChevronRight size={16} color="var(--muted)" />
         </button>
       </div>

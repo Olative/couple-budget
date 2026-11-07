@@ -20,6 +20,7 @@ export default function OperationSheet({ budget, user, item, onClose, onChanged 
   const [description, setDescription] = useState(item.description || '');
   const [date, setDate] = useState(item.date);
   const [saving, setSaving] = useState(false);
+  const [shared, setShared] = useState(false);
   const [error, setError] = useState('');
 
   const [edits, setEdits] = useState([]);
@@ -35,6 +36,7 @@ export default function OperationSheet({ budget, user, item, onClose, onChanged 
     try {
       const data = { amount: Number(amount), description, date };
       if (income) await api.updateIncome(item.id, { ...data, source });
+      else if (shared) await api.personalToShared(item.id, { ...data, category_id: categoryId });
       else await api.updatePersonal(item.id, { ...data, category_id: categoryId });
       onChanged();
       onClose();
@@ -82,10 +84,21 @@ export default function OperationSheet({ budget, user, item, onClose, onChanged 
       <div className="input-group">
         <input className="input" type="date" value={date} onChange={e => setDate(e.target.value)} />
       </div>
+      {!income && (
+        <label className="switch-row" style={{ marginBottom: 6 }}>
+          <span>
+            Общая трата
+            <span className="row-sub" style={{ display: 'block', marginTop: 2 }}>
+              {shared ? (categoryId ? 'перейдёт из личных трат в общий бюджет' : 'выберите категорию выше') : 'перенести из личных трат в общий бюджет'}
+            </span>
+          </span>
+          <input type="checkbox" className="switch" checked={shared} onChange={e => setShared(e.target.checked)} />
+        </label>
+      )}
       {error && <div className="warn" style={{ fontSize: 13, margin: '0 4px' }}>{error}</div>}
       <div className="sheet-actions">
         <button className="btn btn-secondary" onClick={onClose}>Отмена</button>
-        <button className="btn" onClick={save} disabled={saving || !(Number(amount) > 0)}>{saving ? 'Сохраняем…' : 'Сохранить'}</button>
+        <button className="btn" onClick={save} disabled={saving || !(Number(amount) > 0) || (shared && !categoryId)}>{saving ? 'Сохраняем…' : 'Сохранить'}</button>
       </div>
       {mine && <button className="btn btn-danger" style={{ marginTop: 6 }} onClick={remove}>Удалить</button>}
     </Sheet>

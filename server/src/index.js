@@ -28,6 +28,8 @@ const app = express();
 app.disable('x-powered-by');
 const PORT = process.env.PORT || 3001;
 
+// Statement files (PDF, Excel) come as base64 and can be bigger than other requests.
+app.use('/api/budgets/:id/import', express.json({ limit: '14mb' }));
 app.use(express.json({ limit: '3mb' }));
 
 // Every database round trip to Turso costs ~150 ms, so the user row is remembered for a few minutes.
