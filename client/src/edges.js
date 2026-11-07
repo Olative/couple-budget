@@ -9,12 +9,18 @@ const centres = (length, step) => {
   return Array.from({ length: n }, (_, i) => (length / n) * (i + 0.5));
 };
 
+// Bump centres from corner to corner, so each corner is one shared bump instead of two overlapping ones.
+const span = (length, r, step) => {
+  const n = Math.max(1, Math.round((length - 2 * r) / step));
+  return Array.from({ length: n + 1 }, (_, i) => r + ((length - 2 * r) / n) * i);
+};
+
 // Inner rectangle plus a bump on every edge.
 function scallopSvg(w, h) {
   const r = 10;
   const dots = [
-    ...centres(w, STEP.scallop).flatMap(x => [[x, r], [x, h - r]]),
-    ...centres(h, STEP.scallop).flatMap(y => [[r, y], [w - r, y]]),
+    ...span(w, r, STEP.scallop).flatMap(x => [[x, r], [x, h - r]]),
+    ...span(h, r, STEP.scallop).slice(1, -1).flatMap(y => [[r, y], [w - r, y]]),
   ];
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${w * SHARP}" height="${h * SHARP}" viewBox="0 0 ${w} ${h}">`
     + `<rect x="${r}" y="${r}" width="${w - 2 * r}" height="${h - 2 * r}"/>`

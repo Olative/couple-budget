@@ -114,7 +114,8 @@ button { font-family: inherit; color: inherit; }
 }
 .scallop-in { background: var(--scallop-in); border-radius: 10px; position: relative; overflow: hidden; padding: 20px 16px 18px; text-align: center; }
 
-.stamp-wrap { filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.07)); }
+/* No shadow: on iOS the offset shadow showed through every perforation hole as a grey dot. */
+.stamp-wrap { }
 .stamp {
   /* Perforation cut by a mask; --ex/--ey from edges.js fit whole holes along each side. */
   background: #fafafa; padding: 16px; position: relative; overflow: hidden;
