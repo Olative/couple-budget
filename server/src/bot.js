@@ -19,6 +19,7 @@ function mediaVersion(file) {
 }
 const WELCOME_VERSION = mediaVersion('welcome.mp4');
 const RECAP_VERSION = mediaVersion('recap.mp4');
+const AUTO_VIDEO_VERSION = mediaVersion('auto-guide.mp4');
 
 const BOT_TOKEN = process.env.BOT_TOKEN;
 const WEB_APP_URL = process.env.WEB_APP_URL || 'https://couple-budget-z17f.onrender.com';
@@ -35,6 +36,17 @@ function broadcastButtons(text) {
   if (/\/auto\b/.test(text)) rows.unshift([AUTO_BUTTON]);
   return { reply_markup: { inline_keyboard: rows } };
 }
+
+// The setup video: sent by URL once, then by Telegram's file_id so it isn't downloaded again.
+let autoVideoId = null;
+async function sendAutoVideo(chatId, caption, extra = {}) {
+  const res = await bot.sendVideo(chatId, autoVideoId || `${WEB_APP_URL}/bot/auto-guide.mp4?v=${AUTO_VIDEO_VERSION}`,
+    { caption, supports_streaming: true, width: 1080, height: 1080, ...extra });
+  if (res?.video?.file_id) autoVideoId = res.video.file_id;
+  return res;
+}
+// Captions are limited to 1024 characters; a longer broadcast goes out as plain text.
+const withAutoVideo = (text) => /\/auto\b/.test(text) && text.length <= 1024;
 
 let bot;
 let botUsername = process.env.BOT_USERNAME || null;
@@ -216,15 +228,26 @@ export function startBot() {
     }
     const { n } = await db.prepare('SELECT COUNT(*) as n FROM users').get();
     pendingBroadcasts.set(msg.chat.id, text);
-    const buttons = /\/auto\b/.test(text) ? '[⚙️ Как настроить автоучёт]\n[Открыть Lolo & Pepe]' : '[Открыть Lolo & Pepe]';
-    await bot.sendMessage(msg.chat.id, `Так сообщение увидят пользователи (${n}):\n\n———\n${text}\n\nКнопки: ${buttons}\n———`, {
+    const confirm = {
       reply_markup: {
         inline_keyboard: [[
           { text: `Отправить всем (${n})`, callback_data: 'bc:send' },
           { text: 'Отмена', callback_data: 'bc:cancel' },
         ]],
       },
-    });
+    };
+    if (withAutoVideo(text)) {
+      // Show the real post: the video with the text under it; the user buttons are listed in the note below.
+      try {
+        await sendAutoVideo(msg.chat.id, text);
+        await bot.sendMessage(msg.chat.id, `Так пост увидят пользователи (${n}): видеоинструкция с этим текстом.\nКнопки: [⚙️ Как настроить автоучёт] [Открыть Lolo & Pepe]`, confirm);
+        return;
+      } catch (e) {
+        console.error('Auto video preview failed:', e.message);
+      }
+    }
+    const buttons = /\/auto\b/.test(text) ? '[⚙️ Как настроить автоучёт]\n[Открыть Lolo & Pepe]' : '[Открыть Lolo & Pepe]';
+    await bot.sendMessage(msg.chat.id, `Так сообщение увидят пользователи (${n}):\n\n———\n${text}\n\nКнопки: ${buttons}\n———`, confirm);
   });
 
   bot.on('callback_query', async (q) => {
@@ -249,7 +272,16 @@ export function startBot() {
     let failed = 0;
     for (const u of users) {
       try {
-        await bot.sendMessage(u.telegram_id, text, broadcastButtons(text));
+        if (withAutoVideo(text)) {
+          try {
+            await sendAutoVideo(u.telegram_id, text, broadcastButtons(text));
+          } catch (e) {
+            if (e.response?.statusCode === 403) throw e;
+            await bot.sendMessage(u.telegram_id, text, broadcastButtons(text));
+          }
+        } else {
+          await bot.sendMessage(u.telegram_id, text, broadcastButtons(text));
+        }
         sent++;
       } catch {
         failed++;
@@ -402,6 +434,7 @@ async function sendAutoGuide(chatId, telegramId) {
     return;
   }
   const link = `${WEB_APP_URL}/hook/${await hookToken(user.id)}`;
+  await sendAutoVideo(chatId, '🎬 Все способы за минуту — а ниже пошагово с вашей ссылкой').catch(e => console.error('Auto video failed:', e.message));
   await bot.sendMessage(chatId,
     '🐧 Как записывать траты и доходы без ручного ввода\n\n' +
     '1️⃣ Перешлите сюда SMS или уведомление банка — о покупке или о зачислении. Сама найду сумму и магазин и запишу трату в нужную категорию, а зарплату или перевод — в доходы. ' +
