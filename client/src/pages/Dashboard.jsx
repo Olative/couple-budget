@@ -3,6 +3,7 @@ import { IconChevronLeft, IconChevronRight, IconChevronDown, IconSettings, IconA
 import { api } from '../api/client';
 import { GridLines, Penguin, PenguinPair } from '../components/Art';
 import InviteCard from '../components/InviteCard';
+import Upcoming from '../components/Upcoming';
 import { money, MONTHS, MONTHS_GEN, MONTHS_PREP, shiftMonth, thisMonth } from '../format';
 
 function monthLabel(month) {
@@ -34,7 +35,10 @@ export default function Dashboard({ budget, user, refreshKey, onAdd, onOpenRecap
   const [personal, setPersonal] = useState(null);
   const [goals, setGoals] = useState([]);
 
+  const [rules, setRules] = useState([]);
+
   useEffect(() => { api.getSavings(budget.id).then(setGoals); }, [budget.id, refreshKey]);
+  useEffect(() => { api.getRecurring(budget.id).then(setRules); }, [budget.id, refreshKey]);
 
   useEffect(() => {
     Promise.all([
@@ -145,6 +149,8 @@ export default function Dashboard({ budget, user, refreshKey, onAdd, onOpenRecap
           <IconPlus size={16} stroke={1.6} /> Добавить доход
         </button>
       )}
+
+      {month === thisMonth() && <Upcoming rules={rules} currency={cur} />}
 
       {members.length > 0 && (
         <div data-tour="members" style={{ display: 'grid', gridTemplateColumns: members.length > 1 ? '1fr 1fr' : '1fr', gap: 8 }}>
