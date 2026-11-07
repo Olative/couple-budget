@@ -12,9 +12,12 @@ function monthLabel(month) {
   return month.slice(0, 4) === thisMonth().slice(0, 4) ? name : `${name} ${month.slice(2, 4)}`;
 }
 
+// Where the month is heading at the current pace (plus recurring payments still to come). Hidden in the
+// first two days, when one purchase would swing it wildly.
 function ForecastLine({ forecast, currency }) {
-  if (!forecast.isCurrent || forecast.spent === 0) return null;
-  const { projected, planned } = forecast;
+  if (!forecast.isCurrent || forecast.spent === 0 || forecast.day < 3) return null;
+  const { planned } = forecast;
+  const projected = Math.round(forecast.projected / 100) * 100;
   let status = null;
   if (planned > 0) {
     const diff = projected - planned;
@@ -24,7 +27,7 @@ function ForecastLine({ forecast, currency }) {
   }
   return (
     <div style={{ fontSize: 12, marginTop: 12, fontWeight: 300, opacity: 0.85 }}>
-      Прогноз на конец месяца: {money(projected, currency)}{status && <> · {status}</>}
+      Если тратить так же, к концу месяца уйдёт ≈ {money(projected, currency)}{status && <> · {status}</>}
     </div>
   );
 }
