@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import db from '../db.js';
+import { amountOf, dateOf, textOf } from '../validate.js';
 import { goalEta, currentMonth } from '../insights.js';
 
 const router = Router();
@@ -23,10 +24,9 @@ router.get('/budgets/:budgetId/savings', async (req, res) => {
 });
 
 router.post('/budgets/:budgetId/savings', async (req, res) => {
-  const { name, target_amount, icon, deadline, monthly_plan } = req.body;
-  if (!name || !target_amount) {
-    return res.status(400).json({ error: 'name and target_amount required' });
-  }
+  const { icon, deadline, monthly_plan } = req.body;
+  const name = textOf(req.body.name, 60), target_amount = amountOf(req.body.target_amount);
+  if (!name || !target_amount) return res.status(400).json({ error: 'Введите название и сумму цели' });
 
   const result = await db.prepare('INSERT INTO savings_goals (budget_id, name, target_amount, icon, deadline, monthly_plan) VALUES (?, ?, ?, ?, ?, ?) RETURNING *')
     .get(req.params.budgetId, name, target_amount, icon || '🎯', deadline || null, Math.max(0, Number(monthly_plan) || 0));
@@ -34,7 +34,8 @@ router.post('/budgets/:budgetId/savings', async (req, res) => {
 });
 
 router.put('/savings/:id', async (req, res) => {
-  const { name, target_amount, deadline, monthly_plan } = req.body;
+  const { target_amount, deadline, monthly_plan } = req.body;
+  const name = textOf(req.body.name, 60);
   await db.prepare(`
     UPDATE savings_goals SET name = COALESCE(?, name), target_amount = COALESCE(?, target_amount),
       deadline = ?, monthly_plan = ? WHERE id = ?
@@ -43,9 +44,9 @@ router.put('/savings/:id', async (req, res) => {
 });
 
 router.post('/savings/:goalId/contribute', async (req, res) => {
-  const { amount } = req.body;
+  const amount = amountOf(req.body.amount);
   const userId = req.userId;
-  if (!amount || amount <= 0) {
+  if (!amount) {
     return res.status(400).json({ error: 'Positive amount required' });
   }
 

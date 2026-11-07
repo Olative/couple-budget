@@ -2,6 +2,7 @@ import { Router } from 'express';
 import db from '../db.js';
 import { materializeRecurring } from '../insights.js';
 import { onExpenseAdded, notifyUser } from '../notify.js';
+import { amountOf, dateOf, textOf } from '../validate.js';
 import { learnMerchant } from '../importer.js';
 
 const router = Router();
@@ -43,16 +44,16 @@ router.get('/budgets/:budgetId/expenses', async (req, res) => {
 
 router.post('/budgets/:budgetId/expenses', async (req, res) => {
   const { budgetId } = req.params;
-  const { category_id, amount, description, date } = req.body;
   const userId = req.userId;
-
-  if (!category_id || !amount || amount <= 0) {
-    return res.status(400).json({ error: 'category_id and positive amount required' });
-  }
+  const amount = amountOf(req.body.amount);
+  if (!amount) return res.status(400).json({ error: 'Введите сумму больше нуля' });
+  const cat = await db.prepare('SELECT id FROM categories WHERE id = ? AND budget_id = ?').get(req.body.category_id, budgetId);
+  if (!cat) return res.status(400).json({ error: 'Выберите категорию' });
+  const category_id = cat.id, description = textOf(req.body.description), date = dateOf(req.body.date);
 
   const result = await db.prepare(
     'INSERT INTO expenses (budget_id, category_id, user_id, amount, description, date) VALUES (?, ?, ?, ?, ?, ?) RETURNING *'
-  ).get(budgetId, category_id, userId, amount, description || null, date || new Date().toISOString().slice(0, 10));
+  ).get(budgetId, category_id, userId, amount, description, date);
   res.json(result);
   onExpenseAdded(result, req.user).catch(e => console.error('Expense notify failed:', e.message));
 });
@@ -84,7 +85,7 @@ router.put('/expenses/:id', async (req, res) => {
     if (amount !== Number(e.amount)) { next.amount = amount; changes.push(['amount', String(e.amount), String(amount)]); }
   }
   if (req.body.description !== undefined) {
-    const d = (req.body.description || '').trim() || null;
+    const d = textOf(req.body.description);
     if (d !== e.description) { next.description = d; changes.push(['description', e.description || '', d || '']); }
   }
   if (req.body.date && /^\d{4}-\d{2}-\d{2}$/.test(req.body.date) && req.body.date !== e.date) {

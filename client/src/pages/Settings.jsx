@@ -6,6 +6,7 @@ import InviteCard from '../components/InviteCard';
 import Sheet from '../components/Sheet';
 import { BankNoticeSheet, StatementSheet } from '../components/BankSheets';
 import { getThemePref, setThemePref } from '../theme';
+import { openDoc } from '../components/Legal';
 
 const DEFAULT_NAME = 'Наш бюджет';
 
@@ -18,6 +19,22 @@ export default function Settings({ budget, user, onBack, onBudgetUpdate, onOpenB
   const [resetOpen, setResetOpen] = useState(false);
   const [removePartner, setRemovePartner] = useState(false);
   const [resetting, setResetting] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [contact, setContact] = useState('');
+  useEffect(() => { api.getLegal().then(l => setContact(l.email)).catch(() => {}); }, []);
+
+  const deleteAccount = async () => {
+    setDeleting(true);
+    try {
+      await api.deleteAccount();
+      const tg = window.Telegram?.WebApp;
+      if (tg?.close && tg.platform !== 'unknown') tg.close();
+      else window.location.reload();
+    } catch {
+      setDeleting(false);
+    }
+  };
 
   const reset = async () => {
     setResetting(true);
@@ -202,6 +219,30 @@ export default function Settings({ budget, user, onBack, onBudgetUpdate, onOpenB
       </button>
 
       <button className="btn btn-danger" onClick={() => { setRemovePartner(false); setResetOpen(true); }}>Очистить бюджет</button>
+
+      <div className="section-label">О приложении</div>
+      <div className="card">
+        <button className="row row-btn" onClick={() => openDoc('privacy')}><div className="row-main"><div className="row-name">Политика конфиденциальности</div></div><IconChevronRight size={16} stroke={1.6} className="muted" /></button>
+        <button className="row row-btn" onClick={() => openDoc('terms')}><div className="row-main"><div className="row-name">Пользовательское соглашение</div></div><IconChevronRight size={16} stroke={1.6} className="muted" /></button>
+        {contact && <div className="row"><div className="row-main"><div className="row-name">Поддержка</div></div><span className="row-sub" style={{ userSelect: 'text', WebkitUserSelect: 'text' }}>{contact}</span></div>}
+      </div>
+      <button className="btn btn-danger" onClick={() => setDeleteOpen(true)}>Удалить аккаунт и данные</button>
+
+      {deleteOpen && (
+        <Sheet title="Удалить аккаунт?" onClose={() => setDeleteOpen(false)}>
+          <div className="card-pad" style={{ fontSize: 14, lineHeight: 1.45, fontWeight: 300 }}>
+            Удалятся ваши доходы, личные траты, комментарии, фото чеков, настройки и личная ссылка для SMS. Бюджеты, где вы одни, удалятся целиком.
+            {partner && <div style={{ marginTop: 8 }}>В общем бюджете у {partner.first_name} останутся общие траты и копилка — без вашего имени.</div>}
+            <div className="warn" style={{ marginTop: 8 }}>Вернуть удалённое не получится. Если нужна копия — сначала «Выгрузить в Excel».</div>
+          </div>
+          <div className="sheet-actions">
+            <button className="btn btn-secondary" onClick={() => setDeleteOpen(false)}>Отмена</button>
+            <button className="btn" style={{ background: 'var(--danger)', color: '#fff' }} disabled={deleting} onClick={deleteAccount}>
+              {deleting ? 'Удаляем…' : 'Удалить'}
+            </button>
+          </div>
+        </Sheet>
+      )}
 
       {resetOpen && (
         <Sheet title="Очистить бюджет?" onClose={() => setResetOpen(false)}>

@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
+import { Consent } from './Legal';
 import SpriteAnim, { ANIMS } from './SpriteAnim';
 
 // First-run walkthrough: a few slides with dancing penguins, shown once per user.
@@ -45,7 +46,7 @@ function slides(joined) {
   ];
 }
 
-export default function Tutorial({ joined, onDone }) {
+export default function Tutorial({ first = false,  joined, onDone }) {
   const list = slides(joined);
   const [i, setI] = useState(0);
   const s = list[i];
@@ -82,6 +83,7 @@ export default function Tutorial({ joined, onDone }) {
       <button className="btn" style={{ maxWidth: 360 }} onClick={() => (last ? onDone() : setI(i + 1))}>
         {last ? 'Начать' : 'Дальше'}
       </button>
+      {first && <Consent style={{ marginTop: 10 }} />}
     </div>,
     document.body
   );

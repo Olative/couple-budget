@@ -4,6 +4,7 @@ import crypto from 'crypto';
 import db from '../db.js';
 import { buildForecast, buildRecap, currentMonth, shiftMonth, materializeRecurring } from '../insights.js';
 import { inviteLink } from '../bot.js';
+import { textOf } from '../validate.js';
 import { notifyPartners } from '../notify.js';
 
 const router = Router();
@@ -22,7 +23,7 @@ const DEFAULT_CATEGORIES = [
 ];
 
 router.post('/budgets', async (req, res) => {
-  const { name, currency } = req.body;
+  const name = textOf(req.body.name, 60), currency = textOf(req.body.currency, 8);
   const userId = req.userId;
   const id = uuidv4();
   const inviteCode = crypto.randomBytes(6).toString('hex');
@@ -83,7 +84,7 @@ router.get('/budgets/:id', async (req, res) => {
   if (!budget) return res.status(404).json({ error: 'Not found' });
 
   const [members, categories] = await Promise.all([
-    db.prepare('SELECT u.*, bm.role FROM users u JOIN budget_members bm ON u.id = bm.user_id WHERE bm.budget_id = ?').all(budget.id),
+    db.prepare('SELECT u.id, u.first_name, u.username, bm.role FROM users u JOIN budget_members bm ON u.id = bm.user_id WHERE bm.budget_id = ?').all(budget.id),
     db.prepare('SELECT * FROM categories WHERE budget_id = ? ORDER BY sort_order').all(budget.id),
   ]);
 
@@ -91,7 +92,7 @@ router.get('/budgets/:id', async (req, res) => {
 });
 
 router.put('/budgets/:id', async (req, res) => {
-  const { currency, name } = req.body;
+  const name = textOf(req.body.name, 60), currency = textOf(req.body.currency, 8);
   const budget = await db.prepare('SELECT * FROM budgets WHERE id = ?').get(req.params.id);
   if (!budget) return res.status(404).json({ error: 'Not found' });
 

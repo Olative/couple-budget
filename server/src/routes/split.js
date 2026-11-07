@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import db from '../db.js';
 import { currentMonth } from '../insights.js';
+import { textOf } from '../validate.js';
 import { notifyPartners, notifyUser } from '../notify.js';
 
 const router = Router();
@@ -96,7 +97,7 @@ router.post('/budgets/:id/personal', async (req, res) => {
   if (!(await memberOf(req.params.id, req.userId))) return res.status(403).json({ error: 'Нет доступа' });
   const item = await db.prepare(
     'INSERT INTO personal_expenses (budget_id, user_id, category_id, amount, description, date) VALUES (?, ?, ?, ?, ?, ?) RETURNING *'
-  ).get(req.params.id, req.userId, req.body.category_id || null, amount, req.body.description || null,
+  ).get(req.params.id, req.userId, (await db.prepare('SELECT id FROM categories WHERE id = ? AND budget_id = ?').get(req.body.category_id || 0, req.params.id))?.id || null, amount, textOf(req.body.description),
     /^\d{4}-\d{2}-\d{2}$/.test(req.body.date || '') ? req.body.date : new Date().toISOString().slice(0, 10));
   res.json(item);
 });
@@ -110,7 +111,7 @@ router.put('/personal/:id', async (req, res) => {
   if (!item || !(await memberOf(item.budget_id, req.userId))) return res.status(404).json({ error: 'Not found' });
   const amount = req.body.amount != null ? Number(req.body.amount) : Number(item.amount);
   if (!(amount > 0)) return res.status(400).json({ error: 'Сумма должна быть больше нуля' });
-  const description = req.body.description !== undefined ? ((req.body.description || '').trim() || null) : item.description;
+  const description = req.body.description !== undefined ? textOf(req.body.description) : item.description;
   const date = /^\d{4}-\d{2}-\d{2}$/.test(req.body.date || '') ? req.body.date : item.date;
   const categoryId = req.body.category_id !== undefined ? (req.body.category_id || null) : item.category_id;
   const cat = categoryId ? await db.prepare('SELECT name FROM categories WHERE id = ? AND budget_id = ?').get(categoryId, item.budget_id) : null;

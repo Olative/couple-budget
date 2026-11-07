@@ -1,5 +1,24 @@
 // Turning bank texts into budget records: SMS / push notifications and exported statements (CSV, Excel).
 import ExcelJS from 'exceljs';
+
+// An .xlsx is a zip; a tiny file can unpack into gigabytes. The zip's own table of contents lists the
+// unpacked sizes, so add them up before opening it. Unreadable tables count as too big.
+function unzippedSize(buf) {
+  for (let i = buf.length - 22; i >= Math.max(0, buf.length - 65557); i--) {
+    if (buf.readUInt32LE(i) !== 0x06054b50) continue;
+    const entries = buf.readUInt16LE(i + 10);
+    let p = buf.readUInt32LE(i + 16), total = 0;
+    for (let n = 0; n < entries; n++) {
+      if (p + 46 > buf.length || buf.readUInt32LE(p) !== 0x02014b50) return Infinity;
+      const size = buf.readUInt32LE(p + 24);
+      if (size === 0xffffffff) return Infinity;
+      total += size;
+      p += 46 + buf.readUInt16LE(p + 28) + buf.readUInt16LE(p + 30) + buf.readUInt16LE(p + 32);
+    }
+    return total;
+  }
+  return Infinity;
+}
 import { CATEGORY_HINTS } from './quickadd.js';
 
 // Latin merchant names as banks print them, and bank category names, mapped to our default categories.
@@ -166,6 +185,7 @@ function decodeText(buf) {
 
 async function readRows(buf, filename) {
   if (/\.xlsx$/i.test(filename)) {
+    if (unzippedSize(buf) > 40 * 1024 * 1024) throw new Error('Файл слишком большой. Выгрузите выписку за месяц-два');
     const wb = new ExcelJS.Workbook();
     await wb.xlsx.load(buf);
     const ws = wb.worksheets[0];

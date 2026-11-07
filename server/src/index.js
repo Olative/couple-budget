@@ -1,6 +1,5 @@
 import 'dotenv/config';
 import express from 'express';
-import cors from 'cors';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import db, { dbKind } from './db.js';
@@ -16,15 +15,19 @@ import splitRoutes from './routes/split.js';
 import fileRoutes from './routes/files.js';
 import bankRoutes from './routes/bank.js';
 import { startBot, recordBankText } from './bot.js';
+import { telegramUserFromInitData, devMode } from './telegramAuth.js';
+import { legalPage, CONTACT_EMAIL } from './legal.js';
+import { accessGuard } from './access.js';
+import accountRoutes, { setUserCacheReset } from './routes/account.js';
 
 // Bot handlers are async; a failure in one must not take the whole server down.
 process.on('unhandledRejection', (e) => console.error('Unhandled rejection:', e));
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const app = express();
+app.disable('x-powered-by');
 const PORT = process.env.PORT || 3001;
 
-app.use(cors());
 app.use(express.json({ limit: '3mb' }));
 
 // Every database round trip to Turso costs ~150 ms, so the user row is remembered for a few minutes.
@@ -32,7 +35,9 @@ const userCache = new Map();
 const USER_TTL_MS = 5 * 60 * 1000;
 
 async function authMiddleware(req, res, next) {
-  const telegramId = Number(req.headers['x-telegram-user-id']);
+  const telegramId = devMode()
+    ? Number(req.headers['x-telegram-user-id'])
+    : telegramUserFromInitData(req.headers['x-telegram-init-data'], process.env.BOT_TOKEN)?.id;
   if (!telegramId) {
     return res.status(401).json({ error: 'Not authenticated' });
   }
@@ -62,16 +67,19 @@ app.post('/hook/:token', express.text({ type: 'text/*', limit: '20kb' }), async 
   res.json(await recordBankText(user.telegram_id, String(text).slice(0, 600)));
 });
 app.use('/api', authRoutes);
-app.use('/api', authMiddleware, budgetRoutes);
-app.use('/api', authMiddleware, expenseRoutes);
-app.use('/api', authMiddleware, categoryRoutes);
-app.use('/api', authMiddleware, savingsRoutes);
-app.use('/api', authMiddleware, incomeRoutes);
-app.use('/api', authMiddleware, recurringRoutes);
-app.use('/api', authMiddleware, socialRoutes);
-app.use('/api', authMiddleware, splitRoutes);
-app.use('/api', authMiddleware, fileRoutes);
-app.use('/api', authMiddleware, bankRoutes);
+app.use('/api', authMiddleware, accessGuard);
+app.use('/api', budgetRoutes);
+app.use('/api', expenseRoutes);
+app.use('/api', categoryRoutes);
+app.use('/api', savingsRoutes);
+app.use('/api', incomeRoutes);
+app.use('/api', recurringRoutes);
+app.use('/api', socialRoutes);
+app.use('/api', splitRoutes);
+app.use('/api', fileRoutes);
+app.use('/api', bankRoutes);
+app.use('/api', accountRoutes);
+setUserCacheReset((telegramId) => userCache.delete(telegramId));
 
 app.use((err, req, res, next) => {
   console.error('Unhandled error:', err);
@@ -79,6 +87,9 @@ app.use((err, req, res, next) => {
 });
 
 // Built files have content hashes in their names, so phones may keep them for good.
+// Legal pages, readable without opening the app.
+app.get(['/privacy', '/terms'], (req, res) => res.type('html').send(legalPage(req.path.slice(1), req.query.lang)));
+app.get('/api/legal', (req, res) => res.json({ email: CONTACT_EMAIL.includes('@') ? CONTACT_EMAIL : '' }));
 app.use('/assets', express.static(join(__dirname, '..', 'public', 'assets'), { immutable: true, maxAge: '1y' }));
 app.use(express.static(join(__dirname, '..', 'public')));
 app.get('*', (req, res) => {

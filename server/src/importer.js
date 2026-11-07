@@ -50,6 +50,8 @@ export async function prepareImport(user, budget, ops) {
 export async function commitImport(importId, userId) {
   const imp = await db.prepare('SELECT * FROM imports WHERE id = ? AND user_id = ?').get(importId, userId);
   if (!imp) throw new Error('Загрузка не найдена, отправьте выписку ещё раз');
+  const member = await db.prepare('SELECT 1 FROM budget_members WHERE budget_id = ? AND user_id = ?').get(imp.budget_id, userId);
+  if (!member) throw new Error('Вы больше не участник этого бюджета');
   const claimed = await db.prepare('UPDATE imports SET done = 1 WHERE id = ? AND done = 0').run(importId);
   if (!claimed.rowsAffected) return { added: 0, skipped: 0, already: true };
   const ops = JSON.parse(imp.payload);

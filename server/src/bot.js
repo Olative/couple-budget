@@ -8,6 +8,7 @@ import { recordNotice, prepareImport, commitImport, learnMerchant, hookToken } f
 import { buildExport } from './routes/files.js';
 import { readFileSync } from 'fs';
 import { createHash } from 'crypto';
+import { CONTACT_EMAIL } from './legal.js';
 
 // Telegram caches media by URL, so a replaced clip needs a new URL to show up.
 function mediaVersion(file) {
@@ -175,6 +176,7 @@ export function startBot() {
   });
 
   bot.onText(/^\/auto/, async (msg) => {
+    if (msg.chat.type !== 'private') return;
     if (!(await firstTime(msgKey(msg)))) return;
     await sendAutoGuide(msg.chat.id, msg.from.id);
   });
@@ -183,11 +185,11 @@ export function startBot() {
     if (q.data !== 'auto:show') return;
     if (!(await firstTime(`cb:${q.id}`))) return;
     await bot.answerCallbackQuery(q.id).catch(() => {});
-    sendAutoGuide(q.message.chat.id, q.from.id).catch(e => console.error('Auto guide failed:', e));
+    sendAutoGuide(q.from.id, q.from.id).catch(e => console.error('Auto guide failed:', e));
   });
 
   bot.onText(/^\/export/, async (msg) => {
-    if (!(await firstTime(msgKey(msg)))) return;
+    if (msg.chat.type !== 'private' || !(await firstTime(msgKey(msg)))) return;
     const { user, budget } = await quickAddContext(msg.from.id);
     if (!user || !budget) {
       await bot.sendMessage(msg.chat.id, 'Пока нечего выгружать — сначала создайте бюджет в приложении.', openButton());
@@ -195,6 +197,16 @@ export function startBot() {
     }
     const file = await buildExport(budget.id, user.id);
     await sendDocumentToUser(msg.chat.id, file, `📊 Все траты и доходы — ${file.count} записей. Файл открывается в Excel и Google Таблицах.`);
+  });
+
+  // Telegram shows /privacy in the bot profile; the answer links to the documents.
+  bot.onText(/^\/(privacy|terms)/, async (msg) => {
+    await bot.sendMessage(msg.chat.id,
+      `Политика конфиденциальности: ${WEB_APP_URL}/privacy\nПользовательское соглашение: ${WEB_APP_URL}/terms\n\n` +
+      `Privacy Policy: ${WEB_APP_URL}/privacy?lang=en\nTerms of Use: ${WEB_APP_URL}/terms?lang=en\n\n` +
+      `Вопросы и удаление данных / Questions and data deletion: ${CONTACT_EMAIL}\n` +
+      'Удалить аккаунт можно и в приложении: Настройки → Удалить аккаунт и данные.',
+      { disable_web_page_preview: true });
   });
 
   bot.onText(/^\/myid/, async (msg) => {

@@ -1,6 +1,9 @@
 const API_BASE = '/api';
 
 let telegramUserId = null;
+// Telegram's signed launch data; the server checks it on every request.
+const initData = window.Telegram?.WebApp?.initData || '';
+const authHeaders = () => ({ 'X-Telegram-User-Id': telegramUserId, 'X-Telegram-Init-Data': initData });
 
 export function setTelegramUserId(id) {
   telegramUserId = id;
@@ -11,7 +14,7 @@ async function request(path, options = {}) {
     ...options,
     headers: {
       'Content-Type': 'application/json',
-      'X-Telegram-User-Id': telegramUserId,
+      ...authHeaders(),
       ...options.headers,
     },
   });
@@ -23,7 +26,7 @@ async function request(path, options = {}) {
 }
 
 export async function fetchReceiptUrl(expenseId) {
-  const res = await fetch(`${API_BASE}/expenses/${expenseId}/receipt`, { headers: { 'X-Telegram-User-Id': telegramUserId } });
+  const res = await fetch(`${API_BASE}/expenses/${expenseId}/receipt`, { headers: authHeaders() });
   if (!res.ok) return null;
   return URL.createObjectURL(await res.blob());
 }
@@ -70,6 +73,8 @@ export const api = {
   resetHook: () => request('/me/hook/reset', { method: 'POST' }),
   importStatement: (budgetId, data) => request(`/budgets/${budgetId}/import`, { method: 'POST', body: JSON.stringify(data) }),
   commitImport: (id) => request(`/imports/${id}/commit`, { method: 'POST' }),
+  deleteAccount: () => request('/me', { method: 'DELETE' }),
+  getLegal: () => request('/legal'),
   resetBudget: (budgetId, removePartner) => request(`/budgets/${budgetId}/reset`, { method: 'POST', body: JSON.stringify({ remove_partner: removePartner }) }),
   setActiveBudget: (budgetId) => request('/me/active-budget', { method: 'PUT', body: JSON.stringify({ budget_id: budgetId }) }),
   setTutorialDone: (done) => request('/me/tutorial', { method: 'PUT', body: JSON.stringify({ done }) }),

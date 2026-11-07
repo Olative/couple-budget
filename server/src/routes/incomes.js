@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import db from '../db.js';
+import { amountOf, dateOf, textOf } from '../validate.js';
 import { materializeRecurring } from '../insights.js';
 
 const router = Router();
@@ -24,13 +25,13 @@ router.get('/budgets/:budgetId/incomes', async (req, res) => {
 });
 
 router.post('/budgets/:budgetId/incomes', async (req, res) => {
-  const { amount, description, date } = req.body;
+  const amount = amountOf(req.body.amount), description = textOf(req.body.description), date = dateOf(req.body.date);
   const source = INCOME_SOURCES.includes(req.body.source) ? req.body.source : 'other';
-  if (!amount || amount <= 0) return res.status(400).json({ error: 'Введите сумму больше нуля' });
+  if (!amount) return res.status(400).json({ error: 'Введите сумму больше нуля' });
 
   const income = await db.prepare(
     'INSERT INTO incomes (budget_id, user_id, amount, source, description, date) VALUES (?, ?, ?, ?, ?, ?) RETURNING *'
-  ).get(req.params.budgetId, req.userId, amount, source, description || null, date || new Date().toISOString().slice(0, 10));
+  ).get(req.params.budgetId, req.userId, amount, source, description, date);
   res.json(income);
 });
 
@@ -41,7 +42,7 @@ router.put('/incomes/:id', async (req, res) => {
   const amount = req.body.amount != null ? Number(req.body.amount) : Number(income.amount);
   if (!(amount > 0)) return res.status(400).json({ error: 'Сумма должна быть больше нуля' });
   const source = INCOME_SOURCES.includes(req.body.source) ? req.body.source : income.source;
-  const description = req.body.description !== undefined ? ((req.body.description || '').trim() || null) : income.description;
+  const description = req.body.description !== undefined ? textOf(req.body.description) : income.description;
   const date = /^\d{4}-\d{2}-\d{2}$/.test(req.body.date || '') ? req.body.date : income.date;
   res.json(await db.prepare('UPDATE incomes SET amount = ?, source = ?, description = ?, date = ? WHERE id = ? RETURNING *')
     .get(amount, source, description, date, income.id));

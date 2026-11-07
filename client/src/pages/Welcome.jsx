@@ -4,6 +4,7 @@ import { api } from '../api/client';
 import CurrencyPicker from '../components/CurrencyPicker';
 import Sheet from '../components/Sheet';
 import { ArcTitle, GridLines, PenguinPair } from '../components/Art';
+import { Consent } from '../components/Legal';
 
 export default function Welcome({ onReady }) {
   const [creating, setCreating] = useState(false);
@@ -45,6 +46,7 @@ export default function Welcome({ onReady }) {
         <div className="row-sub" style={{ textAlign: 'center', fontSize: 12, padding: '0 24px' }}>
           Вас уже позвали в бюджет? Откройте ссылку-приглашение
         </div>
+        <Consent style={{ marginTop: 4 }} />
       </div>
 
       {creating && (

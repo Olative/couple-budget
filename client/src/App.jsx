@@ -123,6 +123,7 @@ export default function App() {
     window.scrollTo(0, 0);
     setTimeout(() => setShowTour(true), 300);
     api.setTutorialDone(true).catch(() => {});
+    setUser(u => (u ? { ...u, tutorial_done: 1 } : u));
   };
 
   if (loading) return null;
@@ -175,7 +176,7 @@ export default function App() {
 
       {showBudgets && <BudgetSheet current={activeBudget} onPick={switchBudget} onClose={() => setShowBudgets(false)} />}
 
-      {showTutorial && <Tutorial joined={!!initialJoin} onDone={finishTutorial} />}
+      {showTutorial && <Tutorial first={!user?.tutorial_done} joined={!!initialJoin} onDone={finishTutorial} />}
 
       {showTour && <Tour onDone={closeTour} />}
 
