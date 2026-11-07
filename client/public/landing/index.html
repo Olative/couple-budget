@@ -1,0 +1,702 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Lolo &amp; Pepe — бюджет на двоих в Telegram</title>
+<meta name="description" content="Общий бюджет на двоих прямо в Telegram: оба видят траты и остаток в реальном времени, лимиты по категориям, копилка, регулярные платежи и автоучёт из SMS банка и выписок. Бесплатно.">
+<meta name="theme-color" content="#ececec">
+<meta property="og:type" content="website">
+<meta property="og:locale" content="ru_RU">
+<meta property="og:site_name" content="Lolo &amp; Pepe">
+<meta property="og:title" content="Lolo &amp; Pepe — бюджет на двоих в Telegram">
+<meta property="og:description" content="Общие траты, лимиты и копилка. Оба видят остаток в реальном времени. Трату можно записать за 3 секунды или просто написать боту «кофе 300».">
+<meta property="og:image" content="/landing/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" type="image/png" href="/landing/favicon.png">
+<link rel="apple-touch-icon" href="/landing/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@300;400&display=swap">
+<style>
+:root {
+  --bg: #ececec;
+  --surface: #ffffff;
+  --surface-2: #f4f4f4;
+  --ink: #111111;
+  --ink-2: #444444;
+  --muted: #6b6b6b;
+  --line: #e2e2e2;
+  --blue: #5fa9ee;
+  --blue-ink: #2a7fd0;
+  --blue-grad: radial-gradient(110% 80% at 50% 45%, #f2f8ff 0%, #b3d7fd 42%, #5fa9ee 100%);
+  --blue-grad-soft: radial-gradient(120% 100% at 30% 20%, #e8f3ff, #8cc2f7 70%, #5fa9ee);
+  --sage: #93a891;
+  --sand: #d9cbb4;
+  --display: 'Unbounded', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --body: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --wrap: 1180px;
+  color-scheme: light;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; overflow-x: clip; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+body {
+  font-family: var(--body); background: var(--bg); color: var(--ink);
+  font-size: 17px; line-height: 1.5; -webkit-font-smoothing: antialiased; overflow-x: hidden;
+}
+img, video, canvas, svg { display: block; max-width: 100%; }
+a { color: inherit; }
+:focus-visible { outline: 2px solid var(--blue-ink); outline-offset: 3px; border-radius: 6px; }
+.wrap { width: 100%; max-width: var(--wrap); margin: 0 auto; padding: 0 16px; }
+@media (min-width: 768px) { .wrap { padding: 0 32px; } }
+.skip { position: absolute; left: -9999px; top: 8px; background: var(--ink); color: #fff; padding: 8px 14px; border-radius: 99px; z-index: 100; }
+.skip:focus { left: 8px; }
+
+/* Type */
+.label { font-family: var(--display); font-weight: 400; font-size: 11px; letter-spacing: .18em; text-transform: uppercase; }
+.h1 { font-family: var(--display); font-weight: 300; font-size: clamp(34px, 9vw, 72px); line-height: 1.04; letter-spacing: -.02em; }
+.h2 { font-family: var(--display); font-weight: 300; font-size: clamp(28px, 6.4vw, 48px); line-height: 1.1; letter-spacing: -.015em; }
+.h3 { font-size: 19px; font-weight: 600; line-height: 1.3; letter-spacing: -.005em; }
+.lead { font-size: clamp(17px, 2.2vw, 20px); color: var(--ink-2); line-height: 1.5; }
+.blue { color: var(--blue-ink); }
+.num { font-family: var(--display); font-weight: 300; font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
+.section { padding: 72px 0; scroll-margin-top: 64px; }
+#top { scroll-margin-top: 64px; }
+@media (min-width: 900px) { .section { padding: 112px 0; } }
+.sec-head { max-width: 720px; margin-bottom: 36px; }
+.sec-head .label { color: var(--muted); display: block; margin-bottom: 14px; }
+.sec-head p { margin-top: 14px; }
+
+/* Buttons */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+  min-height: 54px; padding: 0 26px; border-radius: 999px; border: 0; cursor: pointer;
+  font: 600 17px/1 var(--body); text-decoration: none; transition: transform .15s ease, background .15s ease;
+}
+.btn:active { transform: scale(.97); }
+.btn-ink { background: var(--ink); color: #fff; }
+.btn-ink:hover { background: #2a2a2a; }
+.btn-white { background: #fff; color: var(--ink); }
+.btn-white:hover { background: #f1f1f1; }
+.btn-ghost { background: transparent; color: var(--ink); box-shadow: inset 0 0 0 1.5px rgba(17,17,17,.18); }
+.btn-ghost:hover { box-shadow: inset 0 0 0 1.5px var(--ink); }
+.btn svg { width: 22px; height: 22px; flex: none; }
+
+/* Header */
+.top { position: sticky; top: 0; z-index: 20; background: rgba(236,236,236,.82); -webkit-backdrop-filter: saturate(1.4) blur(14px); backdrop-filter: saturate(1.4) blur(14px); }
+.top .wrap { display: flex; align-items: center; justify-content: space-between; height: 64px; gap: 12px; }
+.brand { display: flex; align-items: center; gap: 10px; text-decoration: none; font-family: var(--display); font-weight: 400; font-size: 15px; white-space: nowrap; }
+.brand img { width: 30px; height: 30px; }
+.top nav { display: none; gap: 28px; font-size: 15px; }
+.top nav a { text-decoration: none; color: var(--ink-2); }
+.top nav a:hover { color: var(--ink); }
+.top .btn { min-height: 40px; padding: 0 16px; font-size: 15px; }
+@media (min-width: 960px) { .top nav { display: flex; } }
+
+/* Hero */
+.hero { padding: 28px 0 64px; }
+.hero .wrap { display: grid; gap: 40px; align-items: center; }
+.hero .label { color: var(--muted); display: inline-flex; align-items: center; gap: 10px; margin-bottom: 20px; }
+.hero .label::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--blue); }
+.hero .lead { margin-top: 22px; max-width: 520px; }
+.cta-row { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 32px; }
+.hero-note { margin-top: 18px; font-size: 14px; color: var(--muted); }
+@media (max-width: 479px) { .cta-row .btn { width: 100%; } }
+@media (min-width: 900px) {
+  .hero { padding: 56px 0 96px; }
+  .hero .wrap { grid-template-columns: 1.08fr .92fr; gap: 56px; }
+}
+
+/* Ticket (the app's hero card) */
+.ticket-stage { position: relative; max-width: 460px; width: 100%; margin: 0 auto; padding: 0 6px; }
+.ticket { position: relative; background: var(--surface); border-radius: 30px; padding: 14px; filter: drop-shadow(0 22px 38px rgba(0,0,0,.08)); }
+.ticket-in { position: relative; border-radius: 20px; background: radial-gradient(120% 85% at 50% 66%, #f2f8ff 0%, #b3d7fd 42%, #5fa9ee 100%); overflow: hidden; aspect-ratio: 4 / 5; color: #fff; }
+.notch { position: absolute; top: 64%; width: 26px; height: 26px; border-radius: 50%; background: var(--bg); transform: translateY(-50%); }
+.notch.l { left: -13px; } .notch.r { right: -13px; }
+.grid-lines { position: absolute; inset: 0; width: 100%; height: 100%; opacity: .45; }
+.arc-title { position: absolute; left: 0; right: 0; top: 3%; width: 100%; }
+.ticket .sprite-box { position: absolute; left: 8%; right: 8%; bottom: 2%; aspect-ratio: 1; }
+.sprite-box canvas { width: 100%; height: 100%; }
+.float-card {
+  position: absolute; z-index: 2; background: #fff; border-radius: 16px; padding: 12px 14px;
+  box-shadow: 0 12px 30px rgba(17,17,17,.10); font-size: 13px; line-height: 1.3;
+}
+.float-card .label { font-size: 8px; color: var(--muted); display: block; margin-bottom: 6px; }
+.fc-left { left: -4px; top: 40%; }
+.fc-right { right: -4px; bottom: 6%; }
+.fc-left .num { font-size: 22px; display: block; }
+.bar { height: 4px; border-radius: 4px; background: #eaeaea; margin-top: 8px; overflow: hidden; width: 128px; }
+.bar i { display: block; height: 100%; width: 62%; background: var(--blue); border-radius: 4px; }
+.bubble { display: flex; flex-direction: column; gap: 6px; }
+.bubble span { align-self: flex-end; background: #e3f0fd; color: #0f3a63; padding: 6px 10px; border-radius: 12px 12px 4px 12px; font-weight: 500; }
+.bubble small { color: var(--muted); font-size: 12px; display: flex; align-items: center; gap: 5px; }
+.bubble small b { color: #2f7d58; font-weight: 600; }
+@media (min-width: 560px) { .fc-left { left: -56px; } .fc-right { right: -26px; } }
+@media (max-width: 559px) {
+  .ticket-stage { padding: 26px 6px 30px; }
+  .fc-left { top: 0; left: 0; padding: 10px 12px; }
+  .fc-left .num { font-size: 18px; }
+  .fc-left .bar { width: 104px; }
+  .fc-right { bottom: 0; right: 0; }
+}
+
+/* Scallop: black card with round bumps on every edge */
+.scallop {
+  background: var(--ink); color: #fff;
+  --bump: radial-gradient(circle 10px, #000 97%, #0000);
+  --scallops:
+    linear-gradient(#000 0 0) 10px 10px / calc(100% - 20px) calc(100% - 20px) no-repeat,
+    var(--bump) left top / var(--ex, 20px) 20px repeat-x,
+    var(--bump) left bottom / var(--ex, 20px) 20px repeat-x,
+    var(--bump) left top / 20px var(--ey, 20px) repeat-y,
+    var(--bump) right top / 20px var(--ey, 20px) repeat-y;
+  -webkit-mask: var(--scallops); mask: var(--scallops);
+}
+/* Stamp: postage-stamp perforation, no shadow */
+.stamp {
+  background: #fff; color: var(--ink);
+  --hole: radial-gradient(circle 4px, #0000 96%, #000);
+  --perforation:
+    linear-gradient(#000 0 0) 6px 6px / calc(100% - 12px) calc(100% - 12px) no-repeat,
+    var(--hole) left top -6px / var(--ex, 12px) 12px repeat-x,
+    var(--hole) left bottom -6px / var(--ex, 12px) 12px repeat-x,
+    var(--hole) left -6px top / 12px var(--ey, 12px) repeat-y,
+    var(--hole) right -6px top / 12px var(--ey, 12px) repeat-y;
+  -webkit-mask: var(--perforation); mask: var(--perforation);
+}
+
+/* Marquee strip */
+.strip { overflow: hidden; border-block: 1px solid rgba(17,17,17,.08); background: var(--surface); }
+.strip-track { display: flex; gap: 40px; width: max-content; padding: 16px 0; animation: marquee 38s linear infinite; }
+.strip-track span { font-family: var(--display); font-weight: 300; font-size: 15px; white-space: nowrap; display: inline-flex; align-items: center; gap: 40px; }
+.strip-track span::after { content: '✦'; color: var(--blue); font-size: 12px; }
+@keyframes marquee { to { transform: translateX(-50%); } }
+@media (prefers-reduced-motion: reduce) { .strip-track { animation: none; flex-wrap: wrap; width: auto; justify-content: center; gap: 12px 40px; padding: 16px; } .strip-track [aria-hidden] { display: none; } }
+
+/* Features bento */
+.bento { display: grid; gap: 12px; grid-template-columns: 1fr; }
+@media (min-width: 640px) { .bento { grid-template-columns: repeat(2, 1fr); } }
+@media (min-width: 1000px) { .bento { grid-template-columns: repeat(3, 1fr); gap: 16px; } }
+.f { background: var(--surface); border-radius: 24px; padding: 26px 24px 28px; display: flex; flex-direction: column; gap: 10px; position: relative; overflow: hidden; }
+.f p { color: var(--ink-2); font-size: 16px; }
+.f .ico { width: 46px; height: 46px; border-radius: 14px; background: var(--surface-2); display: grid; place-items: center; margin-bottom: 8px; color: var(--ink); }
+.f .ico svg { width: 24px; height: 24px; }
+.f.wide { }
+@media (min-width: 1000px) { .f.wide { grid-column: span 2; } }
+.f.blue { background: var(--blue-grad-soft); color: #0b2540; }
+.f.blue p { color: #173a5c; }
+.f.blue .ico { background: rgba(255,255,255,.55); }
+.f.sage { background: #dfe6de; }
+.f.sage .ico { background: rgba(255,255,255,.6); }
+.f.sand { background: #efe7da; }
+.f.sand .ico { background: rgba(255,255,255,.6); }
+.f.scallop { border-radius: 0; padding: 36px 32px; background: var(--ink); color: #fff; }
+.f.scallop p { color: #cfcfcf; }
+.f.scallop .ico { background: #262626; color: #fff; }
+.f .demo { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.chat { background: #1f1f1f; border-radius: 16px; padding: 14px; display: flex; flex-direction: column; gap: 8px; margin-top: 14px; max-width: 360px; font-size: 15px; }
+.chat .me { align-self: flex-end; background: var(--blue); color: #08243f; padding: 8px 12px; border-radius: 14px 14px 4px 14px; font-weight: 600; }
+.chat .bot { align-self: flex-start; background: #2c2c2c; color: #eaeaea; padding: 8px 12px; border-radius: 14px 14px 14px 4px; }
+.limit-row { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; font-size: 14px; margin-top: 6px; }
+.limit-row .bar { grid-column: 1 / -1; width: 100%; background: rgba(255,255,255,.6); }
+.limit-row .bar i { background: #e08a3c; width: 86%; }
+.limit-row .muted { color: #173a5c; opacity: .8; }
+.pill { display: inline-flex; align-items: center; gap: 6px; background: rgba(255,255,255,.65); border-radius: 99px; padding: 6px 12px; font-size: 14px; }
+.f .pill.dark { background: var(--surface-2); }
+.big-num { font-family: var(--display); font-weight: 300; font-size: 34px; letter-spacing: -.02em; }
+
+/* Auto section */
+.auto { position: relative; padding: 44px 20px; }
+@media (min-width: 900px) { .auto { padding: 72px 64px; } }
+.auto-grid { display: grid; gap: 40px; align-items: center; }
+@media (min-width: 960px) { .auto-grid { grid-template-columns: 1fr 1fr; gap: 64px; } }
+.auto .label { color: #a9a9a9; }
+.auto .lead { color: #cfcfcf; }
+.ways { list-style: none; display: grid; gap: 12px; margin-top: 30px; }
+.ways li { display: grid; grid-template-columns: 44px 1fr; gap: 14px; background: #1c1c1c; border-radius: 18px; padding: 18px; }
+.ways .n { width: 44px; height: 44px; border-radius: 50%; background: var(--blue); color: #08243f; display: grid; place-items: center; font-family: var(--display); font-size: 15px; }
+.ways b { display: block; font-size: 17px; margin-bottom: 4px; }
+.ways span { color: #bdbdbd; font-size: 15px; }
+.formats { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+.formats i { font-style: normal; font-family: var(--display); font-size: 10px; letter-spacing: .12em; border: 1px solid #3a3a3a; border-radius: 99px; padding: 5px 10px; color: #e6e6e6; }
+
+/* Video player */
+.player { position: relative; border-radius: 22px; overflow: hidden; background: #111; isolation: isolate; }
+.player video { width: 100%; height: 100%; object-fit: cover; }
+.player .play {
+  position: absolute; inset: 0; display: flex; flex-direction: row; align-items: flex-end; justify-content: center; gap: 12px;
+  padding-bottom: 5%; border: 0; background: linear-gradient(to top, rgba(0,0,0,.45), rgba(0,0,0,0) 45%); cursor: pointer; color: #fff; font: 600 15px var(--body);
+}
+.player .play .circle { width: 60px; height: 60px; flex: none; border-radius: 50%; background: #fff; color: var(--ink); display: grid; place-items: center; box-shadow: 0 8px 26px rgba(0,0,0,.25); transition: transform .2s ease; }
+.player .play:hover .circle { transform: scale(1.06); }
+.player .play svg { width: 24px; height: 24px; margin-left: 4px; }
+.player .play > span:last-child { background: rgba(0,0,0,.55); padding: 8px 14px; border-radius: 99px; margin-bottom: 12px; }
+.player.playing .play { display: none; }
+.player.square { aspect-ratio: 1; max-width: 560px; margin: 0 auto; width: 100%; box-shadow: 0 0 0 1px #2a2a2a; }
+.player.tall { aspect-ratio: 9 / 16; width: 100%; max-width: 320px; margin: 0 auto; border-radius: 34px; border: 8px solid var(--ink); background: var(--ink); }
+.player.tall video { border-radius: 26px; }
+
+/* Steps */
+.steps-grid { display: grid; gap: 40px; align-items: center; }
+@media (min-width: 960px) { .steps-grid { grid-template-columns: 1.2fr .8fr; gap: 72px; } }
+.steps { list-style: none; display: grid; gap: 14px; counter-reset: s; }
+.step { padding: 26px 26px 26px 24px; display: grid; grid-template-columns: auto 1fr; gap: 20px; align-items: start; }
+.step .num { font-size: clamp(32px, 9vw, 44px); line-height: 1; color: var(--blue); min-width: 52px; }
+.step p { color: var(--ink-2); font-size: 16px; margin-top: 4px; }
+.steps-cta { margin-top: 28px; display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
+.steps-cta .sprite-box { width: 140px; height: 140px; flex: none; margin: -20px 0; }
+.video-cap { text-align: center; font-size: 14px; color: var(--muted); margin-top: 14px; }
+
+/* Privacy */
+.privacy { background: var(--surface); border-radius: 30px; padding: 14px; position: relative; }
+.privacy-in { background: var(--blue-grad); border-radius: 20px; padding: 40px 24px; display: grid; gap: 32px; align-items: center; position: relative; overflow: hidden; color: #0b2540; }
+@media (min-width: 900px) { .privacy-in { grid-template-columns: 1.1fr .9fr; padding: 64px; } }
+.privacy-in > :not(.grid-lines) { position: relative; }
+.privacy .grid-lines { position: absolute; }
+.privacy .grid-lines { opacity: .55; }
+.privacy .label { color: #1d4f7f; }
+.privacy-list { list-style: none; display: grid; gap: 12px; }
+.privacy-list li { display: flex; gap: 14px; align-items: center; background: rgba(255,255,255,.72); border-radius: 18px; padding: 16px 18px; font-size: 16px; font-weight: 500; }
+.privacy-list svg { width: 26px; height: 26px; flex: none; color: var(--blue-ink); }
+.privacy-links { display: flex; gap: 20px; margin-top: 22px; flex-wrap: wrap; font-size: 15px; }
+.privacy-links a { color: #0b2540; font-weight: 600; text-underline-offset: 4px; }
+
+/* FAQ */
+.faq-grid { display: grid; gap: 32px; }
+@media (min-width: 960px) { .faq-grid { grid-template-columns: .8fr 1.2fr; gap: 64px; } }
+.faq { display: grid; gap: 10px; }
+.faq details { background: var(--surface); border-radius: 20px; }
+.faq summary { list-style: none; cursor: pointer; padding: 22px 60px 22px 22px; font-weight: 600; font-size: 17px; position: relative; }
+.faq summary::-webkit-details-marker { display: none; }
+.faq summary::after {
+  content: ''; position: absolute; right: 18px; top: 50%; width: 30px; height: 30px; margin-top: -15px; border-radius: 50%;
+  background: var(--surface-2) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23111' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='M12 6v12M6 12h12'/%3E%3C/svg%3E") center / 16px no-repeat;
+  transition: transform .2s ease;
+}
+.faq details[open] summary::after { transform: rotate(45deg); }
+.faq .a { padding: 0 22px 22px; color: var(--ink-2); font-size: 16px; max-width: 640px; }
+
+/* Final CTA */
+.final { padding: 56px 24px; text-align: center; display: grid; justify-items: center; gap: 18px; }
+@media (min-width: 900px) { .final { padding: 80px 48px; } }
+.final-stamp { width: min(220px, 62vw); padding: 14px; margin-bottom: 8px; }
+.final-stamp .sprite-box { width: 100%; aspect-ratio: 1; }
+.final .h2 { max-width: 760px; }
+.final .lead { color: #cfcfcf; max-width: 520px; }
+.final .btn { margin-top: 8px; }
+
+/* Footer */
+footer { padding: 40px 0 calc(40px + env(safe-area-inset-bottom, 0px)); font-size: 15px; color: var(--ink-2); }
+footer .wrap { display: flex; flex-wrap: wrap; gap: 18px 32px; align-items: center; justify-content: space-between; }
+footer nav { display: flex; gap: 22px; flex-wrap: wrap; }
+footer a { text-underline-offset: 4px; }
+
+/* Reveal on scroll */
+.rv { opacity: 0; transform: translateY(18px); transition: opacity .6s ease, transform .6s ease; }
+.rv.in { opacity: 1; transform: none; }
+@media (prefers-reduced-motion: reduce) { .rv { opacity: 1; transform: none; transition: none; } }
+.no-js .rv { opacity: 1; transform: none; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+</style>
+</head>
+<body class="no-js">
+<a class="skip" href="#main">К содержимому</a>
+
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="#top" aria-label="Lolo &amp; Pepe — в начало"><img src="/landing/favicon.png" alt="" width="30" height="30">Lolo&nbsp;&amp;&nbsp;Pepe</a>
+    <nav aria-label="Разделы">
+      <a href="#features">Возможности</a>
+      <a href="#auto">Автоучёт</a>
+      <a href="#start">Как начать</a>
+      <a href="#faq">Вопросы</a>
+    </nav>
+    <a class="btn btn-ink" href="/open">Открыть</a>
+  </div>
+</header>
+
+<main id="main">
+  <!-- Hero -->
+  <section class="hero" id="top">
+    <div class="wrap">
+      <div>
+        <span class="label">Telegram Mini App + бот</span>
+        <h1 class="h1">Бюджет на двоих —<br><span class="blue">прямо в&nbsp;Telegram</span></h1>
+        <p class="lead">Общие траты, лимиты и копилка в одном месте. Вы оба видите, сколько потрачено и сколько осталось, — без таблиц и отдельных приложений.</p>
+        <div class="cta-row">
+          <a class="btn btn-ink" href="/open">
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M21.6 4.2 2.9 11.4c-1.3.5-1.3 1.2-.2 1.6l4.8 1.5 1.8 5.6c.2.6.1.9.8.9.5 0 .7-.2 1-.5l2.3-2.2 4.8 3.5c.9.5 1.5.2 1.7-.8l3.1-14.7c.3-1.3-.5-1.9-1.4-1.5ZM8.5 14l9.6-6.1c.5-.3.9-.1.5.2l-8.2 7.4-.3 3.4L8.5 14Z"/></svg>
+            Открыть в Telegram
+          </a>
+          <a class="btn btn-ghost" href="#features">Что умеет</a>
+        </div>
+        <p class="hero-note">Бесплатно. Ничего не нужно устанавливать.</p>
+      </div>
+
+      <div class="ticket-stage rv">
+        <div class="ticket">
+          <div class="ticket-in">
+            <svg class="grid-lines" viewBox="0 0 240 300" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+              <g fill="none" stroke="#fff" stroke-width=".6">
+                <circle cx="120" cy="150" r="40"/><circle cx="120" cy="150" r="72"/><circle cx="120" cy="150" r="104"/><circle cx="120" cy="150" r="136"/>
+                <path d="M120 0V300M0 150H240M40 0V300M200 0V300M0 60H240M0 240H240"/>
+              </g>
+            </svg>
+            <svg class="arc-title" viewBox="0 0 240 130" aria-hidden="true">
+              <path id="arcA" d="M45 108 A78 78 0 0 1 195 108" fill="none"/>
+              <path id="arcB" d="M62 112 A62 62 0 0 1 178 112" fill="none"/>
+              <text font-family="Unbounded, sans-serif" font-weight="400" font-size="15" fill="#fff" letter-spacing="1"><textPath href="#arcA" startOffset="50%" text-anchor="middle">LOLO &amp; PEPE</textPath></text>
+              <text font-family="Unbounded, sans-serif" font-size="5.5" fill="#fff" letter-spacing="2.4" opacity=".95"><textPath href="#arcB" startOffset="50%" text-anchor="middle">· БЮДЖЕТ НА ДВОИХ ·</textPath></text>
+            </svg>
+            <div class="sprite-box" data-sprite="highfive" role="img" aria-label="Два пингвина дают друг другу пять"></div>
+          </div>
+          <span class="notch l"></span><span class="notch r"></span>
+        </div>
+        <div class="float-card fc-left" aria-hidden="true">
+          <span class="label">Остаток на месяц</span>
+          <span class="num">42 300 ₽</span>
+          <div class="bar"><i></i></div>
+        </div>
+        <div class="float-card fc-right bubble" aria-hidden="true">
+          <span>кофе 300</span>
+          <small><b>✓</b> Записано в «Кафе»</small>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="strip" aria-label="Коротко">
+    <div class="strip-track">
+      <span>Общий бюджет</span><span>Лимиты по категориям</span><span>Копилка на цели</span><span>Регулярные платежи</span><span>Автоучёт из SMS</span><span>Выписки PDF, Excel, CSV</span><span>Итоги месяца</span>
+      <span aria-hidden="true">Общий бюджет</span><span aria-hidden="true">Лимиты по категориям</span><span aria-hidden="true">Копилка на цели</span><span aria-hidden="true">Регулярные платежи</span><span aria-hidden="true">Автоучёт из SMS</span><span aria-hidden="true">Выписки PDF, Excel, CSV</span><span aria-hidden="true">Итоги месяца</span>
+    </div>
+  </div>
+
+  <!-- Features -->
+  <section class="section" id="features">
+    <div class="wrap">
+      <div class="sec-head rv">
+        <span class="label">Возможности</span>
+        <h2 class="h2">Всё, чтобы вести деньги вдвоём и&nbsp;не&nbsp;спорить</h2>
+      </div>
+
+      <div class="bento">
+        <article class="f wide blue rv">
+          <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.2"/><circle cx="16.5" cy="9.5" r="2.6"/><path d="M3.5 19c.6-3 2.8-4.8 5.5-4.8s4.9 1.8 5.5 4.8M14.5 14.6c.6-.2 1.3-.3 2-.3 2.2 0 3.8 1.5 4.2 4.2"/></svg></div>
+          <h3 class="h3">Общий бюджет</h3>
+          <p>Оба участника видят траты и остаток в реальном времени. Записали покупку — у второго сразу обновилась сумма.</p>
+          <div class="demo"><span class="pill">Остаток <b class="num">&nbsp;42 300 ₽</b></span><span class="pill">Потрачено <b class="num">&nbsp;57 700 ₽</b></span></div>
+        </article>
+
+        <article class="f scallop rv" data-edge="20">
+          <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 3 5 13.5h6L10 21l8-10.5h-6L13 3Z"/></svg></div>
+          <h3 class="h3">Трата за 3 секунды</h3>
+          <p>Пара касаний в приложении — или просто напишите боту.</p>
+          <div class="chat" aria-hidden="true">
+            <span class="me">кофе 300</span>
+            <span class="bot">Записано: Кафе — 300 ₽</span>
+          </div>
+        </article>
+
+        <article class="f sand rv">
+          <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.5 2.8 19.5h18.4L12 3.5Z"/><path d="M12 10v4.2M12 16.8v.1"/></svg></div>
+          <h3 class="h3">Лимиты по категориям</h3>
+          <p>Предупредим заранее, если лимит скоро закончится, и покажем прогноз трат до конца месяца.</p>
+          <div class="limit-row"><span>Кафе и рестораны</span><span class="num">8 600 / 10 000 ₽</span><div class="bar"><i></i></div></div>
+        </article>
+
+        <article class="f rv">
+          <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 11.5c0-3.6 3.1-6 7-6 1.5 0 2.9.3 4 1l2.5-1.2-.6 3c.9.9 1.6 2 1.9 3.2H21v3.5h-1.4c-.5 1.3-1.4 2.3-2.6 3v2.5h-3v-1.6c-.6.1-1.3.1-2 .1s-1.4 0-2-.1v1.6H7v-2.6C5.8 16.6 5 14.6 5 11.5Z"/><path d="M15.5 10.3v.1M3 10c0 1.4.8 2.2 2 2.4"/></svg></div>
+          <h3 class="h3">Копилка на общие цели</h3>
+          <p>Отпуск, диван, подушка безопасности: копите вместе и видите план — сколько откладывать в месяц.</p>
+          <div class="demo"><span class="big-num">60 000 ₽</span></div>
+        </article>
+
+        <article class="f sage rv">
+          <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15" rx="3"/><path d="M3.5 10h17M8 3v4M16 3v4"/><path d="M12 13v3l2 1"/></svg></div>
+          <h3 class="h3">Регулярные платежи</h3>
+          <p>Аренда, подписки, кружки: в блоке «Скоро» видно, что спишется в ближайшие дни.</p>
+        </article>
+
+        <article class="f rv">
+          <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c.8-3.6 3.6-5.6 7-5.6s6.2 2 7 5.6"/></svg></div>
+          <h3 class="h3">Личные траты отдельно</h3>
+          <p>Личные покупки не смешиваются с общими и не уменьшают общий бюджет. Трату можно перенести из общих в личные и обратно.</p>
+        </article>
+
+        <article class="f rv">
+          <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5.5h16v10H9l-5 4v-14Z"/><path d="M8.5 10.5h.1M12 10.5h.1M15.5 10.5h.1"/></svg></div>
+          <h3 class="h3">Реакции и комментарии</h3>
+          <p>Отреагируйте на трату или уточните, что это было. История правок покажет, кто и что изменил.</p>
+        </article>
+
+        <article class="f rv">
+          <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="7" width="13" height="13" rx="3"/><path d="M8 4h10a3 3 0 0 1 3 3v10"/></svg></div>
+          <h3 class="h3">Несколько бюджетов</h3>
+          <p>Отдельный бюджет на поездку или ремонт — не мешает основному.</p>
+        </article>
+
+        <article class="f rv">
+          <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M21 20H3"/></svg></div>
+          <h3 class="h3">Итоги месяца</h3>
+          <p>Куда ушли деньги, что выросло и что получилось сэкономить.</p>
+        </article>
+
+        <article class="f rv">
+          <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5Z"/></svg></div>
+          <h3 class="h3">Тёмная тема</h3>
+          <p>Подстраивается под тему Telegram или включается в настройках.</p>
+        </article>
+
+        <article class="f rv">
+          <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="3"/><path d="M8 8l4 5M12 8l-4 5M14 9h3M14 13h3M8 17h9"/></svg></div>
+          <h3 class="h3">Выгрузка в Excel</h3>
+          <p>Все траты одним файлом — для своих таблиц или на память.</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- Auto -->
+  <section class="section" id="auto" style="padding-top:0">
+    <div class="wrap">
+      <div class="auto scallop rv" data-edge="20">
+        <div class="auto-grid">
+          <div>
+            <span class="label">Автоучёт</span>
+            <h2 class="h2" style="margin-top:14px">Траты и доходы <span style="color:var(--blue)">запишутся сами</span></h2>
+            <p class="lead" style="margin-top:16px">Не хочется вносить каждую покупку руками? Подключите банк одним из трёх способов.</p>
+            <ol class="ways">
+              <li><span class="n">1</span><div><b>Перешлите SMS или пуш банка</b><span>Бот сам найдёт сумму, дату и магазин и запишет операцию.</span></div></li>
+              <li><span class="n">2</span><div><b>Автоматизация на iPhone</b><span>Настраивается один раз — дальше SMS банка уходят боту сами.</span></div></li>
+              <li><span class="n">3</span><div><b>Выписка из банка</b><span>Загрузите файл — все операции добавятся разом, дубли пропускаются.</span><div class="formats"><i>PDF</i><i>EXCEL</i><i>CSV</i></div></div></li>
+            </ol>
+          </div>
+          <div>
+            <div class="player square" data-player>
+              <video src="/bot/auto-guide.mp4" poster="/landing/auto-guide-poster.jpg" preload="none" playsinline controls aria-label="Видео: как настроить автоучёт"></video>
+              <button class="play" type="button" aria-label="Смотреть видео о настройке автоучёта со звуком">
+                <span class="circle"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15l12.5-7.5L7 4.5Z"/></svg></span>
+                <span>Как настроить · 1 мин</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- How to start -->
+  <section class="section" id="start" style="padding-top:0">
+    <div class="wrap">
+      <div class="steps-grid">
+        <div>
+          <div class="sec-head rv">
+            <span class="label">Как начать</span>
+            <h2 class="h2">Три шага — и&nbsp;вы ведёте бюджет вдвоём</h2>
+          </div>
+          <ol class="steps">
+            <li class="step stamp rv" data-edge="12"><span class="num">01</span><div><h3 class="h3">Откройте бота</h3><p>Нажмите «Открыть в Telegram» — бот запустится прямо в мессенджере.</p></div></li>
+            <li class="step stamp rv" data-edge="12"><span class="num">02</span><div><h3 class="h3">Создайте бюджет</h3><p>Пара шагов в приложении — и общий бюджет готов.</p></div></li>
+            <li class="step stamp rv" data-edge="12"><span class="num">03</span><div><h3 class="h3">Пригласите второго участника</h3><p>Отправьте ссылку-приглашение — и вы видите один и тот же бюджет.</p></div></li>
+          </ol>
+          <div class="steps-cta rv">
+            <a class="btn btn-ink" href="/open">Открыть в Telegram</a>
+            <div class="sprite-box" data-sprite="wave" role="img" aria-label="Пингвины машут"></div>
+          </div>
+        </div>
+        <div class="rv">
+          <div class="player tall" data-player>
+            <video src="/landing/promo.mp4" poster="/landing/promo-poster.jpg" preload="none" playsinline controls aria-label="Видео: Lolo &amp; Pepe за 37 секунд"></video>
+            <button class="play" type="button" aria-label="Смотреть промо-ролик со звуком">
+              <span class="circle"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15l12.5-7.5L7 4.5Z"/></svg></span>
+              <span>Смотреть · 37 сек</span>
+            </button>
+          </div>
+          <p class="video-cap">Lolo &amp; Pepe за 37 секунд</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Privacy -->
+  <section class="section" id="privacy" style="padding-top:0">
+    <div class="wrap">
+      <div class="privacy rv">
+        <div class="privacy-in">
+          <svg class="grid-lines" viewBox="0 0 240 300" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+            <g fill="none" stroke="#fff" stroke-width=".6"><circle cx="120" cy="150" r="40"/><circle cx="120" cy="150" r="72"/><circle cx="120" cy="150" r="104"/><circle cx="120" cy="150" r="136"/><path d="M120 0V300M0 150H240M40 0V300M200 0V300M0 60H240M0 240H240"/></g>
+          </svg>
+          <div>
+            <span class="label">Приватность</span>
+            <h2 class="h2" style="margin-top:14px">Ваши деньги — только ваше дело</h2>
+            <p class="lead" style="margin-top:16px;color:#173a5c">Бюджет видите только вы и те, кого вы пригласили.</p>
+            <div class="privacy-links">
+              <a href="/privacy">Политика конфиденциальности</a>
+              <a href="/terms">Условия использования</a>
+            </div>
+          </div>
+          <ul class="privacy-list">
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 4.5 6v5.5c0 4.6 3.1 8 7.5 9.5 4.4-1.5 7.5-4.9 7.5-9.5V6L12 3Z"/><path d="m9 12 2.2 2.2L15.5 10"/></svg>Данные не продаём</li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="m6 6 12 12"/></svg>Рекламы нет</li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 7h15M9.5 7V4.5h5V7M6.5 7l1 13h9l1-13"/></svg>Удалить всё можно в настройках</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FAQ -->
+  <section class="section" id="faq" style="padding-top:0">
+    <div class="wrap faq-grid">
+      <div class="sec-head rv">
+        <span class="label">Вопросы</span>
+        <h2 class="h2">Частые вопросы</h2>
+        <p class="lead">Не нашли ответ? Напишите на <a href="mailto:lolopepe.app@gmail.com">lolopepe.app@gmail.com</a>.</p>
+      </div>
+      <div class="faq rv">
+        <details>
+          <summary>Это бесплатно?</summary>
+          <div class="a">Да, сейчас Lolo &amp; Pepe полностью бесплатный.</div>
+        </details>
+        <details>
+          <summary>Обязательно вести бюджет вдвоём?</summary>
+          <div class="a">Нет, можно пользоваться и одному. Второго участника можно пригласить в любой момент.</div>
+        </details>
+        <details>
+          <summary>Увидит ли второй участник мои личные траты?</summary>
+          <div class="a">Личные траты видны обоим участникам бюджета, но не попадают в общий бюджет и не уменьшают общий остаток.</div>
+        </details>
+        <details>
+          <summary>Безопасно ли пересылать боту SMS банка?</summary>
+          <div class="a">Бот берёт из сообщения только сумму, дату и магазин. Сам текст SMS не хранится.</div>
+        </details>
+        <details>
+          <summary>Какие банки поддерживаются?</summary>
+          <div class="a">Любые, которые присылают SMS или пуш-уведомления об операциях или дают скачать выписку в PDF, Excel или CSV.</div>
+        </details>
+      </div>
+    </div>
+  </section>
+
+  <!-- Final CTA -->
+  <section class="section" style="padding-top:0">
+    <div class="wrap">
+      <div class="final scallop rv" data-edge="20">
+        <div class="final-stamp stamp" data-edge="12"><div class="sprite-box" data-sprite="celebrate" role="img" aria-label="Пингвины радуются"></div></div>
+        <h2 class="h2">Начните вести бюджет вдвоём уже сегодня</h2>
+        <p class="lead">Откройте бота, создайте бюджет и отправьте приглашение — это займёт минуту.</p>
+        <a class="btn btn-white" href="/open">
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M21.6 4.2 2.9 11.4c-1.3.5-1.3 1.2-.2 1.6l4.8 1.5 1.8 5.6c.2.6.1.9.8.9.5 0 .7-.2 1-.5l2.3-2.2 4.8 3.5c.9.5 1.5.2 1.7-.8l3.1-14.7c.3-1.3-.5-1.9-1.4-1.5ZM8.5 14l9.6-6.1c.5-.3.9-.1.5.2l-8.2 7.4-.3 3.4L8.5 14Z"/></svg>
+          Открыть в Telegram
+        </a>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <div>© Lolo &amp; Pepe, <span id="year">2026</span></div>
+    <nav aria-label="Ссылки">
+      <a href="mailto:lolopepe.app@gmail.com">lolopepe.app@gmail.com</a>
+      <a href="/privacy">Конфиденциальность</a>
+      <a href="/terms">Условия</a>
+    </nav>
+  </div>
+</footer>
+
+<script>
+(function () {
+  document.body.classList.remove('no-js');
+  document.getElementById('year').textContent = new Date().getFullYear();
+  var reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var hasIO = 'IntersectionObserver' in window;
+
+  // Scallop / stamp edges: fit a whole number of bumps on every side (like the app's edges.js).
+  var edged = [].slice.call(document.querySelectorAll('[data-edge]'));
+  function fitEdges() {
+    edged.forEach(function (el) {
+      var step = +el.dataset.edge, w = el.offsetWidth, h = el.offsetHeight;
+      if (!w || !h) return;
+      el.style.setProperty('--ex', (w / Math.max(1, Math.round(w / step))) + 'px');
+      el.style.setProperty('--ey', (h / Math.max(1, Math.round(h / step))) + 'px');
+    });
+  }
+  fitEdges();
+  if ('ResizeObserver' in window) { var ro = new ResizeObserver(fitEdges); edged.forEach(function (el) { ro.observe(el); }); }
+  else window.addEventListener('resize', fitEdges);
+
+  // Reveal on scroll
+  var rv = [].slice.call(document.querySelectorAll('.rv'));
+  if (!hasIO || reduce) rv.forEach(function (el) { el.classList.add('in'); });
+  else {
+    var io = new IntersectionObserver(function (es) {
+      es.forEach(function (e) { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } });
+    }, { rootMargin: '0px 0px -8% 0px' });
+    rv.forEach(function (el) { io.observe(el); });
+  }
+
+  // Penguin sprite sheets drawn on canvas; play only while visible, still frame for reduced motion.
+  var SPRITES = {
+    highfive:  { frames: 25, cols: 7, size: 560, fps: 24, still: 12 },
+    wave:      { frames: 23, cols: 6, size: 480, fps: 15, pingpong: true, still: 8 },
+    celebrate: { frames: 30, cols: 6, size: 520, fps: 12, still: 14 }
+  };
+  [].slice.call(document.querySelectorAll('[data-sprite]')).forEach(function (box) {
+    var cfg = SPRITES[box.dataset.sprite];
+    var canvas = document.createElement('canvas');
+    canvas.width = cfg.size; canvas.height = cfg.size;
+    canvas.setAttribute('aria-hidden', 'true');
+    box.appendChild(canvas);
+    var ctx = canvas.getContext('2d');
+    var img = new Image(), loaded = false, visible = false, raf = 0, start = 0, last = -1;
+    var cycle = cfg.pingpong ? cfg.frames * 2 - 2 : cfg.frames;
+    function draw(f) {
+      ctx.clearRect(0, 0, cfg.size, cfg.size);
+      ctx.drawImage(img, (f % cfg.cols) * cfg.size, Math.floor(f / cfg.cols) * cfg.size, cfg.size, cfg.size, 0, 0, cfg.size, cfg.size);
+    }
+    function tick(t) {
+      if (!visible) { raf = 0; return; }
+      if (!start) start = t;
+      var n = Math.floor((t - start) / 1000 * cfg.fps) % cycle;
+      if (n !== last) { last = n; draw(n < cfg.frames ? n : cycle - n); }
+      raf = requestAnimationFrame(tick);
+    }
+    function go() { if (loaded && visible && !reduce && !raf) raf = requestAnimationFrame(tick); }
+    function load() {
+      if (img.src) return;
+      img.onload = function () { loaded = true; draw(reduce ? cfg.still : 0); go(); };
+      img.src = '/landing/' + box.dataset.sprite + '.png';
+    }
+    if (!hasIO) { load(); visible = true; return; }
+    new IntersectionObserver(function (es) {
+      es.forEach(function (e) {
+        if (e.isIntersecting) load();
+        visible = e.isIntersecting;
+        if (visible) go();
+      });
+    }, { rootMargin: '200px 0px' }).observe(box);
+  });
+
+  // Video: poster + play button; plays with sound on click, pauses when another starts or it scrolls away.
+  var players = [].slice.call(document.querySelectorAll('[data-player]'));
+  players.forEach(function (p) {
+    var v = p.querySelector('video'), b = p.querySelector('.play');
+    v.controls = false;
+    b.addEventListener('click', function () {
+      players.forEach(function (o) { if (o !== p) o.querySelector('video').pause(); });
+      v.muted = false; v.controls = true; p.classList.add('playing');
+      var pr = v.play(); if (pr && pr.catch) pr.catch(function () {});
+    });
+    if (hasIO) new IntersectionObserver(function (es) {
+      es.forEach(function (e) { if (!e.isIntersecting && !v.paused) v.pause(); });
+    }, { threshold: 0 }).observe(p);
+  });
+})();
+</script>
+</body>
+</html>

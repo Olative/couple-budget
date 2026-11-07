@@ -1,6 +1,19 @@
 <!DOCTYPE html>
 <html lang="ru">
   <head>
+    <script>
+      // Outside Telegram (a plain browser) show the landing page instead of the Mini App. Never on localhost.
+      (function () {
+        var h = location.hostname;
+        if (h === 'localhost' || h === '127.0.0.1' || h === '[::1]') return;
+        var inTg = location.hash.indexOf('tgWebAppData') !== -1 ||
+          location.search.indexOf('tgWebAppStartParam') !== -1 ||
+          !!window.TelegramWebviewProxy ||
+          (function () { try { return !!sessionStorage.getItem('__telegram__initParams'); } catch (e) { return false; } })() ||
+          /Telegram/i.test(navigator.userAgent);
+        if (!inTg) location.replace('/landing/');
+      })();
+    </script>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <title>Lolo & Pepe</title>
