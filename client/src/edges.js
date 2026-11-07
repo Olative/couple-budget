@@ -1,6 +1,8 @@
 // Scalloped and perforated cards. iOS draws repeated mask circles unevenly (the last row came out cut),
 // so each card gets its own SVG outline built for its exact size: whole circles on every side.
 const STEP = { scallop: 20, stamp: 12 };
+// iOS rasterises an SVG mask at its own pixel size; drawing it 4x larger keeps the edges sharp on retina screens.
+const SHARP = 4;
 
 const centres = (length, step) => {
   const n = Math.max(1, Math.round(length / step));
@@ -14,23 +16,28 @@ function scallopSvg(w, h) {
     ...centres(w, STEP.scallop).flatMap(x => [[x, r], [x, h - r]]),
     ...centres(h, STEP.scallop).flatMap(y => [[r, y], [w - r, y]]),
   ];
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">`
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${w * SHARP}" height="${h * SHARP}" viewBox="0 0 ${w} ${h}">`
     + `<rect x="${r}" y="${r}" width="${w - 2 * r}" height="${h - 2 * r}"/>`
     + dots.map(([x, y]) => `<circle cx="${x.toFixed(2)}" cy="${y.toFixed(2)}" r="${r}"/>`).join('')
     + '</svg>';
 }
 
-// Full card with half-holes punched along every edge.
+// Full card with half-holes along every edge, drawn as one outline (like the scalloped card):
+// going round clockwise, each hole is an arc that dips into the card.
 function stampSvg(w, h) {
   const r = 4;
-  const holes = [
-    ...centres(w, STEP.stamp).flatMap(x => [[x, 0], [x, h]]),
-    ...centres(h, STEP.stamp).flatMap(y => [[0, y], [w, y]]),
-  ];
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">`
-    + '<defs><mask id="m"><rect width="100%" height="100%" fill="white"/>'
-    + holes.map(([x, y]) => `<circle cx="${x.toFixed(2)}" cy="${y.toFixed(2)}" r="${r}" fill="black"/>`).join('')
-    + `</mask></defs><rect width="100%" height="100%" mask="url(#m)"/></svg>`;
+  const f = (n) => n.toFixed(2);
+  const xs = centres(w, STEP.stamp), ys = centres(h, STEP.stamp);
+  let d = 'M0 0';
+  for (const x of xs) d += ` L${f(x - r)} 0 A${r} ${r} 0 0 0 ${f(x + r)} 0`;
+  d += ` L${w} 0`;
+  for (const y of ys) d += ` L${w} ${f(y - r)} A${r} ${r} 0 0 0 ${w} ${f(y + r)}`;
+  d += ` L${w} ${h}`;
+  for (const x of [...xs].reverse()) d += ` L${f(x + r)} ${h} A${r} ${r} 0 0 0 ${f(x - r)} ${h}`;
+  d += ` L0 ${h}`;
+  for (const y of [...ys].reverse()) d += ` L0 ${f(y + r)} A${r} ${r} 0 0 0 0 ${f(y - r)}`;
+  d += ' Z';
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${w * SHARP}" height="${h * SHARP}" viewBox="0 0 ${w} ${h}"><path d="${d}"/></svg>`;
 }
 
 function fit(el) {

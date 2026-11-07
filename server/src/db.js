@@ -121,6 +121,15 @@ await client.batch([
     tz_offset INTEGER NOT NULL DEFAULT 0,
     last_reminder TEXT
   )`,
+  `CREATE TABLE IF NOT EXISTS expense_edits (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    expense_id INTEGER NOT NULL,
+    user_id INTEGER NOT NULL,
+    field TEXT NOT NULL,
+    old_value TEXT,
+    new_value TEXT,
+    created_at TEXT DEFAULT (datetime('now'))
+  )`,
   `CREATE TABLE IF NOT EXISTS bank_events (
     user_id INTEGER NOT NULL,
     hash TEXT NOT NULL,

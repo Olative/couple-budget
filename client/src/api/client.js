@@ -64,6 +64,7 @@ export const api = {
   getNotify: () => request('/me/notify'),
   setNotify: (data) => request('/me/notify', { method: 'PUT', body: JSON.stringify(data) }),
   getMyBudgets: () => request('/me/budgets'),
+  updateExpense: (id, data) => request(`/expenses/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   getHook: () => request('/me/hook'),
   resetHook: () => request('/me/hook/reset', { method: 'POST' }),
   importStatement: (budgetId, data) => request(`/budgets/${budgetId}/import`, { method: 'POST', body: JSON.stringify(data) }),
