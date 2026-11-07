@@ -3,8 +3,7 @@ import { IconChevronLeft, IconChevronRight, IconChevronDown, IconSettings, IconA
 import { api } from '../api/client';
 import { GridLines, Penguin, PenguinPair } from '../components/Art';
 import InviteCard from '../components/InviteCard';
-import Celebration from '../components/Celebration';
-import { money, MONTHS, MONTHS_GEN, MONTHS_PREP, shiftMonth, thisMonth, confirmAction } from '../format';
+import { money, MONTHS, MONTHS_GEN, MONTHS_PREP, shiftMonth, thisMonth } from '../format';
 
 function monthLabel(month) {
   const name = MONTHS[Number(month.slice(5, 7)) - 1].toLowerCase();
@@ -32,10 +31,7 @@ export default function Dashboard({ budget, user, refreshKey, onAdd, onOpenRecap
   const [month, setMonth] = useState(thisMonth);
   const [summary, setSummary] = useState(null);
   const [forecast, setForecast] = useState(null);
-  const [balance, setBalance] = useState(null);
   const [personal, setPersonal] = useState(null);
-  const [reload, setReload] = useState(0);
-  const [celebrate, setCelebrate] = useState(null);
   const [goals, setGoals] = useState([]);
 
   useEffect(() => { api.getSavings(budget.id).then(setGoals); }, [budget.id, refreshKey]);
@@ -43,22 +39,13 @@ export default function Dashboard({ budget, user, refreshKey, onAdd, onOpenRecap
   useEffect(() => {
     Promise.all([
       api.getSummary(budget.id, month), api.getForecast(budget.id, month),
-      api.getBalance(budget.id), api.getPersonal(budget.id, month),
-    ]).then(([s, f, b, p]) => {
+      api.getPersonal(budget.id, month),
+    ]).then(([s, f, p]) => {
       setSummary(s);
       setForecast(f);
-      setBalance(b);
       setPersonal(p);
     });
-  }, [budget.id, month, refreshKey, reload]);
-
-  const settle = async () => {
-    const d = balance.debt;
-    if (!(await confirmAction(`Отметить долг ${d.from.first_name} → ${d.to.first_name} ${money(d.amount, budget.currency)} как возвращённый?`))) return;
-    await api.settle(budget.id);
-    setCelebrate({ from: d.from.first_name, to: d.to.first_name, amount: d.amount });
-    setReload(r => r + 1);
-  };
+  }, [budget.id, month, refreshKey]);
 
   const cur = budget.currency;
   const header = (
@@ -171,30 +158,6 @@ export default function Dashboard({ budget, user, refreshKey, onAdd, onOpenRecap
         </div>
       )}
 
-      {balance && balance.members.length === 2 && (
-        <div className="card-pad" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <span className="row-ic" style={{ width: 40, height: 40, fontSize: 19 }}>🤝</span>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            {balance.debt ? (
-              <>
-                <div className="row-sub">{balance.debt.from.first_name} → {balance.debt.to.first_name}, вернуть</div>
-                <div className="num" style={{ fontSize: 17, marginTop: 3 }}>{money(balance.debt.amount, cur)}</div>
-              </>
-            ) : (
-              <div style={{ fontSize: 14 }}>Вы в расчёте</div>
-            )}
-            <div className="row-sub" style={{ marginTop: 2 }}>
-              общие траты делим {balance.members.map(m => Math.round(m.share)).join('/')}
-            </div>
-          </div>
-          {balance.debt && (
-            <button className="btn btn-secondary" style={{ width: 'auto', padding: '10px 14px', fontSize: 13, background: 'var(--surface-2)' }} onClick={settle}>
-              Рассчитались
-            </button>
-          )}
-        </div>
-      )}
-
       {(() => {
         const planned = goals.filter(g => Number(g.monthly_plan) > 0 && Number(g.current_amount) < Number(g.target_amount));
         if (month !== thisMonth() || !planned.length) return null;
@@ -274,15 +237,6 @@ export default function Dashboard({ budget, user, refreshKey, onAdd, onOpenRecap
         </div>
       )}
 
-      {celebrate && (
-        <Celebration
-          anim="highfive"
-          label="в расчёте"
-          title={money(celebrate.amount, cur)}
-          subtitle={`${celebrate.from} → ${celebrate.to}. Долг закрыт, можно тратить дальше`}
-          onClose={() => setCelebrate(null)}
-        />
-      )}
     </div>
   );
 }

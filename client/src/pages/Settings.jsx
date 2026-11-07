@@ -39,20 +39,17 @@ export default function Settings({ budget, user, onBack, onBudgetUpdate, onOpenB
     api.getNotify().then(setPrefs);
   }, [budget.id]);
 
-  const [balance, setBalance] = useState(null);
   const [limit, setLimit] = useState('');
   const [limitSaved, setLimitSaved] = useState(false);
 
   useEffect(() => {
-    api.getBalance(budget.id).then(setBalance);
     api.getPersonal(budget.id).then(p => {
       const me = p.members.find(m => m.id === user.id);
       setLimit(me?.limit ? String(me.limit) : '');
     });
   }, [budget.id, user.id]);
 
-  const myShare = balance?.members.find(m => m.id === user.id)?.share;
-  const partner = balance?.members.find(m => m.id !== user.id);
+  const partner = budgetData?.members?.find(m => m.id !== user.id);
 
   const saveLimit = async () => {
     await api.setPersonalLimit(budget.id, Number(limit) || 0);
@@ -154,20 +151,6 @@ export default function Settings({ budget, user, onBack, onBudgetUpdate, onOpenB
       </div>
 
       <InviteCard budget={budget} />
-
-      {partner && (
-        <>
-          <div className="section-label">Как делим общие траты</div>
-          <div className="pills">
-            {[50, 60, 70, 40, 30].map(p => (
-              <button key={p} className={`pill ${Math.round(myShare) === p ? 'on' : ''}`} onClick={async () => setBalance(await api.setShares(budget.id, p))}>
-                Я {p}% · {partner.first_name} {100 - p}%
-              </button>
-            ))}
-          </div>
-          <div className="row-sub" style={{ margin: '0 4px' }}>Пригодится, если вы вкладываетесь в общие траты не поровну</div>
-        </>
-      )}
 
       <div className="section-label">Мои личные деньги в месяц</div>
       <div style={{ display: 'flex', gap: 8 }}>
