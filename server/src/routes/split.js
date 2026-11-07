@@ -101,6 +101,18 @@ router.post('/budgets/:id/personal', async (req, res) => {
   res.json(item);
 });
 
+router.put('/personal/:id', async (req, res) => {
+  const item = await db.prepare('SELECT * FROM personal_expenses WHERE id = ? AND user_id = ?').get(req.params.id, req.userId);
+  if (!item) return res.status(404).json({ error: 'Not found' });
+  const amount = req.body.amount != null ? Number(req.body.amount) : Number(item.amount);
+  if (!(amount > 0)) return res.status(400).json({ error: 'Сумма должна быть больше нуля' });
+  const description = req.body.description !== undefined ? ((req.body.description || '').trim() || null) : item.description;
+  const date = /^\d{4}-\d{2}-\d{2}$/.test(req.body.date || '') ? req.body.date : item.date;
+  const categoryId = req.body.category_id !== undefined ? (req.body.category_id || null) : item.category_id;
+  res.json(await db.prepare('UPDATE personal_expenses SET amount = ?, description = ?, date = ?, category_id = ? WHERE id = ? RETURNING *')
+    .get(amount, description, date, categoryId, item.id));
+});
+
 router.delete('/personal/:id', async (req, res) => {
   const item = await db.prepare('SELECT * FROM personal_expenses WHERE id = ? AND user_id = ?').get(req.params.id, req.userId);
   if (!item) return res.status(404).json({ error: 'Not found' });

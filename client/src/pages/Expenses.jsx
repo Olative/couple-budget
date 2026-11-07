@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
 import { IconPlus, IconRepeat, IconMessageCircle, IconLock, IconPaperclip, IconPencil } from '@tabler/icons-react';
 import ExpenseSheet from '../components/ExpenseSheet';
+import OperationSheet from '../components/OperationSheet';
 import { api } from '../api/client';
 import { PenguinPair } from '../components/Art';
-import { money, confirmAction, incomeSource, thisMonth } from '../format';
+import { money, incomeSource, thisMonth } from '../format';
 
 function dayLabel(dateStr) {
   const d = new Date(dateStr + 'T00:00:00');
@@ -46,15 +47,13 @@ export default function Expenses({ budget, user, refreshKey, onAdd }) {
   useEffect(() => { api.getBudget(budget.id).then(b => setMembers(b.members)); }, [budget.id]);
 
   const [openId, setOpenId] = useState(null);
+  const [openOp, setOpenOp] = useState(null);
 
   const open = async (e) => {
     if (e.kind === 'carry') return;
     if (e.kind === 'expense') { setOpenId(e.id); return; }
     if (e.user_id !== user.id) return;
-    if (!(await confirmAction(`Удалить «${e.description || e.category_name}» на ${money(e.amount, budget.currency)}?`))) return;
-    if (e.kind === 'personal') await api.deletePersonal(e.id);
-    else await api.deleteIncome(e.id);
-    load();
+    setOpenOp(e);
   };
 
   const visible = (expenses || []).filter(e => !who || e.user_id === who);
@@ -119,6 +118,10 @@ export default function Expenses({ budget, user, refreshKey, onAdd }) {
 
       {expenses && groups.length > 0 && (
         <div className="row-sub" style={{ textAlign: 'center', marginTop: 4 }}>Нажмите на трату, чтобы отреагировать или прокомментировать</div>
+      )}
+
+      {openOp && (
+        <OperationSheet budget={budget} item={openOp} onClose={() => setOpenOp(null)} onChanged={load} />
       )}
 
       {openId && (

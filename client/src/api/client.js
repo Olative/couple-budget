@@ -56,6 +56,7 @@ export const api = {
   },
   addIncome: (budgetId, data) => request(`/budgets/${budgetId}/incomes`, { method: 'POST', body: JSON.stringify(data) }),
   deleteIncome: (id) => request(`/incomes/${id}`, { method: 'DELETE' }),
+  updateIncome: (id, data) => request(`/incomes/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
 
   getThread: (expenseId) => request(`/expenses/${expenseId}/thread`),
   setReaction: (expenseId, emoji) => request(`/expenses/${expenseId}/reaction`, { method: 'PUT', body: JSON.stringify({ emoji }) }),
@@ -79,6 +80,7 @@ export const api = {
   getPersonal: (budgetId, month) => request(`/budgets/${budgetId}/personal${month ? `?month=${month}` : ''}`),
   addPersonal: (budgetId, data) => request(`/budgets/${budgetId}/personal`, { method: 'POST', body: JSON.stringify(data) }),
   deletePersonal: (id) => request(`/personal/${id}`, { method: 'DELETE' }),
+  updatePersonal: (id, data) => request(`/personal/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   setPersonalLimit: (budgetId, amount) => request(`/budgets/${budgetId}/personal-limit`, { method: 'PUT', body: JSON.stringify({ amount }) }),
 
   getRecurring: (budgetId) => request(`/budgets/${budgetId}/recurring`),
