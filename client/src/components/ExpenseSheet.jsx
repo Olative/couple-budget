@@ -70,7 +70,7 @@ function EditForm({ budget, expense, onSaved, onMoved, onCancel }) {
         <span>
           Личная трата
           <span className="row-sub" style={{ display: 'block', marginTop: 2 }}>
-            {personal ? `уйдёт из общего бюджета в личные траты ${expense.user_name}; комментарии и чек не сохранятся` : 'перенести из общего бюджета в личные'}
+            {personal ? `останется в бюджете с пометкой «личная» у ${expense.user_name}; комментарии и чек не сохранятся` : 'покупка для себя — по-прежнему из общего бюджета'}
           </span>
         </span>
         <input type="checkbox" className="switch" checked={personal} onChange={ev => setPersonal(ev.target.checked)} />

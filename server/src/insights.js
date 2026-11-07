@@ -53,7 +53,7 @@ export async function materializeRecurring(budgetId, { force = false } = {}) {
 }
 
 export async function monthTotal(budgetId, month) {
-  const row = await db.prepare('SELECT COALESCE(SUM(amount), 0) as total FROM expenses WHERE budget_id = ? AND date LIKE ?')
+  const row = await db.prepare('SELECT COALESCE(SUM(amount), 0) as total FROM spending WHERE budget_id = ? AND date LIKE ?')
     .get(budgetId, `${month}%`);
   return Number(row.total);
 }
@@ -62,7 +62,7 @@ export async function monthTotal(budgetId, month) {
 export async function typicalMonth(budgetId, month) {
   const rows = await db.prepare(`
     SELECT substr(date, 1, 7) as m, category_id, SUM(amount) as s
-    FROM expenses
+    FROM spending
     WHERE budget_id = ? AND date >= ? AND date < ?
     GROUP BY m, category_id
   `).all(budgetId, `${shiftMonth(month, -12)}-01`, `${month}-01`);
@@ -101,7 +101,7 @@ export async function buildForecast(budgetId, month) {
       SELECT c.id, c.planned_amount, COALESCE(SUM(e.amount), 0) as spent,
         COALESCE(SUM(CASE WHEN e.recurring_id IS NOT NULL THEN e.amount END), 0) as fixed
       FROM categories c
-      LEFT JOIN expenses e ON c.id = e.category_id AND e.date LIKE ?
+      LEFT JOIN spending e ON c.id = e.category_id AND e.date LIKE ?
       WHERE c.budget_id = ?
       GROUP BY c.id
     `).all(`${month}%`, budgetId),
@@ -112,8 +112,10 @@ export async function buildForecast(budgetId, month) {
     `).all(budgetId, month, month) : [],
   ]);
   const pending = Object.fromEntries(pendingRows.map(r => [r.category_id, Number(r.s)]));
+  // Personal purchases saved without a category still come out of the budget.
+  const loose = await uncategorized(budgetId, month);
 
-  const spent = cats.reduce((s, c) => s + Number(c.spent), 0);
+  const spent = cats.reduce((s, c) => s + Number(c.spent), 0) + loose;
   const planned = cats.reduce((s, c) => s + Number(c.planned_amount || 0), 0);
   const fixedTotal = cats.reduce((s, c) => s + Number(c.fixed) + (pending[c.id] || 0), 0);
   const variable = spent - cats.reduce((s, c) => s + Number(c.fixed), 0);
@@ -140,6 +142,12 @@ export async function buildForecast(budgetId, month) {
   return { month, isCurrent, day, daysInMonth: dim, spent, planned, projected, categories, typical, recapMonth };
 }
 
+async function uncategorized(budgetId, month) {
+  const row = await db.prepare('SELECT COALESCE(SUM(amount), 0) as s FROM spending WHERE budget_id = ? AND date LIKE ? AND category_id IS NULL')
+    .get(budgetId, `${month}%`);
+  return Number(row.s);
+}
+
 export async function buildRecap(budgetId, month) {
   const prev = shiftMonth(month, -1);
 
@@ -148,19 +156,19 @@ export async function buildRecap(budgetId, month) {
       COALESCE(SUM(CASE WHEN e.date LIKE ? THEN e.amount END), 0) as spent,
       COALESCE(SUM(CASE WHEN e.date LIKE ? THEN e.amount END), 0) as prev_spent
     FROM categories c
-    LEFT JOIN expenses e ON c.id = e.category_id
+    LEFT JOIN spending e ON c.id = e.category_id
     WHERE c.budget_id = ?
     GROUP BY c.id
   `).all(`${month}%`, `${prev}%`, budgetId);
 
-  const totalSpent = cats.reduce((s, c) => s + Number(c.spent), 0);
+  const totalSpent = cats.reduce((s, c) => s + Number(c.spent), 0) + await uncategorized(budgetId, month);
   const totalPlanned = cats.reduce((s, c) => s + Number(c.planned_amount || 0), 0);
   if (totalSpent === 0) return { month, hasData: false };
 
   const top = [...cats].sort((a, b) => b.spent - a.spent)[0];
   let limitRunOutDay = null;
   if (top.planned_amount > 0 && top.spent > top.planned_amount) {
-    const rows = await db.prepare('SELECT amount, date FROM expenses WHERE category_id = ? AND date LIKE ? ORDER BY date, created_at')
+    const rows = await db.prepare('SELECT amount, date FROM spending WHERE category_id = ? AND date LIKE ? ORDER BY date, created_at')
       .all(top.id, `${month}%`);
     let acc = 0;
     for (const r of rows) {

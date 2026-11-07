@@ -247,6 +247,14 @@ for (const sql of [
   await client.execute(sql).catch(() => {});
 }
 
+// All money that left the budget: shared and personal expenses alike. Totals, limits, the remainder,
+// forecasts and the monthly recap are counted from this; "personal" only marks whose purchase it was.
+await client.execute('DROP VIEW IF EXISTS spending').catch(() => {});
+await client.execute(`CREATE VIEW spending AS
+  SELECT id, budget_id, category_id, user_id, amount, description, date, created_at, recurring_id, 0 AS personal FROM expenses
+  UNION ALL
+  SELECT id, budget_id, category_id, user_id, amount, description, date, created_at, NULL, 1 AS personal FROM personal_expenses`);
+
 console.log('Database tables initialized');
 
 const db = {

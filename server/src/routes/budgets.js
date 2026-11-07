@@ -150,12 +150,12 @@ router.get('/budgets/:id/summary', async (req, res) => {
   await materializeRecurring(id);
 
   const [totalRow, byCategory, byMember, incomeRow] = await Promise.all([
-    db.prepare('SELECT COALESCE(SUM(amount), 0) as total FROM expenses WHERE budget_id = ? AND date LIKE ?').get(id, `${currentMonth}%`),
+    db.prepare('SELECT COALESCE(SUM(amount), 0) as total FROM spending WHERE budget_id = ? AND date LIKE ?').get(id, `${currentMonth}%`),
     db.prepare(`
     SELECT c.id, c.name, c.icon, c.color, c.planned_amount,
            COALESCE(SUM(e.amount), 0) as spent
     FROM categories c
-    LEFT JOIN expenses e ON c.id = e.category_id AND e.date LIKE ?
+    LEFT JOIN spending e ON c.id = e.category_id AND e.date LIKE ?
     WHERE c.budget_id = ?
     GROUP BY c.id
     ORDER BY c.sort_order
@@ -179,14 +179,14 @@ router.get('/budgets/:id/summary', async (req, res) => {
   res.json({ totalSpent: totalRow.total, totalIncome: Number(incomeRow.total), carryOver, totalPlanned, byCategory, byMember, month: currentMonth });
 });
 
-// What is left from earlier months: incomes minus shared spending, counted from the first month
+// What is left from earlier months: incomes minus all spending, counted from the first month
 // that has any income (budgets that never record income have nothing to carry).
 async function carryOverInto(budgetId, month) {
   const first = await db.prepare("SELECT MIN(substr(date, 1, 7)) as m FROM incomes WHERE budget_id = ?").get(budgetId);
   if (!first?.m || first.m >= month) return 0;
   const [inc, exp] = await Promise.all([
     db.prepare('SELECT COALESCE(SUM(amount), 0) as s FROM incomes WHERE budget_id = ? AND date >= ? AND date < ?').get(budgetId, `${first.m}-01`, `${month}-01`),
-    db.prepare('SELECT COALESCE(SUM(amount), 0) as s FROM expenses WHERE budget_id = ? AND date >= ? AND date < ?').get(budgetId, `${first.m}-01`, `${month}-01`),
+    db.prepare('SELECT COALESCE(SUM(amount), 0) as s FROM spending WHERE budget_id = ? AND date >= ? AND date < ?').get(budgetId, `${first.m}-01`, `${month}-01`),
   ]);
   return Math.round((Number(inc.s) - Number(exp.s)) * 100) / 100;
 }

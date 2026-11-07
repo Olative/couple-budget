@@ -9,11 +9,11 @@ export function byMonth(month) {
 }
 
 export function money(amount, currency = '₽') {
-  return new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 }).format(Math.round(amount || 0)) + ' ' + currency;
+  return new Intl.NumberFormat(document.documentElement.lang === 'en' ? 'en-US' : 'ru-RU', { maximumFractionDigits: 0 }).format(Math.round(amount || 0)) + ' ' + currency;
 }
 
 export function num(amount) {
-  return new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 }).format(Math.round(amount || 0));
+  return new Intl.NumberFormat(document.documentElement.lang === 'en' ? 'en-US' : 'ru-RU', { maximumFractionDigits: 0 }).format(Math.round(amount || 0));
 }
 
 export function monthIndex(month) {

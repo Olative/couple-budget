@@ -89,7 +89,7 @@ export default function OperationSheet({ budget, user, item, onClose, onChanged 
           <span>
             Общая трата
             <span className="row-sub" style={{ display: 'block', marginTop: 2 }}>
-              {shared ? (categoryId ? 'перейдёт из личных трат в общий бюджет' : 'выберите категорию выше') : 'перенести из личных трат в общий бюджет'}
+              {shared ? (categoryId ? 'станет общей тратой, без пометки «личная»' : 'выберите категорию выше') : 'снять пометку «личная»'}
             </span>
           </span>
           <input type="checkbox" className="switch" checked={shared} onChange={e => setShared(e.target.checked)} />

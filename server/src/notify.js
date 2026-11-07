@@ -58,7 +58,7 @@ export async function checkLimit(budgetId, categoryId, currency) {
   const month = currentMonth();
   const cat = await db.prepare(`
     SELECT c.name, c.planned_amount, COALESCE(SUM(e.amount), 0) as spent
-    FROM categories c LEFT JOIN expenses e ON e.category_id = c.id AND e.date LIKE ?
+    FROM categories c LEFT JOIN spending e ON e.category_id = c.id AND e.date LIKE ?
     WHERE c.id = ? GROUP BY c.id
   `).get(`${month}%`, categoryId);
   const planned = Number(cat?.planned_amount || 0);
@@ -88,7 +88,7 @@ export async function sendEveningReminders() {
     if (local.getUTCHours() !== 20 || u.last_reminder === localDate) continue;
     await db.prepare('UPDATE notify_prefs SET last_reminder = ? WHERE user_id = ?').run(localDate, u.id);
     const row = await db.prepare(`
-      SELECT COUNT(*) as n FROM expenses e JOIN budget_members bm ON bm.budget_id = e.budget_id
+      SELECT COUNT(*) as n FROM spending e JOIN budget_members bm ON bm.budget_id = e.budget_id
       WHERE bm.user_id = ? AND e.date = ?
     `).get(u.id, localDate);
     if (Number(row.n) === 0) {

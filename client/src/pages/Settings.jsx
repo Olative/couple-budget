@@ -187,7 +187,7 @@ export default function Settings({ budget, user, onBack, onBudgetUpdate, onOpenB
         />
         <button className="btn" style={{ width: 'auto', padding: '0 18px' }} onClick={saveLimit}>{limitSaved ? 'Готово' : 'Сохранить'}</button>
       </div>
-      <div className="row-sub" style={{ margin: '0 4px' }}>Личные траты не попадают в общий бюджет и показываются на главной в вашей карточке</div>
+      <div className="row-sub" style={{ margin: '0 4px' }}>Сколько вы хотите тратить на себя в месяц. Личные траты идут из общего бюджета и показываются на главной в вашей карточке</div>
 
       <div className="section-label">Выгрузка</div>
       <button className="btn btn-secondary" onClick={exportAll} disabled={exporting === 'sending'}>

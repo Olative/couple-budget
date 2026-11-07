@@ -132,7 +132,7 @@ export default function AddExpenseSheet({ budget, initialKind = 'expense', initi
         <label className="switch-row" style={{ marginBottom: 6 }}>
           <span>
             <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><IconUser size={16} stroke={1.6} /> Личная трата</span>
-            {personal && <span className="row-sub" style={{ display: 'block', marginTop: 2 }}>не попадёт в общий бюджет, а запишется в ваши личные траты</span>}
+            {personal && <span className="row-sub" style={{ display: 'block', marginTop: 2 }}>покупка для себя: спишется из общего бюджета и покажется в вашей карточке на главной</span>}
           </span>
           <input type="checkbox" className="switch" checked={personal} onChange={e => setPersonal(e.target.checked)} />
         </label>

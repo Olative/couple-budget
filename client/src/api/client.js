@@ -1,3 +1,5 @@
+import { t } from '../i18n';
+
 const API_BASE = '/api';
 
 let telegramUserId = null;
@@ -20,7 +22,7 @@ async function request(path, options = {}) {
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: 'Request failed' }));
-    throw Object.assign(new Error(err.error || 'Request failed'), { status: res.status, data: err });
+    throw Object.assign(new Error(t(err.error || 'Не получилось, попробуйте ещё раз')), { status: res.status, data: err });
   }
   return res.json();
 }
@@ -73,6 +75,7 @@ export const api = {
   resetHook: () => request('/me/hook/reset', { method: 'POST' }),
   importStatement: (budgetId, data) => request(`/budgets/${budgetId}/import`, { method: 'POST', body: JSON.stringify(data) }),
   commitImport: (id) => request(`/imports/${id}/commit`, { method: 'POST' }),
+  setLang: (lang) => request('/me/lang', { method: 'PUT', body: JSON.stringify({ lang }) }),
   deleteAccount: () => request('/me', { method: 'DELETE' }),
   getLegal: () => request('/legal'),
   resetBudget: (budgetId, removePartner) => request(`/budgets/${budgetId}/reset`, { method: 'POST', body: JSON.stringify({ remove_partner: removePartner }) }),

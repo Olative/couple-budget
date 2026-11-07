@@ -2,7 +2,7 @@ import { Router } from 'express';
 import db from '../db.js';
 import { currentMonth } from '../insights.js';
 import { amountOf, dateOf, textOf } from '../validate.js';
-import { notifyPartners, notifyUser } from '../notify.js';
+import { checkLimit, notifyPartners, notifyUser } from '../notify.js';
 
 const router = Router();
 
@@ -100,6 +100,11 @@ router.post('/budgets/:id/personal', async (req, res) => {
   ).get(req.params.id, req.userId, (await db.prepare('SELECT id FROM categories WHERE id = ? AND budget_id = ?').get(req.body.category_id || 0, req.params.id))?.id || null, amount, textOf(req.body.description),
     /^\d{4}-\d{2}-\d{2}$/.test(req.body.date || '') ? req.body.date : new Date().toISOString().slice(0, 10));
   res.json(item);
+  // Personal purchases come out of the same budget, so they count towards category limits too.
+  if (item.category_id) {
+    const b = await db.prepare('SELECT currency FROM budgets WHERE id = ?').get(item.budget_id);
+    checkLimit(item.budget_id, item.category_id, b?.currency).catch(e => console.error('Limit check failed:', e.message));
+  }
 });
 
 // Personal spending is visible to both, and either can fix it; changes are kept like for shared expenses.
