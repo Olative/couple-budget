@@ -1,10 +1,17 @@
 import { useState, useEffect } from 'react';
 import { api } from '../api/client';
 import Sheet from './Sheet';
-import { money, confirmAction, INCOME_SOURCES } from '../format';
+import { money, confirmAction, INCOME_SOURCES, MONTHS_GEN } from '../format';
+
+const FIELD = { category: 'категория', amount: 'сумма', description: 'описание', date: 'дата' };
+const day = (d) => `${Number(d.slice(8, 10))} ${MONTHS_GEN[Number(d.slice(5, 7)) - 1]}`;
+function editLine(ed, currency) {
+  const show = (v) => (ed.field === 'amount' ? money(Number(v), currency) : ed.field === 'date' ? day(v) : `«${v || '—'}»`);
+  return `${ed.user_name}: ${FIELD[ed.field]} ${show(ed.old_value)} → ${show(ed.new_value)} · ${day(ed.created_at.slice(0, 10))}`;
+}
 
 // Editing your own income or personal expense: amount, source/category, note, date — and delete.
-export default function OperationSheet({ budget, item, onClose, onChanged }) {
+export default function OperationSheet({ budget, user, item, onClose, onChanged }) {
   const income = item.kind === 'income';
   const [amount, setAmount] = useState(String(item.amount));
   const [source, setSource] = useState(item.source || 'other');
@@ -15,9 +22,12 @@ export default function OperationSheet({ budget, item, onClose, onChanged }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
+  const [edits, setEdits] = useState([]);
   useEffect(() => {
     if (!income) api.getBudget(budget.id).then(b => setCategories(b.categories));
-  }, [budget.id, income]);
+    if (!income) api.getPersonalEdits(item.id).then(setEdits).catch(() => {});
+  }, [budget.id, income, item.id]);
+  const mine = item.user_id === user.id;
 
   const save = async () => {
     setSaving(true);
@@ -43,7 +53,12 @@ export default function OperationSheet({ budget, item, onClose, onChanged }) {
   };
 
   return (
-    <Sheet title={income ? 'Доход' : 'Личная трата'} onClose={onClose}>
+    <Sheet title={income ? 'Доход' : `Личная трата${mine ? '' : ` · ${item.user_name}`}`} onClose={onClose}>
+      {edits.length > 0 && (
+        <div className="edits" style={{ marginTop: 0, marginBottom: 10, borderTop: 'none', paddingTop: 0 }}>
+          {edits.map((ed, i) => <div key={i}>✏️ {editLine(ed, budget.currency)}</div>)}
+        </div>
+      )}
       <div className="card-pad" style={{ marginBottom: 10 }}>
         <input className="amount-input" style={income ? { color: 'var(--ok)' } : undefined} type="number" inputMode="decimal"
           value={amount} onChange={e => setAmount(e.target.value)} />
@@ -72,7 +87,7 @@ export default function OperationSheet({ budget, item, onClose, onChanged }) {
         <button className="btn btn-secondary" onClick={onClose}>Отмена</button>
         <button className="btn" onClick={save} disabled={saving || !(Number(amount) > 0)}>{saving ? 'Сохраняем…' : 'Сохранить'}</button>
       </div>
-      <button className="btn btn-danger" style={{ marginTop: 6 }} onClick={remove}>Удалить</button>
+      {mine && <button className="btn btn-danger" style={{ marginTop: 6 }} onClick={remove}>Удалить</button>}
     </Sheet>
   );
 }

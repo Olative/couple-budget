@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { IconPlus, IconRepeat, IconLock } from '@tabler/icons-react';
+import { IconPlus, IconRepeat, IconUser } from '@tabler/icons-react';
 import { api } from '../api/client';
 import Sheet from './Sheet';
 import CategorySheet from './CategorySheet';
@@ -131,8 +131,8 @@ export default function AddExpenseSheet({ budget, initialKind = 'expense', initi
       {!isIncome && !repeat && (
         <label className="switch-row" style={{ marginBottom: 6 }}>
           <span>
-            <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><IconLock size={16} stroke={1.6} /> Личная трата</span>
-            {personal && <span className="row-sub" style={{ display: 'block', marginTop: 2 }}>из ваших личных денег — не попадёт в общий бюджет, второй увидит только сумму за месяц</span>}
+            <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><IconUser size={16} stroke={1.6} /> Личная трата</span>
+            {personal && <span className="row-sub" style={{ display: 'block', marginTop: 2 }}>не попадёт в общий бюджет, а запишется в ваши личные траты</span>}
           </span>
           <input type="checkbox" className="switch" checked={personal} onChange={e => setPersonal(e.target.checked)} />
         </label>

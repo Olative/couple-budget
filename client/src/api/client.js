@@ -80,6 +80,7 @@ export const api = {
   getPersonal: (budgetId, month) => request(`/budgets/${budgetId}/personal${month ? `?month=${month}` : ''}`),
   addPersonal: (budgetId, data) => request(`/budgets/${budgetId}/personal`, { method: 'POST', body: JSON.stringify(data) }),
   deletePersonal: (id) => request(`/personal/${id}`, { method: 'DELETE' }),
+  getPersonalEdits: (id) => request(`/personal/${id}/edits`),
   updatePersonal: (id, data) => request(`/personal/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   setPersonalLimit: (budgetId, amount) => request(`/budgets/${budgetId}/personal-limit`, { method: 'PUT', body: JSON.stringify({ amount }) }),
 

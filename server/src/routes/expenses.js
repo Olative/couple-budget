@@ -17,7 +17,7 @@ router.get('/budgets/:budgetId/expenses', async (req, res) => {
            (SELECT group_concat(r.emoji, '') FROM reactions r WHERE r.expense_id = e.id) as reactions,
            (SELECT COUNT(*) FROM comments cm WHERE cm.expense_id = e.id) as comment_count,
            EXISTS (SELECT 1 FROM receipts rc WHERE rc.expense_id = e.id) as has_receipt,
-           EXISTS (SELECT 1 FROM expense_edits ed WHERE ed.expense_id = e.id AND ed.user_id != e.user_id) as edited_by_other
+           EXISTS (SELECT 1 FROM expense_edits ed WHERE ed.expense_id = e.id AND ed.kind = 'expense' AND ed.user_id != e.user_id) as edited_by_other
     FROM expenses e
     JOIN categories c ON e.category_id = c.id
     JOIN users u ON e.user_id = u.id
@@ -122,7 +122,7 @@ router.delete('/expenses/:id', async (req, res) => {
   await db.prepare('DELETE FROM reactions WHERE expense_id = ?').run(expense.id);
   await db.prepare('DELETE FROM comments WHERE expense_id = ?').run(expense.id);
   await db.prepare('DELETE FROM receipts WHERE expense_id = ?').run(expense.id);
-  await db.prepare('DELETE FROM expense_edits WHERE expense_id = ?').run(expense.id);
+  await db.prepare("DELETE FROM expense_edits WHERE expense_id = ? AND kind = 'expense'").run(expense.id);
   await db.prepare('DELETE FROM expenses WHERE id = ?').run(expense.id);
   res.json({ ok: true });
 });

@@ -213,6 +213,7 @@ for (const sql of [
   'ALTER TABLE savings_goals ADD COLUMN monthly_plan REAL NOT NULL DEFAULT 0',
   'ALTER TABLE notify_prefs ADD COLUMN savings INTEGER NOT NULL DEFAULT 1',
   'ALTER TABLE users ADD COLUMN hook_token TEXT',
+  "ALTER TABLE expense_edits ADD COLUMN kind TEXT NOT NULL DEFAULT 'expense'",
 ]) {
   await client.execute(sql).catch(() => {});
 }

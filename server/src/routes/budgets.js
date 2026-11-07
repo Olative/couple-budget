@@ -160,8 +160,9 @@ router.get('/budgets/:id/summary', async (req, res) => {
     ORDER BY c.sort_order
   `).all(`${currentMonth}%`, id),
     db.prepare(`
-    SELECT u.id, u.first_name, u.username,
-      (SELECT COALESCE(SUM(e.amount), 0) FROM expenses e WHERE e.user_id = u.id AND e.budget_id = ? AND e.date LIKE ?) as spent,
+    SELECT u.id, u.first_name, u.username, bm.personal_limit as personal_limit,
+      -- "Who spent how much" is about personal spending only; shared expenses belong to both.
+      (SELECT COALESCE(SUM(p.amount), 0) FROM personal_expenses p WHERE p.user_id = u.id AND p.budget_id = ? AND p.date LIKE ?) as spent,
       (SELECT COALESCE(SUM(i.amount), 0) FROM incomes i WHERE i.user_id = u.id AND i.budget_id = ? AND i.date LIKE ?) as earned
     FROM users u
     JOIN budget_members bm ON u.id = bm.user_id

@@ -173,7 +173,7 @@ export async function buildRecap(budgetId, month) {
     SELECT u.id, u.first_name, COALESCE(SUM(e.amount), 0) as spent
     FROM users u
     JOIN budget_members bm ON u.id = bm.user_id
-    LEFT JOIN expenses e ON u.id = e.user_id AND e.budget_id = ? AND e.date LIKE ?
+    LEFT JOIN personal_expenses e ON u.id = e.user_id AND e.budget_id = ? AND e.date LIKE ?
     WHERE bm.budget_id = ?
     GROUP BY u.id
     ORDER BY bm.joined_at

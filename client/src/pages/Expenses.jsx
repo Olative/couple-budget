@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { IconPlus, IconRepeat, IconMessageCircle, IconLock, IconPaperclip, IconPencil } from '@tabler/icons-react';
+import { IconPlus, IconRepeat, IconMessageCircle, IconPaperclip, IconPencil } from '@tabler/icons-react';
 import ExpenseSheet from '../components/ExpenseSheet';
 import OperationSheet from '../components/OperationSheet';
 import { api } from '../api/client';
@@ -28,9 +28,7 @@ export default function Expenses({ budget, user, refreshKey, onAdd }) {
         const s = incomeSource(i.source);
         return { ...i, kind: 'income', category_icon: s.icon, category_name: s.name };
       });
-      const personal = pers.items.map(p => ({
-        ...p, kind: 'personal', category_icon: p.category_icon || '🔒', category_name: 'Личная', user_name: user.first_name,
-      }));
+      const personal = pers.items.map(p => ({ ...p, kind: 'personal', category_icon: p.category_icon || '👤' }));
       // What was left at the end of last month opens this month, on the 1st.
       const carry = Number(sum.carryOver || 0);
       const carried = carry ? [{
@@ -52,7 +50,8 @@ export default function Expenses({ budget, user, refreshKey, onAdd }) {
   const open = async (e) => {
     if (e.kind === 'carry') return;
     if (e.kind === 'expense') { setOpenId(e.id); return; }
-    if (e.user_id !== user.id) return;
+    // Personal spending can be fixed by either of you; incomes only by whoever added them.
+    if (e.kind === 'income' && e.user_id !== user.id) return;
     setOpenOp(e);
   };
 
@@ -90,7 +89,7 @@ export default function Expenses({ budget, user, refreshKey, onAdd }) {
           <div className="section-label" style={{ marginBottom: 6 }}>{dayLabel(date)}</div>
           <div className="card">
             {items.map(e => (
-              <div key={`${e.kind}${e.id}`} className="row" onClick={() => open(e)} style={{ cursor: e.kind === 'expense' || e.user_id === user.id ? 'pointer' : 'default' }}>
+              <div key={`${e.kind}${e.id}`} className="row" onClick={() => open(e)} style={{ cursor: e.kind === 'expense' || e.kind === 'personal' || e.user_id === user.id ? 'pointer' : 'default' }}>
                 <span className="row-ic">{e.category_icon}</span>
                 <div className="row-main">
                   <div className="row-name">
@@ -100,8 +99,7 @@ export default function Expenses({ budget, user, refreshKey, onAdd }) {
                     {!!e.edited_by_other && <IconPencil size={13} stroke={1.8} color="#9a9a9a" style={{ marginLeft: 5, verticalAlign: -1 }} aria-label="поправил второй участник" />}
                   </div>
                   <div className="row-sub">
-                    {e.kind === 'personal' && <IconLock size={11} style={{ verticalAlign: -1, marginRight: 3 }} />}
-                    {e.kind === 'personal' ? 'личная · видите только вы' : e.kind === 'carry' ? 'перенос остатка' : <>{e.description ? `${e.category_name} · ` : ''}{e.user_name}</>}
+                    {e.kind === 'personal' ? `личная · ${e.category_name ? `${e.category_name} · ` : ''}${e.user_name}` : e.kind === 'carry' ? 'перенос остатка' : <>{e.description ? `${e.category_name} · ` : ''}{e.user_name}</>}
                     {e.reactions && <span style={{ marginLeft: 6 }}>{e.reactions}</span>}
                     {e.comment_count > 0 && <span style={{ marginLeft: 6 }}><IconMessageCircle size={11} style={{ verticalAlign: -1 }} /> {e.comment_count}</span>}
                   </div>
@@ -121,7 +119,7 @@ export default function Expenses({ budget, user, refreshKey, onAdd }) {
       )}
 
       {openOp && (
-        <OperationSheet budget={budget} item={openOp} onClose={() => setOpenOp(null)} onChanged={load} />
+        <OperationSheet budget={budget} user={user} item={openOp} onClose={() => setOpenOp(null)} onChanged={load} />
       )}
 
       {openId && (

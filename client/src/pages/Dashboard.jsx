@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { IconChevronLeft, IconChevronRight, IconChevronDown, IconSettings, IconArrowRight, IconPlus, IconLock, IconPigMoney } from '@tabler/icons-react';
+import { IconChevronLeft, IconChevronRight, IconChevronDown, IconSettings, IconArrowRight, IconPlus, IconPigMoney } from '@tabler/icons-react';
 import { api } from '../api/client';
 import { GridLines, Penguin, PenguinPair } from '../components/Art';
 import InviteCard from '../components/InviteCard';
@@ -32,7 +32,6 @@ export default function Dashboard({ budget, user, refreshKey, onAdd, onOpenRecap
   const [month, setMonth] = useState(thisMonth);
   const [summary, setSummary] = useState(null);
   const [forecast, setForecast] = useState(null);
-  const [personal, setPersonal] = useState(null);
   const [goals, setGoals] = useState([]);
 
   const [rules, setRules] = useState([]);
@@ -43,11 +42,9 @@ export default function Dashboard({ budget, user, refreshKey, onAdd, onOpenRecap
   useEffect(() => {
     Promise.all([
       api.getSummary(budget.id, month), api.getForecast(budget.id, month),
-      api.getPersonal(budget.id, month),
-    ]).then(([s, f, p]) => {
+    ]).then(([s, f]) => {
       setSummary(s);
       setForecast(f);
-      setPersonal(p);
     });
   }, [budget.id, month, refreshKey]);
 
@@ -160,6 +157,9 @@ export default function Dashboard({ budget, user, refreshKey, onAdd, onOpenRecap
                 <div style={{ minWidth: 0 }}>
                   <div className="label" style={{ fontSize: 7, color: i ? 'var(--muted)' : '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.first_name}</div>
                   <div className="num" style={{ fontSize: 14, marginTop: 6 }}>{money(m.spent, cur)}</div>
+                  {Number(m.personal_limit) > 0 && (
+                    <div style={{ fontSize: 11, marginTop: 2, opacity: 0.7, fontWeight: 300 }}>из {money(m.personal_limit, cur)}</div>
+                  )}
                 </div>
                 <Penguin height={i ? 34 : 38} mirror={i === 1} />
               </div>
@@ -191,30 +191,6 @@ export default function Dashboard({ budget, user, refreshKey, onAdd, onOpenRecap
               {saved >= plan ? `План на ${MONTHS[Number(month.slice(5, 7)) - 1].toLowerCase()} выполнен` : `В ${MONTHS_PREP[Number(month.slice(5, 7)) - 1]} осталось отложить ${money(plan - saved, cur)}`}
             </div>
           </button>
-        );
-      })()}
-
-      {(() => {
-        const me = personal?.members.find(m => m.id === user.id);
-        if (!me || (me.limit === 0 && me.spent === 0)) return null;
-        const other = personal.members.find(m => m.id !== user.id);
-        return (
-          <div className="card-pad">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-              <span style={{ fontSize: 14, display: 'flex', alignItems: 'center', gap: 6 }}><IconLock size={15} stroke={1.6} /> Мои личные</span>
-              <span className="num" style={{ fontSize: 13 }}>{money(me.spent, cur)}{me.limit > 0 && <span className="muted"> из {money(me.limit, cur)}</span>}</span>
-            </div>
-            {me.limit > 0 && (
-              <div className="progress">
-                <div className="progress-fill" style={{ width: `${Math.min(100, (me.spent / me.limit) * 100)}%`, background: me.spent > me.limit ? 'var(--danger)' : 'var(--ink)' }} />
-              </div>
-            )}
-            {other && (other.limit > 0 || other.spent > 0) && (
-              <div className="row-sub" style={{ marginTop: 8 }}>
-                {other.first_name}: {money(other.spent, cur)}{other.limit > 0 ? ` из ${money(other.limit, cur)}` : ''}
-              </div>
-            )}
-          </div>
         );
       })()}
 

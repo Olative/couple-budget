@@ -24,7 +24,7 @@ router.get('/expenses/:id/thread', async (req, res) => {
   `).all(expense.id);
   const edits = await db.prepare(`
     SELECT ed.field, ed.old_value, ed.new_value, ed.created_at, ed.user_id, u.first_name as user_name
-    FROM expense_edits ed JOIN users u ON u.id = ed.user_id WHERE ed.expense_id = ? ORDER BY ed.created_at
+    FROM expense_edits ed JOIN users u ON u.id = ed.user_id WHERE ed.expense_id = ? AND ed.kind = 'expense' ORDER BY ed.created_at
   `).all(expense.id);
   res.json({ expense, reactions, comments, edits });
 });
