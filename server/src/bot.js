@@ -181,7 +181,7 @@ async function setupProfile() {
     console.error('Bot name update failed:', e.message);
   }
   await bot.setMyDescription({
-    description: 'Считайте деньги вдвоём — без таблиц и споров 🐧\n\n' +
+    description: 'Считайте деньги вдвоём — без таблиц 🐧\n\n' +
       'Видно, кто сколько потратил, сколько осталось до конца месяца и сколько уже отложено на мечту.',
   });
   await bot.setMyShortDescription({ short_description: 'Бюджет для двоих: общие траты, лимиты, копилка и итоги месяца 🐧' });
@@ -300,8 +300,18 @@ export function startBot() {
   });
 
   bot.onText(/^\/admin\b/, async (msg) => {
-    if (msg.chat.type !== 'private' || !isAdmin(msg) || !(await firstTime(msgKey(msg)))) return;
-    await sendAdminLinks(msg.chat.id);
+    if (msg.chat.type !== 'private' || !(await firstTime(msgKey(msg)))) return;
+    if (!isAdmin(msg)) {
+      console.log(`/admin from ${msg.from.id}: not the admin (ADMIN_TELEGRAM_ID ${ADMIN_ID ? 'is set' : 'is not set'})`);
+      await bot.sendMessage(msg.chat.id, 'Эта команда только для администратора бота.');
+      return;
+    }
+    try {
+      await sendAdminLinks(msg.chat.id);
+    } catch (e) {
+      console.error('Admin links failed:', e.message);
+      await bot.sendMessage(msg.chat.id, `Не получилось открыть CRM: ${e.message}`).catch(() => {});
+    }
   });
 
   bot.onText(/^\/support\b/, async (msg) => {
