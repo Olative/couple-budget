@@ -34,10 +34,14 @@ router.post('/budgets/:budgetId/recurring', async (req, res) => {
     source = INCOME_SOURCES.includes(req.body.source) ? req.body.source : 'other';
   }
 
+  // The chosen day (up to 31) is kept as is; in shorter months the payment lands on the last day.
+  const chosenDay = Number(req.body.day_of_month);
+  const day = chosenDay >= 1 && chosenDay <= 31 ? Math.floor(chosenDay) : Number(date.slice(8, 10));
+
   const rule = await db.prepare(`
     INSERT INTO recurring (budget_id, user_id, kind, amount, category_id, source, description, day_of_month, start_month)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING *
-  `).get(budgetId, req.userId, kind, amount, categoryId, source, req.body.description || null, Number(date.slice(8, 10)), date.slice(0, 7));
+  `).get(budgetId, req.userId, kind, amount, categoryId, source, req.body.description || null, day, date.slice(0, 7));
 
   await materializeRecurring(budgetId, { force: true });
   res.json(rule);

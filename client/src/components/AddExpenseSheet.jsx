@@ -12,6 +12,15 @@ function today() {
 
 const daysIn = (iso) => new Date(Number(iso.slice(0, 4)), Number(iso.slice(5, 7)), 0).getDate();
 
+// When the first payment happens this month: the chosen day, or the month's last day if it is shorter.
+function firstHint(day, now) {
+  const today = Number(now.slice(8, 10));
+  const actual = Math.min(day, daysIn(now));
+  if (actual > today) return `первый раз ${actual}-го`;
+  if (actual === today) return 'первый раз — сегодня';
+  return 'за этот месяц запишем сразу';
+}
+
 export default function AddExpenseSheet({ budget, initialKind = 'expense', initialRepeat = false, onClose, onSaved }) {
   const [kind, setKind] = useState(initialKind);
   const [categories, setCategories] = useState([]);
@@ -45,7 +54,7 @@ export default function AddExpenseSheet({ budget, initialKind = 'expense', initi
       const repeatDate = `${now.slice(0, 8)}${String(Math.min(repeatDay, daysIn(now))).padStart(2, '0')}`;
       const common = { amount: Number(amount), description: description || null, date: repeat && !(personal && !isIncome) ? repeatDate : date };
       if (!isIncome && personal) await api.addPersonal(budget.id, { ...common, category_id: categoryId });
-      else if (repeat) await api.addRecurring(budget.id, { ...common, kind, source, category_id: categoryId });
+      else if (repeat) await api.addRecurring(budget.id, { ...common, kind, source, category_id: categoryId, day_of_month: repeatDay });
       else if (isIncome) await api.addIncome(budget.id, { ...common, source });
       else await api.addExpense(budget.id, { ...common, category_id: categoryId });
       onSaved();
@@ -143,8 +152,13 @@ export default function AddExpenseSheet({ budget, initialKind = 'expense', initi
               </select>
               <span>число</span>
               <span className="row-sub" style={{ marginLeft: 'auto', marginTop: 0 }}>
-                {repeatDay > Number(now.slice(8, 10)) ? `первый раз ${repeatDay}-го` : repeatDay === Number(now.slice(8, 10)) ? 'первый раз — сегодня' : 'за этот месяц запишем сразу'}
+                {firstHint(repeatDay, now)}
               </span>
+              {repeatDay > 28 && (
+                <span className="row-sub" style={{ width: '100%', marginTop: 4 }}>
+                  В месяцах, где нет {repeatDay}-го числа, — в последний день месяца
+                </span>
+              )}
             </div>
           )}
         </div>

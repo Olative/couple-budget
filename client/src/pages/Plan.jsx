@@ -115,7 +115,7 @@ export default function Plan({ budget, refreshKey, onAdd }) {
                 <span className="row-ic">{income ? s.icon : r.category_icon}</span>
                 <div className="row-main">
                   <div className="row-name">{r.description || (income ? s.name : r.category_name)}</div>
-                  <div className="row-sub">каждое {r.day_of_month}-е · {r.user_name}</div>
+                  <div className="row-sub">{r.day_of_month > 28 ? `каждое ${r.day_of_month}-е или последний день` : `каждое ${r.day_of_month}-е`} · {r.user_name}</div>
                 </div>
                 <span className={`row-amt ${income ? 'good' : ''}`}>{income ? '+' : '−'}{money(r.amount, cur)}</span>
                 <button className="icon-btn" style={{ width: 30, height: 30, background: 'var(--surface-2)' }} onClick={() => stopRecurring(r)} aria-label="Отменить повтор">
