@@ -4,6 +4,7 @@ import { api } from '../api/client';
 import { GridLines, Penguin, PenguinPair } from '../components/Art';
 import InviteCard from '../components/InviteCard';
 import Upcoming from '../components/Upcoming';
+import CategoryOps from '../components/CategoryOps';
 import { money, MONTHS, MONTHS_GEN, MONTHS_PREP, shiftMonth, thisMonth } from '../format';
 
 function monthLabel(month) {
@@ -35,6 +36,8 @@ export default function Dashboard({ budget, user, refreshKey, onAdd, onOpenRecap
   const [goals, setGoals] = useState([]);
 
   const [rules, setRules] = useState([]);
+  const [openCat, setOpenCat] = useState(null);
+  const [tick, setTick] = useState(0);
 
   useEffect(() => { api.getSavings(budget.id).then(setGoals); }, [budget.id, refreshKey]);
   useEffect(() => { api.getRecurring(budget.id).then(setRules); }, [budget.id, refreshKey]);
@@ -46,7 +49,7 @@ export default function Dashboard({ budget, user, refreshKey, onAdd, onOpenRecap
       setSummary(s);
       setForecast(f);
     });
-  }, [budget.id, month, refreshKey]);
+  }, [budget.id, month, refreshKey, tick]);
 
   const cur = budget.currency;
   const header = (
@@ -204,7 +207,7 @@ export default function Dashboard({ budget, user, refreshKey, onAdd, onOpenRecap
             if (f?.exhausted) { note = over ? `перерасход ${money(cat.spent - cat.planned_amount, cur)}` : 'лимит исчерпан'; warn = true; }
             else if (f?.runsOutDay) { note = `лимит закончится к ${f.runsOutDay}-му`; warn = true; }
             return (
-              <div key={cat.id} className="row">
+              <div key={cat.id} className="row" style={{ cursor: 'pointer' }} onClick={() => setOpenCat(cat)}>
                 <span className="row-ic">{cat.icon}</span>
                 <div className="row-main">
                   <div className="row-name">{cat.name}</div>
@@ -228,6 +231,9 @@ export default function Dashboard({ budget, user, refreshKey, onAdd, onOpenRecap
         </div>
       )}
 
+      {openCat && (
+        <CategoryOps budget={budget} user={user} category={openCat} month={month} onClose={() => setOpenCat(null)} onChanged={() => setTick(t => t + 1)} />
+      )}
     </div>
   );
 }

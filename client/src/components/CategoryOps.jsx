@@ -1,0 +1,71 @@
+import { useState, useEffect, useCallback } from 'react';
+import { IconRepeat, IconMessageCircle, IconPaperclip } from '@tabler/icons-react';
+import Sheet from './Sheet';
+import ExpenseSheet from './ExpenseSheet';
+import OperationSheet from './OperationSheet';
+import { api } from '../api/client';
+import { money, MONTHS_PREP, MONTHS_GEN } from '../format';
+
+const shortDay = (d) => `${Number(d.slice(8, 10))} ${MONTHS_GEN[Number(d.slice(5, 7)) - 1]}`;
+
+// Every expense of one category in a month, shared and personal, opened from the dashboard.
+export default function CategoryOps({ budget, user, category, month, onClose, onChanged }) {
+  const [items, setItems] = useState(null);
+  const [openId, setOpenId] = useState(null);
+  const [openOp, setOpenOp] = useState(null);
+  const cur = budget.currency;
+
+  const load = useCallback(() => {
+    Promise.all([
+      api.getExpenses(budget.id, { month, category_id: category.id, limit: 500 }),
+      api.getPersonal(budget.id, month),
+    ]).then(([ex, pers]) => {
+      const personal = pers.items
+        .filter(p => p.category_id === category.id && p.date.startsWith(month))
+        .map(p => ({ ...p, kind: 'personal' }));
+      setItems([...ex.map(e => ({ ...e, kind: 'expense' })), ...personal]
+        .sort((a, b) => b.date.localeCompare(a.date) || b.created_at.localeCompare(a.created_at)));
+    });
+  }, [budget.id, category.id, month]);
+  useEffect(() => { load(); }, [load]);
+
+  const changed = () => { load(); onChanged(); };
+  const total = (items || []).reduce((s, e) => s + Number(e.amount), 0);
+  const planned = Number(category.planned_amount || 0);
+  const monthName = MONTHS_PREP[Number(month.slice(5, 7)) - 1];
+
+  return (
+    <Sheet title={`${category.icon} ${category.name}`} onClose={onClose}>
+      <div className="row-sub" style={{ margin: '-4px 4px 12px' }}>
+        {money(total, cur)} в {monthName}{planned > 0 ? ` · лимит ${money(planned, cur)}` : ''}
+        {items && ` · ${items.length} ${items.length % 10 === 1 && items.length % 100 !== 11 ? 'трата' : [2, 3, 4].includes(items.length % 10) && ![12, 13, 14].includes(items.length % 100) ? 'траты' : 'трат'}`}
+      </div>
+      {!items && <div className="empty" style={{ padding: 24 }}>…</div>}
+      {items && items.length === 0 && <div className="empty" style={{ padding: 24 }}>В этом месяце трат нет</div>}
+      {items && items.length > 0 && (
+        <div className="card">
+          {items.map(e => (
+            <div key={`${e.kind}${e.id}`} className="row" style={{ cursor: 'pointer' }}
+              onClick={() => (e.kind === 'expense' ? setOpenId(e.id) : setOpenOp(e))}>
+              <div className="row-main">
+                <div className="row-name">
+                  {e.description || category.name}
+                  {e.recurring_id && <IconRepeat size={13} stroke={1.8} color="#9a9a9a" style={{ marginLeft: 5, verticalAlign: -1 }} aria-label="повторяется каждый месяц" />}
+                  {!!e.has_receipt && <IconPaperclip size={13} stroke={1.8} color="#9a9a9a" style={{ marginLeft: 5, verticalAlign: -1 }} aria-label="есть фото чека" />}
+                </div>
+                <div className="row-sub">
+                  {shortDay(e.date)} · {e.kind === 'personal' ? `личная · ${e.user_name}` : e.user_name}
+                  {e.reactions && <span style={{ marginLeft: 6 }}>{e.reactions}</span>}
+                  {e.comment_count > 0 && <span style={{ marginLeft: 6 }}><IconMessageCircle size={11} style={{ verticalAlign: -1 }} /> {e.comment_count}</span>}
+                </div>
+              </div>
+              <span className="row-amt">−{money(e.amount, cur)}</span>
+            </div>
+          ))}
+        </div>
+      )}
+      {openId && <ExpenseSheet budget={budget} user={user} expenseId={openId} onClose={() => setOpenId(null)} onChanged={changed} />}
+      {openOp && <OperationSheet budget={budget} user={user} item={openOp} onClose={() => setOpenOp(null)} onChanged={changed} />}
+    </Sheet>
+  );
+}
