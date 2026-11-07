@@ -266,13 +266,14 @@ button { font-family: inherit; color: inherit; }
 
 /* Bottom sheet */
 .sheet-overlay {
-  position: fixed; inset: 0; background: rgba(0, 0, 0, 0.35); display: flex; align-items: flex-end;
-  z-index: 200; animation: fadeIn 0.2s ease;
+  position: fixed; left: 0; right: 0; top: var(--vv-top, 0px); height: var(--vv-height, 100%);
+  background: rgba(0, 0, 0, 0.35); display: flex; align-items: flex-end;
+  z-index: 200; animation: fadeIn 0.2s ease; overscroll-behavior: contain;
 }
 .sheet {
   background: var(--bg); border-radius: 26px 26px 0 0; width: 100%; max-width: 520px; margin: 0 auto;
   padding: 10px 16px calc(20px + env(safe-area-inset-bottom, 0px));
-  max-height: 88vh; overflow-y: auto; animation: slideUp 0.3s ease;
+  max-height: calc(var(--vv-height, 100vh) * 0.92); overflow-y: auto; overscroll-behavior: contain; animation: slideUp 0.3s ease;
 }
 .sheet-grip { width: 36px; height: 4px; border-radius: 2px; background: var(--grip); margin: 0 auto 14px; }
 .sheet-title { font-family: var(--font-display); font-weight: 300; font-size: 16px; margin-bottom: 16px; }
