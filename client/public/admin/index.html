@@ -77,6 +77,23 @@ input:focus, textarea:focus, select:focus { border-color:var(--blue); }
 .field { display:flex; flex-direction:column; gap:6px; margin-bottom:14px; }
 .field > label:not(.check) { font-size:12px; color:var(--muted); text-transform:uppercase; letter-spacing:.08em; }
 .field textarea { min-height:180px; resize:vertical; }
+.fmt { display:flex; flex-wrap:wrap; gap:4px; margin-bottom:6px; }
+.fmt button { border:1px solid var(--line); background:var(--surface); color:var(--ink); border-radius:9px; min-width:36px; height:34px; padding:0 9px; font:inherit; font-size:14px; cursor:pointer; }
+.fmt button:hover { background:var(--surface-2); }
+.editor { min-height:180px; max-height:420px; overflow:auto; font:inherit; color:var(--ink); background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:10px 14px; outline:none; white-space:pre-wrap; word-wrap:break-word; }
+.editor:focus { border-color:var(--blue); }
+.editor:empty::before { content:attr(data-ph); color:var(--muted); }
+.editor blockquote, .phone blockquote { margin:4px 0; padding:2px 10px; border-left:3px solid var(--blue); background:var(--blue-soft); border-radius:4px; }
+.phone blockquote { background:#e8f3ff; }
+.editor code, .phone code, .editor pre, .phone pre { font-family:ui-monospace, Menlo, monospace; font-size:.92em; background:var(--surface-2); padding:1px 4px; border-radius:4px; }
+.phone code, .phone pre { background:#eef2f6; }
+.editor pre, .phone pre { display:block; padding:6px 8px; margin:4px 0; white-space:pre-wrap; }
+.editor .tg-spoiler, .phone tg-spoiler { background:#c9ced6; color:transparent; border-radius:4px; }
+.editor .tg-spoiler { color:var(--ink); background:repeating-linear-gradient(45deg, #d7dce3 0 4px, #c4cad3 4px 8px); }
+.editor a, .phone a { color:#2b7fd0; }
+.linkrow { display:none; gap:6px; margin-bottom:6px; }
+.linkrow.on { display:flex; }
+.linkrow input { flex:1; }
 .count { font-size:12px; color:var(--muted); text-align:right; }
 .count.bad { color:var(--danger); }
 .check { display:flex; gap:10px; align-items:center; font-size:14px; padding:4px 0; cursor:pointer; }
@@ -297,7 +314,21 @@ let historyTimer = null;
 async function broadcasts() {
   $('#main').innerHTML = `<div class="bc">
     <div class="card">
-      <div class="field"><label>Текст поста</label><textarea id="ptext" placeholder="Например: 🐧 Теперь выписку можно прислать в PDF…">${esc(post.text)}</textarea><div class="count" id="pcount"></div></div>
+      <div class="field"><label>Текст поста</label>
+        <div class="fmt" id="fmt">
+          <button data-cmd="bold" title="Жирный (⌘B)"><b>Ж</b></button>
+          <button data-cmd="italic" title="Курсив (⌘I)"><i>К</i></button>
+          <button data-cmd="underline" title="Подчёркнутый (⌘U)"><u>Ч</u></button>
+          <button data-cmd="strikeThrough" title="Зачёркнутый"><s>З</s></button>
+          <button data-wrap="tg-spoiler" title="Спойлер — скрытый текст">▒ Спойлер</button>
+          <button data-wrap="blockquote" title="Цитата">❝ Цитата</button>
+          <button data-wrap="code" title="Моноширинный">&lt;/&gt;</button>
+          <button data-link title="Ссылка на выделенном тексте">🔗 Ссылка</button>
+          <button data-clear title="Убрать оформление у выделенного">✕ Формат</button>
+        </div>
+        <div class="linkrow" id="linkrow"><input type="url" id="linkurl" placeholder="https://…"><button class="btn secondary" id="linkok" style="padding:8px 14px">Добавить</button></div>
+        <div class="editor" id="ptext" contenteditable="true" data-ph="Например: 🐧 Теперь выписку можно прислать в PDF…">${post.html || ''}</div>
+        <div class="count" id="pcount"></div><div class="note" style="margin-top:4px">Выделите текст и нажмите кнопку оформления. Эмодзи можно вставлять как обычно.</div></div>
       <div class="field"><label>Медиа</label>
         <label class="check"><input type="radio" name="media" value="none"> Без фото и видео</label>
         <label class="check"><input type="radio" name="media" value="guide"> Видеоинструкция по автоучёту</label>
@@ -320,7 +351,33 @@ async function broadcasts() {
   <div class="section" style="margin-top:22px"><h3>История рассылок</h3><div class="list" id="hist"></div></div>`;
 
   const sync = () => { post.tested = null; $('#psend').disabled = true; draw(); };
-  $('#ptext').oninput = (e) => { post.text = e.target.value; sync(); };
+  const ed = $('#ptext');
+  const readEditor = () => { post.html = ed.innerHTML; post.text = toTgHtml(ed); post.len = ed.innerText.replace(/\n$/, '').trim().length; sync(); };
+  ed.oninput = readEditor;
+  ed.onpaste = (e) => { e.preventDefault(); document.execCommand('insertText', false, e.clipboardData.getData('text/plain')); };
+  let saved = null;
+  const keep = () => { const sel = getSelection(); if (sel.rangeCount && ed.contains(sel.anchorNode)) saved = sel.getRangeAt(0).cloneRange(); };
+  ed.onkeyup = ed.onmouseup = keep;
+  const restore = () => { if (!saved) return false; const sel = getSelection(); sel.removeAllRanges(); sel.addRange(saved); return !saved.collapsed; };
+  $('#fmt').querySelectorAll('button').forEach(b => {
+    b.onmousedown = (e) => e.preventDefault();
+    b.onclick = () => {
+      ed.focus();
+      if (!restore() && !b.dataset.cmd) { showMsg('Сначала выделите текст', true); return; }
+      if (b.dataset.cmd) document.execCommand(b.dataset.cmd);
+      else if (b.dataset.wrap) wrapSelection(b.dataset.wrap);
+      else if (b.dataset.clear !== undefined) { document.execCommand('removeFormat'); document.execCommand('unlink'); unwrapSelection(); }
+      else if (b.dataset.link !== undefined) { $('#linkrow').classList.add('on'); $('#linkurl').focus(); return; }
+      keep(); readEditor();
+    };
+  });
+  $('#linkok').onclick = () => {
+    const url = $('#linkurl').value.trim();
+    if (!/^https?:\/\//.test(url)) { showMsg('Ссылка должна начинаться с https://', true); return; }
+    ed.focus(); restore(); document.execCommand('createLink', false, url);
+    $('#linkrow').classList.remove('on'); $('#linkurl').value = ''; keep(); readEditor();
+  };
+  if (post.html) readEditor();
   document.querySelectorAll('input[name=media]').forEach(r => {
     r.checked = (post.media?.type === 'guide' ? 'guide' : post.media ? 'file' : 'none') === r.value;
     r.onchange = () => { if (r.value === 'none') post.media = null; if (r.value === 'guide') post.media = { type: 'guide' }; if (r.value === 'file') $('#pfile').click(); sync(); };
@@ -345,12 +402,13 @@ async function broadcasts() {
 }
 function draw() {
   const limit = post.media ? 1024 : 4096;
-  const c = $('#pcount'); c.textContent = `${post.text.length} / ${limit}`; c.className = 'count' + (post.text.length > limit ? ' bad' : '');
+  const len = post.len || 0;
+  const c = $('#pcount'); c.textContent = `${len} / ${limit}`; c.className = 'count' + (len > limit ? ' bad' : '');
   $('#linkf').style.display = post.buttons.link ? 'flex' : 'none';
   const m = post.media;
   const media = !m ? '' : m.type === 'guide' ? `<div class="media"><video src="/bot/auto-guide.mp4#t=21" muted playsinline preload="metadata"></video></div>`
     : m.preview ? `<div class="media">${m.type === 'video' ? `<video src="${m.preview}" muted playsinline preload="metadata"></video>` : `<img src="${m.preview}" alt="">`}</div>` : `<div class="media">${m.type === 'video' ? 'видео' : 'фото'}</div>`;
-  $('#pv').innerHTML = media + `<div class="txt">${esc(post.text) || '<span style="color:#999">Текст поста</span>'}</div>`;
+  $('#pv').innerHTML = media + `<div class="txt">${post.len ? post.text : '<span style="color:#999">Текст поста</span>'}</div>`;
   const kb = [];
   if (post.buttons.auto) kb.push('⚙️ Как настроить автоучёт');
   if (post.buttons.link?.text) kb.push(esc(post.buttons.link.text));
@@ -382,10 +440,47 @@ function confirmSend() {
     $('#yes').disabled = true;
     try {
       await api('/broadcasts', { method: 'POST', body: JSON.stringify(payload()) });
-      Object.assign(post, { text: '', media: null, tested: null, buttons: { open: true, auto: false, link: null } });
+      Object.assign(post, { text: '', html: '', len: 0, media: null, tested: null, buttons: { open: true, auto: false, link: null } });
       await broadcasts(); showMsg('Рассылка началась — прогресс в истории ниже.');
     } catch (e) { showMsg(e.message, true); }
   };
+}
+// Editor → Telegram HTML: only the tags Telegram understands, line breaks as \n.
+function toTgHtml(root) {
+  const TAG = { B: 'b', STRONG: 'b', I: 'i', EM: 'i', U: 'u', S: 's', STRIKE: 's', DEL: 's', CODE: 'code', PRE: 'pre', BLOCKQUOTE: 'blockquote' };
+  const walk = (node) => [...node.childNodes].map(n => {
+    if (n.nodeType === 3) return esc(n.textContent);
+    if (n.nodeType !== 1) return '';
+    if (n.tagName === 'BR') return '\n';
+    const inner = walk(n);
+    const st = n.style || {};
+    let out = inner;
+    if (n.classList.contains('tg-spoiler')) out = `<tg-spoiler>${out}</tg-spoiler>`;
+    if (TAG[n.tagName]) out = `<${TAG[n.tagName]}>${out}</${TAG[n.tagName]}>`;
+    if (n.tagName === 'A' && /^https?:\/\//.test(n.getAttribute('href') || '')) out = `<a href="${esc(n.getAttribute('href'))}">${out}</a>`;
+    if (/bold|[6-9]00/.test(st.fontWeight || '')) out = `<b>${out}</b>`;
+    if (st.fontStyle === 'italic') out = `<i>${out}</i>`;
+    if (/underline/.test(st.textDecoration || st.textDecorationLine || '')) out = `<u>${out}</u>`;
+    if (/line-through/.test(st.textDecoration || st.textDecorationLine || '')) out = `<s>${out}</s>`;
+    if ((n.tagName === 'DIV' || n.tagName === 'P') && n.previousSibling) out = '\n' + out;
+    return out;
+  }).join('');
+  return walk(root).replace(/\n{3,}/g, '\n\n').trim();
+}
+function wrapSelection(kind) {
+  const sel = getSelection(); if (!sel.rangeCount) return;
+  const r = sel.getRangeAt(0); if (r.collapsed) return;
+  const el = document.createElement(kind === 'tg-spoiler' ? 'span' : kind);
+  if (kind === 'tg-spoiler') el.className = 'tg-spoiler';
+  el.appendChild(r.extractContents()); r.insertNode(el);
+  sel.removeAllRanges(); const nr = document.createRange(); nr.selectNodeContents(el); sel.addRange(nr);
+}
+function unwrapSelection() {
+  const sel = getSelection(); if (!sel.rangeCount) return;
+  const root = $('#ptext');
+  root.querySelectorAll('.tg-spoiler, blockquote, code, pre').forEach(el => {
+    if (sel.containsNode(el, true)) el.replaceWith(...el.childNodes);
+  });
 }
 const SEG_NAME = Object.fromEntries(SEGMENTS);
 async function history_() {
@@ -393,7 +488,7 @@ async function history_() {
   const list = await api('/broadcasts');
   const el = $('#hist'); if (!el) return;
   el.innerHTML = list.length ? list.map(b => `<div class="row" style="grid-template-columns:1fr auto;cursor:default">
-    <div style="min-width:0"><div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${b.media_type ? (b.media_type === 'photo' ? '🖼 ' : '🎬 ') : ''}${esc(b.text)}</div>
+    <div style="min-width:0"><div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${b.media_type ? (b.media_type === 'photo' ? '🖼 ' : '🎬 ') : ''}${esc(b.text.replace(/<[^>]+>/g, '').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&'))}</div>
     <div class="sub">${fmtDate(b.created_at, true)} · ${SEG_NAME[b.audience] || b.audience}</div>
     ${b.status === 'sending' ? `<div class="bar"><i style="width:${b.total ? Math.round((b.sent + b.failed) / b.total * 100) : 0}%"></i></div>` : ''}</div>
     <div style="text-align:right"><div>${b.sent} из ${b.total}</div><div class="sub">${b.status === 'sending' ? 'отправляется…' : b.failed ? `не дошло: ${b.failed}` : 'доставлено'}</div></div></div>`).join('')

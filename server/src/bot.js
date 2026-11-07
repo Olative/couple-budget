@@ -86,7 +86,7 @@ function postMarkup(buttons = {}) {
 // so the same upload can be reused for every recipient.
 export async function deliverPost(chatId, post) {
   const b = requireBot();
-  const extra = postMarkup(post.buttons);
+  const extra = { ...postMarkup(post.buttons), ...(post.html ? { parse_mode: 'HTML' } : {}) };
   const m = post.media;
   if (!m) {
     await b.sendMessage(chatId, post.text, extra);

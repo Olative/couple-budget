@@ -4,6 +4,7 @@ import crypto from 'crypto';
 import db from '../db.js';
 import { telegramUserFromInitData, devMode } from '../telegramAuth.js';
 import { adminTelegramId, deliverPost, sendSupportReply } from '../bot.js';
+import { sanitizeTgHtml, tgTextLength } from '../tgHtml.js';
 
 // The admin panel (CRM): users, dialogs, broadcasts, growth. Only the bot's admin gets in: inside Telegram
 // by the signed launch data, in a browser by a one-time link the bot sends to the admin's chat.
@@ -146,12 +147,14 @@ const AUDIENCES = {
 };
 
 function readPost(body) {
-  const text = String(body.text || '').trim();
-  if (!text) throw new Error('Напишите текст поста');
+  // The editor sends Telegram-style HTML (bold, italic, links, spoilers…).
+  const text = sanitizeTgHtml(String(body.text || ''));
+  const len = tgTextLength(text);
+  if (!len) throw new Error('Напишите текст поста');
   const media = body.media || null;
-  if (media && text.length > 1024) throw new Error('С фото или видео текст должен быть не длиннее 1024 символов');
-  if (text.length > 4096) throw new Error('Текст длиннее 4096 символов');
-  const post = { text, buttons: body.buttons || {}, media: null };
+  if (media && len > 1024) throw new Error('С фото или видео текст должен быть не длиннее 1024 символов');
+  if (len > 4096) throw new Error('Текст длиннее 4096 символов');
+  const post = { text, html: true, buttons: body.buttons || {}, media: null };
   if (media?.type === 'guide') post.media = { type: 'guide' };
   else if (media?.file_id && ['photo', 'video'].includes(media.type)) post.media = { type: media.type, file_id: String(media.file_id) };
   else if (media?.data && ['photo', 'video'].includes(media.type)) {
